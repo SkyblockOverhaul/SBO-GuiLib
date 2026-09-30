@@ -156,7 +156,9 @@ custom properties `--name` with `var(--name, fallback)`. No `calc()`.
 6. `style` is a CSS **string**, not an object. Event handlers are Kotlin lambdas (`onClick = { e -> … }`).
 7. `useEffect { }` without deps runs **once** (like `[]`); there is no "run after every render" variant.
 8. `onChange` on inputs/selects/checkboxes fires on every change (React behaviour).
-9. `overflow: hidden` clips **rectangularly**, even with `border-radius`.
+9. `overflow: hidden` clips **rectangularly**. With `border-radius` on the clipping element, child backgrounds that sit
+   exactly in one of its corners (headers, footers, sidebars) are rounded to match; other content (text, images,
+   children that only partly overlap a corner) is not cut to the curve.
 10. Rounded boxes draw one border width/color (the widest side) — per-side borders are exact only without radius.
 11. Inline elements (`span`, …) ignore padding/border/background; use `display: inline-block` for boxes inside text.
 12. `border-width` default (`medium`) is 1px; like the web, a border without `border-style` draws nothing.

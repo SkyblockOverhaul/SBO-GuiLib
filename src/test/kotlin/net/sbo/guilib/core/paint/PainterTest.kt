@@ -52,6 +52,26 @@ class PainterTest {
     }
 
     @Test
+    fun childrenInRoundedClipFollowItsCorners() {
+        val root = ui(
+            """
+            .card { width: 100px; height: 60px; border: 1px solid red; border-radius: 6px; overflow: hidden }
+            .header { height: 10px; background-color: blue }
+            .body { height: 20px; background-color: lime; border-radius: 2px }
+            """.trimIndent(),
+        ) {
+            div(className = "card") { div(className = "header"); div(className = "body") }
+        }
+        val boxes = root.painter.commands.filterIsInstance<PaintCommand.Box>()
+        val header = boxes.first { it.background == 0xFF0000FF.toInt() }
+        // Top corners get the card's inner radius (6 - 1 border), bottom corners stay square.
+        assertEquals(listOf(5f, 5f, 0f, 0f), header.radii.toList())
+        // The body touches no corner of the clip: its own radius is kept.
+        val body = boxes.first { it.background == 0xFF00FF00.toInt() }
+        assertEquals(listOf(2f, 2f, 2f, 2f), body.radii.toList())
+    }
+
+    @Test
     fun zIndexOrdersPositionedElements() {
         val root = ui(
             """
