@@ -7,6 +7,7 @@ import net.minecraft.client.Minecraft
 import net.sbo.guilib.core.Log
 import net.sbo.guilib.fabric.dev.DevAutomation
 import net.sbo.guilib.fabric.render.GuiPipelines
+import net.sbo.guilib.fabric.resources.HotReload
 import net.sbo.guilib.fabric.resources.Stylesheets
 import net.sbo.guilib.fabric.showcase.Showcase
 import org.slf4j.LoggerFactory
@@ -40,6 +41,7 @@ object GuiLibMod : ClientModInitializer {
             )
         }
         GuiPipelines.init()
+        HotReload.init()
         DevAutomation.init()
         logger.info("GuiLib initialized")
     }

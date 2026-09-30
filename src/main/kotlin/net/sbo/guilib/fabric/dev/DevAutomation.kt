@@ -31,7 +31,8 @@ object DevAutomation {
             steps += Step(20) { hover(System.getProperty("guilib.dev.hover.$s")) }
             // Optional script: -Dguilib.dev.script.Forms="click:input;type:Steve;click:select"
             System.getProperty("guilib.dev.script.$s")?.split(';')?.filter { it.isNotBlank() }?.forEach { action ->
-                steps += Step(8) { runAction(action) }
+                if (action.startsWith("wait:")) steps += Step(action.substringAfter(':').toInt()) {}
+                else steps += Step(8) { runAction(action) }
             }
             steps += Step(10) { shot("guilib-${i + 1}-${s.lowercase().replace('#', '-')}.png") }
         }
