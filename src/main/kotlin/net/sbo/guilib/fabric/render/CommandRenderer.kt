@@ -99,25 +99,47 @@ object CommandRenderer {
     }
 
     private fun drawRoundedBox(ctx: GuiGraphicsExtractor, b: PaintCommand.Box) {
-        // The SDF shader supports one border width/color; mixed sides with rounded corners use the widest side.
-        var bw = 0f
-        var bc = 0
-        for (i in 0 until 4) if (b.borders[i] > bw) {
-            bw = b.borders[i]; bc = b.borderColors[i]
-        }
-        if (bw > 0f && (b.borders.any { it != bw } || b.borderColors.any { it != bc })) {
-            Log.warnOnce("GuiLib: borders with different widths/colors per side are drawn uniformly when border-radius is set")
-        }
         val pose = Matrix3x2f(ctx.pose())
         val scissor = ctx.scissorStack.peek()
         val state = ctx.guiRenderState
+        val bw = b.borders[0]
+        val bc = b.borderColors[0]
+        val uniform = (0 until 4).all { b.borders[it] == bw && (bw == 0f || b.borderColors[it] == bc) }
+
+        if (uniform) {
+            // One SDF pass for the background inside the border, one for the border ring.
+            if (Colors.alpha(b.background) != 0) {
+                state.addGuiElement(RoundedRectState(pose, b.x, b.y, b.width, b.height, b.background, b.radii, bw, scissor))
+            }
+            if (bw > 0f && Colors.alpha(bc) != 0) {
+                state.addGuiElement(RoundedRectState(pose, b.x, b.y, b.width, b.height, bc, b.radii, -bw, scissor))
+            }
+            return
+        }
+
+        // Different widths/colors per side: rounded background under the border (like background-clip: border-box),
+        // then one straight strip per side. Strips stop where a rounded corner begins so they never stick out of it;
+        // sides between square corners (e.g. a header's border-bottom) are exact.
         if (Colors.alpha(b.background) != 0) {
-            state.addGuiElement(RoundedRectState(pose, b.x, b.y, b.width, b.height, b.background, b.radii, bw, scissor))
+            state.addGuiElement(RoundedRectState(pose, b.x, b.y, b.width, b.height, b.background, b.radii, 0f, scissor))
         }
-        if (bw > 0f && Colors.alpha(bc) != 0) {
-            state.addGuiElement(RoundedRectState(pose, b.x, b.y, b.width, b.height, bc, b.radii, -bw, scissor))
+        val (tl, tr, br, bl) = b.radii.toList()
+        val x0 = b.x
+        val y0 = b.y
+        val x1 = b.x + b.width
+        val y1 = b.y + b.height
+        fun strip(side: Int, sx0: Float, sy0: Float, sx1: Float, sy1: Float) {
+            val c = b.borderColors[side]
+            if (b.borders[side] <= 0f || Colors.alpha(c) == 0 || sx1 <= sx0 || sy1 <= sy0) return
+            state.addGuiElement(RoundedRectState(pose, sx0, sy0, sx1 - sx0, sy1 - sy0, c, NO_RADII, 0f, scissor))
         }
+        strip(0, x0 + tl, y0, x1 - tr, y0 + b.borders[0])
+        strip(2, x0 + bl, y1 - b.borders[2], x1 - br, y1)
+        strip(3, x0, y0 + maxOf(tl, b.borders[0]), x0 + b.borders[3], y1 - maxOf(bl, b.borders[2]))
+        strip(1, x1 - b.borders[1], y0 + maxOf(tr, b.borders[0]), x1, y1 - maxOf(br, b.borders[2]))
     }
+
+    private val NO_RADII = FloatArray(4)
 
     // ---- text --------------------------------------------------------------------------------------------------
 

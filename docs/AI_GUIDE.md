@@ -159,7 +159,8 @@ custom properties `--name` with `var(--name, fallback)`. No `calc()`.
 9. `overflow: hidden` clips **rectangularly**. With `border-radius` on the clipping element, child backgrounds that sit
    exactly in one of its corners (headers, footers, sidebars) are rounded to match; other content (text, images,
    children that only partly overlap a corner) is not cut to the curve.
-10. Rounded boxes draw one border width/color (the widest side) — per-side borders are exact only without radius.
+10. Per-side borders on a box with `border-radius` are drawn as straight strips that stop at rounded corners
+    (the border doesn't bend around the curve); uniform borders and sides between square corners are exact.
 11. Inline elements (`span`, …) ignore padding/border/background; use `display: inline-block` for boxes inside text.
 12. `border-width` default (`medium`) is 1px; like the web, a border without `border-style` draws nothing.
 13. Every positioned element (`relative/absolute/fixed`) is its own paint layer; `z-index` orders layers among siblings in the same layer. Use `portal { }` for things that must be on top of everything.
