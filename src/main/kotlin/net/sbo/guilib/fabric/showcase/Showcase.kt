@@ -8,6 +8,7 @@ import net.sbo.guilib.core.dsl.classNames
 import net.sbo.guilib.core.dsl.div
 import net.sbo.guilib.core.dsl.h2
 import net.sbo.guilib.core.dsl.h3
+import net.sbo.guilib.core.dsl.img
 import net.sbo.guilib.core.dsl.item
 import net.sbo.guilib.core.dsl.nav
 import net.sbo.guilib.core.dsl.p
@@ -17,7 +18,7 @@ import net.sbo.guilib.fabric.GuiLib
 
 /** Demo UI showing every feature; open with `/guilib showcase`. */
 object Showcase {
-    val SECTIONS = listOf("Buttons", "Layout", "Text", "Scroll", "Items", "State")
+    val SECTIONS = listOf("Buttons", "Boxes", "Layout", "Text", "Scroll", "Images", "Items", "State")
 
     private val App = component<String>("Showcase") { initialSection ->
         var section by useState(initialSection)
@@ -35,6 +36,8 @@ object Showcase {
                 scroll(className = "content") {
                     when (section) {
                         "Buttons" -> ButtonsDemo()
+                        "Boxes" -> BoxesDemo()
+                        "Images" -> ImagesDemo()
                         "Layout" -> LayoutDemo()
                         "Text" -> TextDemo()
                         "Scroll" -> ScrollDemo()
@@ -63,6 +66,35 @@ object Showcase {
             button(onClick = { e -> e.stopPropagation(); log = (log + "stopped").takeLast(4) }) { +"stopPropagation" }
         }
         p(className = "muted") { +"Log: ${log.joinToString(" → ")}" }
+    }
+
+    private val BoxesDemo = component("BoxesDemo") {
+        h2 { +"Boxes" }
+        p { +"border-radius, borders and opacity are drawn by GuiLib's own anti-aliased SDF shader." }
+        div(className = "box-grid") {
+            div(className = "demo-box", style = "border-radius: 4px") { +"4px" }
+            div(className = "demo-box", style = "border-radius: 10px") { +"10px" }
+            div(className = "demo-box", style = "border-radius: 10px 10px 0 0") { +"top only" }
+            div(className = "demo-box", style = "border-radius: 50%; width: 40px") { +"50%" }
+            div(className = "demo-box outline", style = "border-radius: 6px") { +"border" }
+            div(className = "demo-box outline", style = "border-radius: 999px; border-width: 2px; width: 60px") { +"pill" }
+            div(className = "demo-box", style = "border-radius: 6px; opacity: 0.4") { +"opacity" }
+            div(className = "demo-box", style = "border-radius: 6px; background-color: rgba(91, 141, 239, 0.35); border: 1px solid #5b8def") { +"rgba" }
+        }
+    }
+
+    private val ImagesDemo = component("ImagesDemo") {
+        h2 { +"Images" }
+        p { +"img(src) takes a resource location. PNGs use Minecraft's texture manager, SVGs are rasterized per size." }
+        div(className = "row") {
+            img("guilib:showcase/logo.svg", className = "svg-small")
+            img("guilib:showcase/logo.svg", className = "svg-big")
+            img("minecraft:textures/item/diamond.png", style = "width: 32px; height: 32px")
+            img("minecraft:textures/block/oak_planks.png", style = "width: 48px; height: 24px; object-fit: cover")
+            img("minecraft:textures/block/oak_planks.png", style = "width: 48px; height: 24px; object-fit: contain; background-color: #0006")
+        }
+        p(className = "muted") { +"background-image: url(...)" }
+        div(className = "bg-demo") { +"Text over a background image" }
     }
 
     private val LayoutDemo = component("LayoutDemo") {

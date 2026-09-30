@@ -9,6 +9,7 @@ import net.sbo.guilib.core.dom.VComponent
 import net.sbo.guilib.core.dom.VNode
 import net.sbo.guilib.core.dsl.NodeBuilder
 import net.sbo.guilib.core.dom.component
+import net.sbo.guilib.fabric.image.Images
 
 /**
  * Entry point for mods:
@@ -59,6 +60,12 @@ object GuiLib {
         //#endif
     }
 
+    /** Shown for images that failed to load (like a browser's broken-image icon, but empty). */
+    private object BrokenImage : ReplacedContent {
+        override val width = 16f
+        override val height = 16f
+    }
+
     private object ItemContent : ReplacedContent {
         override val width = 16f
         override val height = 16f
@@ -69,6 +76,12 @@ object GuiLib {
         root.document.elementInitializer = { el ->
             when (el.tagName) {
                 "item" -> if (el.replaced == null) el.replaced = ItemContent
+                "img" -> {
+                    val src = el.getAttribute("src") as? String
+                    val entry = src?.let { Images.entry(it) }
+                    val next = entry ?: BrokenImage
+                    if (el.replaced !== next) el.replaced = next
+                }
             }
         }
     }

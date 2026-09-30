@@ -143,3 +143,24 @@ button.primary:hover { background-color: #6f9cf2; }
     background-color: var(--panel);
     border-left: 2px solid var(--accent);
 }
+
+.box-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.demo-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 40px;
+    background-color: var(--accent);
+}
+.demo-box.outline { background-color: transparent; border: 1px solid #b16cea; }
+
+.svg-small { width: 16px; height: 16px; }
+.svg-big { width: 48px; height: 48px; }
+
+.bg-demo {
+    padding: 10px;
+    background-image: url("minecraft:textures/block/dirt.png");
+    border-radius: 4px;
+    text-shadow: 1px 1px;
+}
