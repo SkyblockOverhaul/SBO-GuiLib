@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "${mod_id}",
+  "version": "${mod_version}",
+  "name": "${mod_name}",
+  "description": "${mod_description}",
+  "authors": ["Saotzuri"],
+  "license": "Apache-2.0",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      { "adapter": "kotlin", "value": "${mod_group}.fabric.GuiLibMod" }
+    ]
+  },
+  "accessWidener": "guilib.classtweaker",
+  "depends": {
+    "fabricloader": ">=${fabric_loader_version}",
+    "minecraft": "${mc_version_constraint}",
+    "java": ">=${java_version_major}",
+    "fabric-api": ">=${fabric_api_version}",
+    "fabric-language-kotlin": ">=${fabric_language_kotlin_version}"
+  },
+  "custom": {
+    "modmenu": { "badges": ["library"] }
+  }
+}
