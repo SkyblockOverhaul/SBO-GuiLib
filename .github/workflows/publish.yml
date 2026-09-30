@@ -15,7 +15,7 @@ jobs:
         uses: actions/checkout@v7
       - name: check tag matches mod.version
         run: |
-          version=$(grep '^mod.version=' gradle.properties | cut -d= -f2)
+          version=$(grep '^mod.version=' gradle.properties | cut -d= -f2 | tr -d '[:space:]')
           if [ "v$version" != "$GITHUB_REF_NAME" ]; then
             echo "::error::Tag $GITHUB_REF_NAME does not match mod.version=$version in gradle.properties"
             exit 1
