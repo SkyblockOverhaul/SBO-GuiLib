@@ -11,6 +11,7 @@ Key facts:
 - Hooks: useState, useEffect (no deps = once), useMemo, useRef, useContext, useInterval, useDocumentEvent
 - Controls: input (text/password/number/checkbox), select/option, checkbox, tooltip, modal, portal, img, item, scroll
 - CSS: selectors incl. combinators and :hover/:focus/:disabled/:checked/:not(); flexbox; position incl. fixed; var(); no calc/grid/@media/transitions
+- Dependency: `maven("https://skyblockoverhaul.github.io/maven")`, `implementation(include("net.sbo:guilib-26.2-fabric:<version>")!!)`; license LGPL-3.0
 - Differences from the web are listed in docs/AI_GUIDE.md section 6 — read them before writing CSS.
 
 ## Docs

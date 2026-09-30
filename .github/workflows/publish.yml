@@ -1,0 +1,53 @@
+name: publish
+# Publishes a release to the static Maven repository SkyblockOverhaul/maven (served at https://skyblockoverhaul.github.io/maven).
+# Release: bump mod.version in gradle.properties, commit, then push a tag "v<version>" (e.g. v0.1.0).
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  publish:
+    permissions:
+      contents: read
+    runs-on: ubuntu-26.04
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v7
+      - name: check tag matches mod.version
+        run: |
+          version=$(grep '^mod.version=' gradle.properties | cut -d= -f2)
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match mod.version=$version in gradle.properties"
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+      - name: checkout maven repository
+        uses: actions/checkout@v7
+        with:
+          repository: SkyblockOverhaul/maven
+          token: ${{ secrets.MAVEN_REPO_TOKEN }}
+          path: maven-repo
+      - name: refuse to overwrite a published version
+        run: |
+          if [ -d "maven-repo/net/sbo/guilib-26.2-fabric/$VERSION" ]; then
+            echo "::error::Version $VERSION is already published. Bump mod.version."
+            exit 1
+          fi
+      - name: setup jdk
+        uses: actions/setup-java@v6
+        with:
+          java-version: '27'
+          distribution: 'oracle'
+      - name: setup gradle
+        uses: gradle/actions/setup-gradle@v6.3.0
+      - name: build and publish
+        run: ./gradlew build publishAllPublicationsToStaticRepository -Pguilib.maven.dir="$GITHUB_WORKSPACE/maven-repo"
+      - name: push to maven repository
+        working-directory: maven-repo
+        run: |
+          touch .nojekyll
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "GuiLib $VERSION"
+          git push

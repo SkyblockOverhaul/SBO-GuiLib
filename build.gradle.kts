@@ -104,11 +104,43 @@ dependencies {
     testRuntimeOnly(libs.junit.launcher)
 }
 
+tasks.named<Jar>("jar") {
+    // LGPL-3.0 requires shipping the license texts with the binary.
+    from(rootProject.file("COPYING")) { rename { "COPYING_guilib" } }
+    from(rootProject.file("COPYING.LESSER")) { rename { "COPYING.LESSER_guilib" } }
+}
+
 publishing {
     publications {
         create<MavenPublication>("mod") {
             artifactId = archiveName
             from(components["java"])
+            pom {
+                name.set("GuiLib ($mcProject)")
+                description.set(project.property("mod.description").toString())
+                url.set("https://github.com/SkyblockOverhaul/SBO-GuiLib")
+                licenses {
+                    license {
+                        name.set("GNU Lesser General Public License v3.0")
+                        url.set("https://www.gnu.org/licenses/lgpl-3.0.html")
+                    }
+                }
+                developers {
+                    developer {
+                        id.set("Saotzuri")
+                        name.set("Saotzuri")
+                    }
+                }
+                scm { url.set("https://github.com/SkyblockOverhaul/SBO-GuiLib") }
+            }
+        }
+    }
+    repositories {
+        // Static Maven repository (a checkout of SkyblockOverhaul/maven, served by GitHub Pages).
+        // Local test: ./gradlew publishAllPublicationsToStaticRepository -Pguilib.maven.dir=../maven
+        maven {
+            name = "static"
+            url = uri(project.findProperty("guilib.maven.dir")?.toString() ?: rootProject.layout.buildDirectory.dir("maven-repo").get().asFile.path)
         }
     }
 }

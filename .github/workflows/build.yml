@@ -1,0 +1,27 @@
+name: build
+on: [pull_request, push]
+
+jobs:
+  build:
+    permissions:
+      contents: read
+    runs-on: ubuntu-26.04
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v7
+      - name: setup jdk
+        uses: actions/setup-java@v6
+        with:
+          java-version: '27'
+          distribution: 'oracle'
+      - name: setup gradle
+        uses: gradle/actions/setup-gradle@v6.3.0
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+      - name: build
+        run: ./gradlew build
+      - name: capture build artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: Artifacts
+          path: build/versions/

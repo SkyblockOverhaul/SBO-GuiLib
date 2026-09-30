@@ -1,5 +1,9 @@
 # GuiLib
 
+> **AI disclaimer:** GuiLib was developed with substantial help from an AI coding assistant (Claude by Anthropic).
+> The code is reviewed, tested (unit tests + in-game checks on both supported Minecraft versions) and maintained by
+> the SkyblockOverhaul team, but please report anything that looks off.
+
 A UI library for Minecraft Fabric mods that works like web development:
 **React-style components and hooks in a Kotlin DSL with HTML tag names, styled with real `.css` files.**
 
@@ -47,23 +51,29 @@ UIs can be written quickly and correctly. Differences from the web are documente
 
 ## Using it in a mod
 
-GuiLib is a Fabric mod published as `net.sbo:guilib-<mc>-fabric` (currently `26.1.2-fabric` and `26.2-fabric`).
-
-```bash
-# in this repository
-./gradlew publishToMavenLocal
-```
+GuiLib is a Fabric mod published as `net.sbo:guilib-<mc>-fabric` (currently `26.1.2-fabric` and `26.2-fabric`)
+to the SkyblockOverhaul Maven repository.
 
 ```kotlin
 // your mod's build.gradle.kts
-repositories { mavenLocal() }
+repositories {
+    exclusiveContent {
+        forRepository { maven("https://skyblockoverhaul.github.io/maven") }
+        filter { includeGroup("net.sbo") }
+    }
+}
 dependencies {
     implementation(include("net.sbo:guilib-26.2-fabric:0.1.0")!!) // jar-in-jar, like Elementa
 }
 ```
 
-and add `"guilib": ">=0.1.0"` to `depends` in your `fabric.mod.json`. During development you can instead use a
-Gradle composite build (`includeBuild("../SBO-GuiLib")` in `settings.gradle.kts`) to skip publishing.
+and add `"guilib": ">=0.1.0"` to `depends` in your `fabric.mod.json`.
+
+While working on GuiLib and a mod at the same time, use a Gradle composite build instead
+(`includeBuild("../SBO-GuiLib")` with a dependency substitution, see SBO's `settings.gradle.kts`), or
+`./gradlew publishToMavenLocal` + `mavenLocal()`.
+
+Releasing a new version is described in [docs/PUBLISHING.md](docs/PUBLISHING.md).
 
 ## Documentation
 
@@ -90,5 +100,10 @@ Gradle composite build (`includeBuild("../SBO-GuiLib")` in `settings.gradle.kts`
 
 ## License
 
-Code: not decided yet — `fabric.mod.json` currently declares Apache-2.0 (like SBO); add a `LICENSE` file before publishing.
-Bundled Inter font: SIL Open Font License 1.1 (`assets/guilib/fonts/inter-license.txt`).
+GuiLib is licensed under the **GNU Lesser General Public License v3.0** ([COPYING.LESSER](COPYING.LESSER), which
+builds on the GPL v3 in [COPYING](COPYING)). You may use GuiLib in mods under any license, including closed-source ones;
+changes to GuiLib itself must be published under the LGPL.
+
+Bundled third-party components:
+- Inter font — SIL Open Font License 1.1 (`src/main/resources/assets/guilib/fonts/inter-license.txt`)
+- JSVG (bundled jar-in-jar) — MIT License
