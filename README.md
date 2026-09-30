@@ -96,7 +96,8 @@ Releasing a new version is described in [docs/PUBLISHING.md](docs/PUBLISHING.md)
 - Tag functions are generated: edit `scripts/gen_tags.py`, run `python scripts/gen_tags.py`.
 - Visual checks without clicking: `./gradlew :26.2-fabric:runClient -Pguilib.dev.shots=all` opens every showcase
   section, saves screenshots to `versions/26.2-fabric/run/screenshots/` and quits
-  (see `DevAutomation.kt` for hover/click/type scripts).
+  (see `src/dev/kotlin/.../DevAutomation.kt` for hover/click/type scripts). This lives in a separate `dev` source set
+  that is only loaded by this repository's own `runClient` — it is never packaged into the jar or published.
 
 ## License
 

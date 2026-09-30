@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "guilib-dev",
+  "version": "0.0.0",
+  "name": "GuiLib dev tools",
+  "description": "Development-only helpers for GuiLib's own runClient (screenshot automation). Never published.",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      { "adapter": "kotlin", "value": "net.sbo.guilib.dev.DevAutomation" }
+    ]
+  },
+  "depends": {
+    "guilib": "*"
+  }
+}

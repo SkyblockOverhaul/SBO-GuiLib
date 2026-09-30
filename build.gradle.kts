@@ -19,6 +19,16 @@ private val mcVersion: String = mcProject.replace("-fabric", "")
 private fun versionedProperty(name: String): String =
     project.property("$name.$mcVersion")?.toString() ?: throw AssertionError("build.gradle.kts needs updating for $mcProject")
 
+// Development-only tools (screenshot automation). Shared by all MC versions and deliberately not preprocessed,
+// so the code there must stay version-independent. Not part of the jar, sources jar or Maven publication.
+val devSourceSet: SourceSet = sourceSets.create("dev") {
+    java.setSrcDirs(listOf(rootProject.file("src/dev/java")))
+    resources.setSrcDirs(listOf(rootProject.file("src/dev/resources")))
+    compileClasspath += sourceSets.main.get().output + sourceSets.main.get().compileClasspath
+    runtimeClasspath += sourceSets.main.get().output + sourceSets.main.get().runtimeClasspath
+}
+kotlin.sourceSets.named("dev") { kotlin.setSrcDirs(listOf(rootProject.file("src/dev/kotlin"))) }
+
 loom {
     // Identical for all MC versions, so the root copy is used directly.
     accessWidenerPath = rootProject.file("src/main/resources/guilib.classtweaker")
@@ -28,8 +38,15 @@ loom {
         preferGradleTask = true
     }
 
-    // Visual checks: ./gradlew :26.2-fabric:runClient -Pguilib.dev.shots=all (see DevAutomation).
+    mods {
+        create("guilib") { sourceSet(sourceSets.main.get()) }
+        create("guilib-dev") { sourceSet(devSourceSet) }
+    }
+
+    // Visual checks: ./gradlew :26.2-fabric:runClient -Pguilib.dev.shots=all (see src/dev, DevAutomation).
+    // The dev source set is only on runClient's classpath; it is never packaged or published.
     runs.named("client") {
+        source(devSourceSet)
         project.findProperty("guilib.dev.shots")?.let { vmArg("-Dguilib.dev.shots=$it") }
         project.properties.filterKeys { it.startsWith("guilib.dev.") && it != "guilib.dev.shots" }.forEach { (k, v) -> vmArg("-D$k=$v") }
     }
@@ -148,3 +165,4 @@ publishing {
 // The preprocessor of the 26.2 node reads the 26.1.2 classpath; order the tasks so parallel builds don't race (same as SBO).
 tasks.findByName("preprocessCode")?.dependsOn(":26.1.2-fabric:compileKotlin")
 tasks.findByName("preprocessTestCode")?.dependsOn(":26.1.2-fabric:compileTestKotlin")
+tasks.findByName("preprocessDevCode")?.dependsOn(":26.1.2-fabric:compileDevKotlin")

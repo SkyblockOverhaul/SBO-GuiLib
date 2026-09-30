@@ -187,6 +187,7 @@ kein volles Inline-Formatting (gemischte span/Text-Kinder werden zu einem Rich-T
 
 Umgesetzt: Schritte 0–9 (Scaffold, CSS-Core, Layout, DOM/Reconciler/Hooks, Fabric-Backend, eigene Pipeline + PNG/SVG,
 TTF, Controls, Hot-Reload, Doku/Showcase). 97 Unit-Tests; visuell geprüft auf 26.1.2 und 26.2 über `DevAutomation`
+(Dev-Source-Set `src/dev`, nur im lokalen `runClient`, nicht im veröffentlichten Jar)
 (automatische Screenshots). Schritt 10 (SBO-Einbindung) ist offen und wartet auf Rückfrage.
 
 Entscheidungen/Abweichungen gegenüber dem Vorschlag:

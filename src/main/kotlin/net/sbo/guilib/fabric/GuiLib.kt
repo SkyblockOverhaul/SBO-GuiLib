@@ -48,6 +48,16 @@ object GuiLib {
     /** Closes the current screen. */
     fun close() = setScreen(null)
 
+    /** The screen that is currently open (works on every supported Minecraft version). */
+    fun currentScreen(): net.minecraft.client.gui.screens.Screen? {
+        val mc = Minecraft.getInstance()
+        //#if MC >= 26.2
+        //$$ return mc.gui.screen()
+        //#else
+        return mc.screen
+        //#endif
+    }
+
     /** Runs [block] on the client (render) thread. State setters are already thread-safe; use this for other work. */
     fun runOnUi(block: () -> Unit) = Minecraft.getInstance().execute(block)
 
