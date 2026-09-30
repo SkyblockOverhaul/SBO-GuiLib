@@ -27,14 +27,17 @@ object DevAutomation {
         Log.info("GuiLib dev automation: capturing ${sections.joinToString()}")
         sections.forEachIndexed { i, s ->
             // "Forms#2" opens the Forms section again with its own hover/script properties.
-            steps += Step(20) { Showcase.open(s.substringBefore('#')) }
+            steps += Step(20) {
+                // "call:com.example.MyGui.open" opens any screen via a static/object method instead of a showcase section.
+                if (s.startsWith("call:")) callOpen(s.removePrefix("call:").substringBefore('#')) else Showcase.open(s.substringBefore('#'))
+            }
             steps += Step(20) { hover(System.getProperty("guilib.dev.hover.$s")) }
             // Optional script: -Dguilib.dev.script.Forms="click:input;type:Steve;click:select"
             System.getProperty("guilib.dev.script.$s")?.split(';')?.filter { it.isNotBlank() }?.forEach { action ->
                 if (action.startsWith("wait:")) steps += Step(action.substringAfter(':').toInt()) {}
                 else steps += Step(8) { runAction(action) }
             }
-            steps += Step(10) { shot("guilib-${i + 1}-${s.lowercase().replace('#', '-')}.png") }
+            steps += Step(10) { shot("guilib-${i + 1}-${s.substringAfterLast('.').lowercase().replace('#', '-')}.png") }
         }
         steps += Step(20) { Minecraft.getInstance().stop() }
 
@@ -54,6 +57,13 @@ object DevAutomation {
             }
             wait = steps.firstOrNull()?.ticks ?: 0
         }
+    }
+
+    private fun callOpen(target: String) {
+        val cls = Class.forName(target.substringBeforeLast('.'))
+        val method = cls.getMethod(target.substringAfterLast('.'))
+        val instance = runCatching { cls.getField("INSTANCE").get(null) }.getOrNull() // Kotlin object
+        method.invoke(instance)
     }
 
     private fun runAction(action: String) {
