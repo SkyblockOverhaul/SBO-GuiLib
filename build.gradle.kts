@@ -106,3 +106,7 @@ publishing {
         }
     }
 }
+
+// The preprocessor of the 26.2 node reads the 26.1.2 classpath; order the tasks so parallel builds don't race (same as SBO).
+tasks.findByName("preprocessCode")?.dependsOn(":26.1.2-fabric:compileKotlin")
+tasks.findByName("preprocessTestCode")?.dependsOn(":26.1.2-fabric:compileTestKotlin")
