@@ -1,0 +1,125 @@
+package net.sbo.guilib.fabric
+
+import com.mojang.blaze3d.platform.cursor.CursorTypes
+import net.minecraft.client.gui.GuiGraphicsExtractor
+import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.input.CharacterEvent
+import net.minecraft.client.input.KeyEvent
+import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.network.chat.Component
+import net.sbo.guilib.core.UiRoot
+import net.sbo.guilib.core.css.Cursor
+import net.sbo.guilib.core.dom.VNode
+import net.sbo.guilib.fabric.font.FontManager
+import net.sbo.guilib.fabric.input.Keys
+import net.sbo.guilib.fabric.render.CommandRenderer
+import net.sbo.guilib.fabric.resources.Stylesheets
+import org.lwjgl.glfw.GLFW
+
+/**
+ * A Minecraft [Screen] hosting a GuiLib UI. Usually created through [GuiLib.open].
+ *
+ * @param content the root node, e.g. `VComponent(App, Unit, null)` (see [GuiLib.open] for the convenient forms)
+ * @param stylesheets resource locations like `"mymod:ui/main.css"` (loaded from `assets/mymod/ui/main.css`)
+ */
+open class GuiLibScreen(
+    title: Component,
+    private val content: VNode,
+    private val stylesheets: List<String> = emptyList(),
+    /** Draw Minecraft's default blurred/dimmed background behind the UI. */
+    private val vanillaBackground: Boolean = true,
+    private val pauseGame: Boolean = false,
+) : Screen(title) {
+
+    val root: UiRoot = UiRoot(FontManager, Stylesheets.loadAll(stylesheets))
+    private var mounted = false
+
+    init {
+        GuiLib.initDocument(root)
+        Stylesheets.watch(this)
+    }
+
+    /** Reloads all stylesheets (used by hot reload and `/guilib reload`). */
+    fun reloadStylesheets() {
+        root.document.setStylesheets(Stylesheets.loadAll(stylesheets))
+    }
+
+    override fun init() {
+        if (!mounted) {
+            root.render(content)
+            mounted = true
+        }
+    }
+
+    override fun extractBackground(ctx: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+        if (vanillaBackground) super.extractBackground(ctx, mouseX, mouseY, delta)
+    }
+
+    override fun extractRenderState(ctx: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+        val commands = root.frame(width.toFloat(), height.toFloat())
+        CommandRenderer.draw(ctx, commands)
+        when (root.input.cursor) {
+            Cursor.POINTER -> ctx.requestCursor(CursorTypes.POINTING_HAND)
+            Cursor.TEXT -> ctx.requestCursor(CursorTypes.IBEAM)
+            Cursor.NOT_ALLOWED -> ctx.requestCursor(CursorTypes.NOT_ALLOWED)
+            Cursor.CROSSHAIR -> ctx.requestCursor(CursorTypes.CROSSHAIR)
+            Cursor.MOVE, Cursor.GRAB -> ctx.requestCursor(CursorTypes.RESIZE_ALL)
+            Cursor.NS_RESIZE -> ctx.requestCursor(CursorTypes.RESIZE_NS)
+            Cursor.EW_RESIZE -> ctx.requestCursor(CursorTypes.RESIZE_EW)
+            Cursor.AUTO, Cursor.DEFAULT -> {}
+        }
+    }
+
+    override fun mouseMoved(x: Double, y: Double) {
+        root.input.mouseMove(x.toFloat(), y.toFloat())
+    }
+
+    override fun mouseClicked(click: MouseButtonEvent, doubled: Boolean): Boolean =
+        root.input.mouseDown(click.x().toFloat(), click.y().toFloat(), domButton(click.button()), Keys.modifiers(click.modifiers()))
+
+    override fun mouseReleased(click: MouseButtonEvent): Boolean =
+        root.input.mouseUp(click.x().toFloat(), click.y().toFloat(), domButton(click.button()), Keys.modifiers(click.modifiers()))
+
+    override fun mouseDragged(click: MouseButtonEvent, deltaX: Double, deltaY: Double): Boolean {
+        root.input.mouseMove(click.x().toFloat(), click.y().toFloat(), Keys.modifiers(click.modifiers()))
+        return true
+    }
+
+    override fun mouseScrolled(mouseX: Double, mouseY: Double, horizontal: Double, vertical: Double): Boolean =
+        root.input.wheel(mouseX.toFloat(), mouseY.toFloat(), (-horizontal * SCROLL_STEP).toFloat(), (-vertical * SCROLL_STEP).toFloat())
+
+    override fun keyPressed(keyInput: KeyEvent): Boolean {
+        val mods = Keys.modifiers(keyInput.modifiers())
+        val key = Keys.keyName(keyInput.key(), keyInput.scancode(), mods)
+        if (root.input.keyDown(key, keyInput.key(), mods)) return true
+        return super.keyPressed(keyInput) // Escape closes the screen
+    }
+
+    override fun keyReleased(keyInput: KeyEvent): Boolean {
+        val mods = Keys.modifiers(keyInput.modifiers())
+        return root.input.keyUp(Keys.keyName(keyInput.key(), keyInput.scancode(), mods), keyInput.key(), mods)
+    }
+
+    override fun charTyped(input: CharacterEvent): Boolean = root.input.charTyped(input.codepointAsString())
+
+    override fun isPauseScreen() = pauseGame
+
+    override fun removed() {
+        root.document.unmount()
+        mounted = false
+        Stylesheets.unwatch(this)
+        super.removed()
+    }
+
+    private fun domButton(glfw: Int) = when (glfw) {
+        GLFW.GLFW_MOUSE_BUTTON_LEFT -> 0
+        GLFW.GLFW_MOUSE_BUTTON_MIDDLE -> 1
+        GLFW.GLFW_MOUSE_BUTTON_RIGHT -> 2
+        else -> glfw
+    }
+
+    companion object {
+        /** Pixels scrolled per mouse wheel notch. */
+        var SCROLL_STEP = 20.0
+    }
+}

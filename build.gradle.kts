@@ -27,6 +27,12 @@ loom {
         generateRunConfig.set(true)
         preferGradleTask = true
     }
+
+    // Visual checks: ./gradlew :26.2-fabric:runClient -Pguilib.dev.shots=all (see DevAutomation).
+    runs.named("client") {
+        project.findProperty("guilib.dev.shots")?.let { vmArg("-Dguilib.dev.shots=$it") }
+        project.properties.filterKeys { it.startsWith("guilib.dev.hover.") }.forEach { (k, v) -> vmArg("-D$k=$v") }
+    }
 }
 
 java {

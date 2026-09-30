@@ -62,7 +62,9 @@ internal class InlineLayout(private val engine: LayoutEngine) {
                 }
                 isAtomic(node) -> out += Item.Atomic(node)
                 else -> {
-                    if (mark) node.box.inParagraph = true
+                    if (mark) {
+                        node.box.reset(); node.box.inParagraph = true
+                    }
                     collect(node.layoutChildren, out, mark)
                 }
             }

@@ -42,3 +42,5 @@ replay_*.log
 
 .kotlin/sessions
 graphify-out/
+run-client.log
+versions/*/run/

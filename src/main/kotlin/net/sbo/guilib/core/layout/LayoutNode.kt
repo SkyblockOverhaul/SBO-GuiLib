@@ -66,6 +66,7 @@ class LayoutBox {
     val marginBoxHeight get() = height + margin.vertical
 
     internal fun reset() {
+        x = 0f; y = 0f; width = 0f; height = 0f
         paragraphs.clear()
         inParagraph = false
         baseline = null
