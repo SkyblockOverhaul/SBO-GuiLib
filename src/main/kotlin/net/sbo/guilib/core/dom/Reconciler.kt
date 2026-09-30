@@ -40,6 +40,12 @@ internal class ComponentInstance(var vnode: VComponent<*>, val document: Documen
     val name get() = vnode.type.name
 }
 
+/** Renders its children into a container inside the document's overlay layer instead of in place. */
+internal class PortalInstance(val container: Element) : Instance() {
+    var children: List<Instance> = emptyList()
+    override fun collectDom(out: MutableList<Node>) {} // contributes nothing to its parent
+}
+
 internal class ProviderInstance(var vnode: VProvider<*>) : Instance() {
     var children: List<Instance> = emptyList()
     val consumers = HashSet<ComponentInstance>()
@@ -114,6 +120,13 @@ internal class Reconciler(private val document: Document) {
             inst.children = reconcileChildren(inst, emptyList(), v.children)
             inst
         }
+        is VPortal -> {
+            val inst = PortalInstance(document.openPortal(v.className))
+            inst.parent = parent
+            inst.children = reconcileChildren(inst, emptyList(), v.children)
+            syncPortal(inst)
+            inst
+        }
     }.also { it.parent = parent }
 
     private fun sameType(inst: Instance, v: VNode): Boolean = when (inst) {
@@ -121,6 +134,7 @@ internal class Reconciler(private val document: Document) {
         is HostInstance -> v is VElement && v.tag == inst.element.tagName
         is ComponentInstance -> v is VComponent<*> && v.type === inst.vnode.type
         is ProviderInstance -> v is VProvider<*> && v.context === inst.vnode.context
+        is PortalInstance -> v is VPortal
     }
 
     private fun update(inst: Instance, v: VNode) {
@@ -146,7 +160,19 @@ internal class Reconciler(private val document: Document) {
                 if (changed) inst.consumers.forEach { document.scheduleRender(it) }
                 inst.children = reconcileChildren(inst, inst.children, v.children)
             }
+            is PortalInstance -> {
+                v as VPortal
+                inst.container.className = "guilib-portal" + (v.className?.let { " $it" } ?: "")
+                inst.children = reconcileChildren(inst, inst.children, v.children)
+                syncPortal(inst)
+            }
         }
+    }
+
+    private fun syncPortal(inst: PortalInstance) {
+        val nodes = ArrayList<Node>()
+        inst.children.forEach { it.collectDom(nodes) }
+        inst.container.setChildren(nodes)
     }
 
     fun unmount(inst: Instance) {
@@ -166,6 +192,10 @@ internal class Reconciler(private val document: Document) {
                 document.unschedule(inst)
             }
             is ProviderInstance -> inst.children.forEach { unmount(it) }
+            is PortalInstance -> {
+                inst.children.forEach { unmount(it) }
+                document.closePortal(inst.container)
+            }
             is TextInstance -> {}
         }
     }
@@ -208,20 +238,28 @@ internal class Reconciler(private val document: Document) {
         is HostInstance -> "<${inst.element.describe()}>"
         is ComponentInstance -> "<${inst.name}>"
         is ProviderInstance -> "<${inst.vnode.context}.Provider>"
+        is PortalInstance -> "<portal>"
         is TextInstance -> "text"
     }
 
     /** Writes the flattened DOM children of [host] into its element. */
     fun syncDom(host: HostInstance) {
+        if (host.element.internalChildren) return // e.g. <input>: children are managed by its control
         val nodes = ArrayList<Node>()
         host.children.forEach { it.collectDom(nodes) }
+        if (host.element === document.body) nodes += document.overlayRoot
         host.element.setChildren(nodes)
     }
 
-    fun nearestHost(inst: Instance): HostInstance? {
+    /** Re-syncs the DOM of whatever owns [inst]'s nodes: its nearest host element or portal. */
+    fun syncOwner(inst: Instance) {
         var p = inst.parent
-        while (p != null && p !is HostInstance) p = p.parent
-        return p
+        while (p != null && p !is HostInstance && p !is PortalInstance) p = p.parent
+        when (p) {
+            is HostInstance -> syncDom(p)
+            is PortalInstance -> syncPortal(p)
+            else -> {}
+        }
     }
 
     // ---- components --------------------------------------------------------------------------------------------
@@ -242,10 +280,8 @@ internal class Reconciler(private val document: Document) {
         inst.children = reconcileChildren(inst, inst.children, output)
     }
 
-    /** Called when a component re-rendered on its own (state change): refresh its host's DOM children. */
-    fun afterStandaloneRender(inst: ComponentInstance) {
-        nearestHost(inst)?.let { syncDom(it) }
-    }
+    /** Called when a component re-rendered on its own (state change): refresh its owner's DOM children. */
+    fun afterStandaloneRender(inst: ComponentInstance) = syncOwner(inst)
 
     // ---- props -------------------------------------------------------------------------------------------------
 
@@ -258,6 +294,6 @@ internal class Reconciler(private val document: Document) {
         el.handlers = new.handlers
         if (old?.ref != null && old.ref !== new.ref && old.ref.current === el) old.ref.current = null
         new.ref?.current = el
-        document.onElementPropsApplied(el)
+        document.onElementPropsApplied(el, old == null)
     }
 }

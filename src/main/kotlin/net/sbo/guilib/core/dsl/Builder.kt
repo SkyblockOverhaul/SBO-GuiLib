@@ -15,6 +15,7 @@ import net.sbo.guilib.core.dom.Ref
 import net.sbo.guilib.core.dom.VComponent
 import net.sbo.guilib.core.dom.VElement
 import net.sbo.guilib.core.dom.VNode
+import net.sbo.guilib.core.dom.VPortal
 import net.sbo.guilib.core.dom.VProvider
 import net.sbo.guilib.core.dom.VText
 import net.sbo.guilib.core.event.UIEvent
@@ -55,6 +56,15 @@ open class NodeBuilder {
     /** Provides [value] to all `useContext(this)` calls below: `ThemeContext.Provider(dark) { … }`. */
     fun <T> Context<T>.Provider(value: T, key: Any? = null, children: NodeBuilder.() -> Unit) {
         nodes += VProvider(this, value, NodeBuilder().apply(children).nodes, key)
+    }
+
+    /**
+     * Renders [children] into the overlay layer above the whole UI, like React's `createPortal(children, document.body)`.
+     * Use it for menus, tooltips and dialogs so they aren't clipped by scroll containers or covered by siblings.
+     * Position the content with `position: fixed`.
+     */
+    fun portal(className: String? = null, key: Any? = null, children: NodeBuilder.() -> Unit) {
+        nodes += VPortal(NodeBuilder().apply(children).nodes, className, key)
     }
 
     /** Groups children without a wrapper element (like `<>…</>`); useful to give a list entry a key. */
@@ -202,6 +212,22 @@ class ComponentScope internal constructor(
         val latest = useRef(callback)
         latest.current = callback
         useEffect(ms) { setInterval(ms) { latest.current() } }
+    }
+
+    /** The [Document] this component lives in (viewport size, focus, `addEventListener`, …). */
+    fun useDocument(): Document = document
+
+    /**
+     * Listens to [type] on the whole document while mounted (like `document.addEventListener` in a React effect).
+     * Runs before element handlers; call `stopPropagation()`/`preventDefault()` to swallow the event.
+     */
+    fun useDocumentEvent(type: String, listener: (UIEvent) -> Unit) {
+        val latest = useRef(listener)
+        latest.current = listener
+        useEffect(type) {
+            val remove = document.addEventListener(type) { latest.current(it) }
+            onCleanup(remove)
+        }
     }
 
     /** Forces a re-render (escape hatch, rarely needed). */

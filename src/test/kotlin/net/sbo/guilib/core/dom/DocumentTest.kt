@@ -38,7 +38,7 @@ class DocumentTest {
             }
         }
         d.render(VComponent(App, Unit, null))
-        val card = d.body.elementChildren.single()
+        val card = d.body.elementChildren.first() // the last child is the overlay layer for portals
         assertEquals("div", card.tagName)
         assertEquals("main", card.id)
         assertEquals(setOf("card"), card.classList)

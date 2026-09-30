@@ -27,6 +27,9 @@ class VComponent<P>(val type: ComponentType<P>, val props: P, override val key: 
 
 class VProvider<T>(val context: Context<T>, val value: T, val children: List<VNode>, override val key: Any?) : VNode()
 
+/** Children rendered into the overlay layer above the whole UI (like `ReactDOM.createPortal(children, document.body)`). */
+class VPortal(val children: List<VNode>, val className: String?, override val key: Any?) : VNode()
+
 /**
  * A function component, created with [component]. [render] runs inside a [ComponentScope] where hooks
  * (`useState`, `useEffect`, …) and all tag functions are available.

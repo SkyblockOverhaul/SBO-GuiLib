@@ -29,6 +29,9 @@ sealed class Node : LayoutNode {
 
     internal var document: Document? = null
 
+    /** The document this node is attached to (like DOM `ownerDocument`). */
+    val ownerDocument: Document? get() = document
+
     override val box = LayoutBox()
 
     /** Absolute border box on screen, taking ancestors' scroll offsets into account. */
@@ -135,6 +138,12 @@ class Element internal constructor(val tagName: String) : Node(), Selectable {
     internal var handlers: Map<String, (UIEvent) -> Unit> = emptyMap()
 
     fun hasHandler(type: String) = handlers.containsKey(type)
+
+    /** True if the children are owned by a built-in control (like `<input>`) instead of the reconciler. */
+    internal var internalChildren = false
+
+    /** State of a built-in control attached to this element (input caret, …). */
+    internal var control: Any? = null
 
     // ---- tree ----
 

@@ -13,6 +13,8 @@ object EventDispatcher {
     /** Dispatches [event] to [target]; returns false if `preventDefault()` was called. */
     fun dispatch(event: UIEvent, target: Element): Boolean {
         event.target = target
+        target.ownerDocument?.dispatchGlobal(event)
+        if (event.propagationStopped) return !event.defaultPrevented
         val path = ArrayList<Element>()
         var e: Element? = target
         while (e != null) {

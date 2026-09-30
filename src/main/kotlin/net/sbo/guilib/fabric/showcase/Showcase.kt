@@ -8,7 +8,13 @@ import net.sbo.guilib.core.dsl.classNames
 import net.sbo.guilib.core.dsl.div
 import net.sbo.guilib.core.dsl.h2
 import net.sbo.guilib.core.dsl.h3
+import net.sbo.guilib.core.dsl.checkbox
 import net.sbo.guilib.core.dsl.img
+import net.sbo.guilib.core.dsl.input
+import net.sbo.guilib.core.dsl.label
+import net.sbo.guilib.core.dsl.modal
+import net.sbo.guilib.core.dsl.select
+import net.sbo.guilib.core.dsl.tooltip
 import net.sbo.guilib.core.dsl.item
 import net.sbo.guilib.core.dsl.nav
 import net.sbo.guilib.core.dsl.p
@@ -18,7 +24,7 @@ import net.sbo.guilib.fabric.GuiLib
 
 /** Demo UI showing every feature; open with `/guilib showcase`. */
 object Showcase {
-    val SECTIONS = listOf("Buttons", "Boxes", "Layout", "Text", "Scroll", "Images", "Items", "State")
+    val SECTIONS = listOf("Buttons", "Forms", "Boxes", "Layout", "Text", "Scroll", "Images", "Items", "State")
 
     private val App = component<String>("Showcase") { initialSection ->
         var section by useState(initialSection)
@@ -36,6 +42,7 @@ object Showcase {
                 scroll(className = "content") {
                     when (section) {
                         "Buttons" -> ButtonsDemo()
+                        "Forms" -> FormsDemo()
                         "Boxes" -> BoxesDemo()
                         "Images" -> ImagesDemo()
                         "Layout" -> LayoutDemo()
@@ -66,6 +73,45 @@ object Showcase {
             button(onClick = { e -> e.stopPropagation(); log = (log + "stopped").takeLast(4) }) { +"stopPropagation" }
         }
         p(className = "muted") { +"Log: ${log.joinToString(" → ")}" }
+    }
+
+    private val FormsDemo = component("FormsDemo") {
+        var name by useState("")
+        var password by useState("")
+        var agree by useState(false)
+        var mode by useState("normal")
+        var dialog by useState(false)
+        h2 { +"Forms" }
+        label(className = "form-row") {
+            span(className = "form-label") { +"Name" }
+            input(value = name, onChange = { name = it.value }, placeholder = "Your IGN", maxLength = 16)
+        }
+        label(className = "form-row") {
+            span(className = "form-label") { +"Password" }
+            input(type = "password", value = password, onChange = { password = it.value })
+        }
+        div(className = "form-row") {
+            span(className = "form-label") { +"Mode" }
+            select(value = mode, onChange = { mode = it.value }) {
+                option("normal", "Normal")
+                option("hard", "Hard")
+                option("expert", "Expert (locked)", disabled = true)
+            }
+        }
+        div(className = "form-row") { checkbox(checked = agree, onChange = { agree = it.checked }, label = "Show me in the party finder") }
+        div(className = "row") {
+            tooltip("Opens a modal dialog") { button(className = "primary", onClick = { dialog = true }) { +"Open dialog" } }
+            button(title = "This is a native title tooltip") { +"Hover me" }
+        }
+        p(className = "muted") { +"name=$name · password=${"*".repeat(password.length)} · mode=$mode · agree=$agree" }
+        modal(open = dialog, onClose = { dialog = false }) {
+            h3 { +"Hello ${name.ifEmpty { "there" }}!" }
+            p { +"Press Escape or click outside to close." }
+            div(className = "row", style = "justify-content: flex-end") {
+                button(onClick = { dialog = false }) { +"Cancel" }
+                button(className = "primary", onClick = { dialog = false }) { +"OK" }
+            }
+        }
     }
 
     private val BoxesDemo = component("BoxesDemo") {

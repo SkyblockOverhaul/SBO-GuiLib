@@ -95,6 +95,12 @@ class InteractionController(private val doc: Document, private val hitTest: (Flo
         updateHover(x, y, modifiers)
         val target = hovered
         if (target != null && disabledAncestor(target) == null) EventDispatcher.dispatch(MouseEvent(EventType.MOUSEMOVE, x, y, modifiers = modifiers), target)
+        // Dragging (e.g. selecting text) keeps going to the pressed element even outside of it.
+        pressTarget?.let { pressed ->
+            val drag = MouseEvent(EventType.MOUSEMOVE, x, y, pressButton, modifiers)
+            drag.target = pressed
+            runDefaultActions(drag)
+        }
         doc.flush()
     }
 
@@ -105,12 +111,16 @@ class InteractionController(private val doc: Document, private val hitTest: (Flo
         pressTarget = target
         pressButton = button
         if (disabledAncestor(target) != null) return true
-        val allowed = EventDispatcher.dispatch(MouseEvent(EventType.MOUSEDOWN, x, y, button, modifiers), target)
+        val down = MouseEvent(EventType.MOUSEDOWN, x, y, button, modifiers)
+        val allowed = EventDispatcher.dispatch(down, target)
         if (button == 0) {
             activeChain = chainOf(target)
             activeChain.forEach { it.setState(PseudoState.ACTIVE, true) }
         }
-        if (allowed && button == 0) doc.focus(focusableAncestor(target))
+        if (allowed && button == 0) {
+            doc.focus(focusableAncestor(target))
+            runDefaultActions(down)
+        }
         doc.flush()
         return true
     }
@@ -125,6 +135,11 @@ class InteractionController(private val doc: Document, private val hitTest: (Flo
         if (target == null) return false
         if (disabledAncestor(target) != null) return true
         EventDispatcher.dispatch(MouseEvent(EventType.MOUSEUP, x, y, button, modifiers), target)
+        if (pressed != null) {
+            val up = MouseEvent(EventType.MOUSEUP, x, y, button, modifiers)
+            up.target = pressed
+            runDefaultActions(up)
+        }
         if (pressed != null && button == pressButton) {
             // click goes to the nearest common ancestor of press and release targets.
             val common = chainOf(pressed).zip(chainOf(target)).takeWhile { (a, b) -> a === b }.lastOrNull()?.first
@@ -145,12 +160,15 @@ class InteractionController(private val doc: Document, private val hitTest: (Flo
         val ev = MouseEvent(EventType.CLICK, x, y, 0, modifiers)
         val allowed = EventDispatcher.dispatch(ev, target)
         if (allowed) runDefaultActions(ev)
-        if (clickCount == 2) EventDispatcher.dispatch(MouseEvent(EventType.DBLCLICK, x, y, 0, modifiers), target)
+        if (clickCount == 2) {
+            val dbl = MouseEvent(EventType.DBLCLICK, x, y, 0, modifiers)
+            if (EventDispatcher.dispatch(dbl, target)) runDefaultActions(dbl)
+        }
     }
 
     private fun runDefaultActions(ev: UIEvent) {
         for (a in defaultActions) if (a(ev)) return
-        if (ev.type == EventType.CLICK) {
+        if (ev.type == EventType.CLICK && ev.target.tagName != "input") {
             // Clicking a <label> activates the first form control inside it.
             var e: Element? = ev.target
             while (e != null && e.tagName != "label") e = e.parent
@@ -210,7 +228,7 @@ class InteractionController(private val doc: Document, private val hitTest: (Flo
                 }
                 "Enter", " " -> {
                     val f = doc.focusedElement
-                    if (f != null && (f.tagName == "button" || f.getAttribute("tabindex") != null && f.tagName != "input") && !f.disabled) {
+                    if (f != null && !f.disabled && f.tagName != "input" && (f.tagName == "button" || f.getAttribute("tabindex") != null)) {
                         click(f, mouseX, mouseY, modifiers); handled = true
                     }
                 }

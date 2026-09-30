@@ -1,5 +1,6 @@
 package net.sbo.guilib.core
 
+import net.sbo.guilib.core.controls.Controls
 import net.sbo.guilib.core.css.Stylesheet
 import net.sbo.guilib.core.dom.Document
 import net.sbo.guilib.core.dom.VNode
@@ -17,6 +18,10 @@ class UiRoot(measurer: TextMeasurer, stylesheets: List<Stylesheet> = emptyList()
     val painter = Painter(measurer)
     val input = InteractionController(document) { x, y -> painter.hitTest(x, y) }
     private var painted = false
+
+    init {
+        Controls.install(document, input)
+    }
 
     fun render(vnode: VNode) = document.render(vnode)
 

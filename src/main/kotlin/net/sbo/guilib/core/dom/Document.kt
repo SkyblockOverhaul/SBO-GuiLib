@@ -7,8 +7,9 @@ import net.sbo.guilib.core.css.StyleContext
 import net.sbo.guilib.core.css.StyleEngine
 import net.sbo.guilib.core.css.Stylesheet
 import net.sbo.guilib.core.event.EventDispatcher
-import net.sbo.guilib.core.event.FocusEvent
 import net.sbo.guilib.core.event.EventType
+import net.sbo.guilib.core.event.FocusEvent
+import net.sbo.guilib.core.event.UIEvent
 import net.sbo.guilib.core.layout.LayoutEngine
 import net.sbo.guilib.core.layout.TextMeasurer
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -31,6 +32,54 @@ class Document(
     val body: Element = Element("body")
     private val rootInstance = HostInstance(body, null)
 
+    /**
+     * Layer above all content, always the last child of [body]. Portals (menus, tooltips, modals) render into
+     * containers inside it. Styled by `#guilib-overlay` / `.guilib-portal` in the user-agent stylesheet.
+     */
+    val overlayRoot: Element = Element("div").also { it.id = "guilib-overlay" }
+    private val portalContainers = ArrayList<Element>()
+
+    internal fun openPortal(className: String?): Element {
+        val c = Element("div")
+        c.className = "guilib-portal" + (className?.let { " $it" } ?: "")
+        portalContainers += c
+        overlayRoot.setChildren(portalContainers.toList())
+        return c
+    }
+
+    internal fun closePortal(container: Element) {
+        portalContainers.remove(container)
+        overlayRoot.setChildren(portalContainers.toList())
+    }
+
+    /** System clipboard; the backend replaces it with Minecraft's. */
+    var clipboard: Clipboard = Clipboard.InMemory()
+
+    // ---- global listeners (document.addEventListener) --------------------------------------------------------
+
+    private val globalListeners = HashMap<String, MutableList<(UIEvent) -> Unit>>()
+
+    /**
+     * Listens to every event of [type] in this document, before it reaches any element (capture phase on the
+     * document). Returns a function that removes the listener. Used for "click outside" and global shortcuts.
+     */
+    fun addEventListener(type: String, listener: (UIEvent) -> Unit): () -> Unit {
+        globalListeners.getOrPut(type) { ArrayList() } += listener
+        return { globalListeners[type]?.remove(listener) }
+    }
+
+    internal fun dispatchGlobal(event: UIEvent) {
+        val list = globalListeners[event.type] ?: return
+        for (l in list.toList()) {
+            try {
+                l(event)
+            } catch (e: Throwable) {
+                Log.error("GuiLib: document '${event.type}' listener threw: $e")
+            }
+            if (event.propagationStopped) return
+        }
+    }
+
     var viewportWidth = 0f
         private set
     var viewportHeight = 0f
@@ -44,6 +93,7 @@ class Document(
 
     init {
         body.attach(this)
+        body.setChildren(listOf(overlayRoot))
     }
 
     // ---- invalidation -----------------------------------------------------------------------------------------
@@ -159,6 +209,9 @@ class Document(
 
     private val timers = ArrayList<Timer>()
 
+    /** Current time of the document's clock in milliseconds. */
+    fun now(): Long = clock()
+
     fun setTimeout(ms: Long, callback: () -> Unit): Cancelable = Timer(clock() + ms, null, callback).also { timers += it }
     fun setInterval(ms: Long, callback: () -> Unit): Cancelable = Timer(clock() + ms, ms.coerceAtLeast(1), callback).also { timers += it }
 
@@ -202,15 +255,28 @@ class Document(
             body.styleChanged(true) // vw/vh units
             invalidateLayout()
         }
+        styleAndLayout()
+        // Controls position carets etc. from the layout; if that changed something, settle it in the same frame.
+        if (frameHooks.isNotEmpty()) {
+            val now = clock()
+            for (h in frameHooks) h(now)
+            styleAndLayout()
+        }
+        val repaint = paintDirty
+        paintDirty = false
+        return repaint
+    }
+
+    /** Called every [update] after layout with the current time (ms). */
+    internal val frameHooks = ArrayList<(Long) -> Unit>()
+
+    private fun styleAndLayout() {
         if (styleDirty) recalcStyles()
         if (layoutDirty) {
             layoutEngine.layout(body, viewportWidth, viewportHeight)
             layoutDirty = false
             clampScroll(body)
         }
-        val repaint = paintDirty
-        paintDirty = false
-        return repaint
     }
 
     private fun clampScroll(el: Element) {
@@ -291,7 +357,11 @@ class Document(
         detachListeners.forEach { it(node) }
     }
 
-    internal fun onElementPropsApplied(el: Element) {
+    /** Built-in controls (inputs, …) hook in here; see [net.sbo.guilib.core.controls.Controls]. */
+    internal var controlInitializer: ((Element, Boolean) -> Unit)? = null
+
+    internal fun onElementPropsApplied(el: Element, created: Boolean) {
+        controlInitializer?.invoke(el, created)
         elementInitializer?.invoke(el)
     }
 

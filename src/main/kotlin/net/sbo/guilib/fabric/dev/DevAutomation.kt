@@ -26,9 +26,14 @@ object DevAutomation {
         val sections = if (spec == "all") Showcase.SECTIONS else spec.split(',').map { it.trim() }
         Log.info("GuiLib dev automation: capturing ${sections.joinToString()}")
         sections.forEachIndexed { i, s ->
-            steps += Step(20) { Showcase.open(s) }
+            // "Forms#2" opens the Forms section again with its own hover/script properties.
+            steps += Step(20) { Showcase.open(s.substringBefore('#')) }
             steps += Step(20) { hover(System.getProperty("guilib.dev.hover.$s")) }
-            steps += Step(10) { shot("guilib-${i + 1}-${s.lowercase()}.png") }
+            // Optional script: -Dguilib.dev.script.Forms="click:input;type:Steve;click:select"
+            System.getProperty("guilib.dev.script.$s")?.split(';')?.filter { it.isNotBlank() }?.forEach { action ->
+                steps += Step(8) { runAction(action) }
+            }
+            steps += Step(10) { shot("guilib-${i + 1}-${s.lowercase().replace('#', '-')}.png") }
         }
         steps += Step(20) { Minecraft.getInstance().stop() }
 
@@ -47,6 +52,22 @@ object DevAutomation {
                 Log.error("GuiLib dev automation step failed: ${e.stackTraceToString().lineSequence().take(12).joinToString("\n")}")
             }
             wait = steps.firstOrNull()?.ticks ?: 0
+        }
+    }
+
+    private fun runAction(action: String) {
+        val screen = currentScreen(Minecraft.getInstance()) as? GuiLibScreen ?: return
+        val root = screen.root
+        val (verb, arg) = action.split(':', limit = 2).let { it[0] to it.getOrElse(1) { "" } }
+        fun find(sel: String) = root.document.body.querySelector(sel)
+        when (verb) {
+            "click" -> find(arg)?.getBoundingClientRect()?.let { r ->
+                root.input.mouseDown(r.x + 2f, r.y + r.height / 2f, 0)
+                root.input.mouseUp(r.x + 2f, r.y + r.height / 2f, 0)
+            }
+            "hover" -> hover(arg)
+            "type" -> arg.forEach { root.input.charTyped(it.toString()) }
+            "key" -> root.input.keyDown(arg, 0)
         }
     }
 
