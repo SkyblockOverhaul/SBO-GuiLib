@@ -63,6 +63,22 @@ class SelectorTest {
     }
 
     @Test
+    fun attributeSelectors() {
+        val el = object : Selectable by FakeElement("input") {
+            override fun styleAttribute(name: String) = mapOf("type" to "checkbox", "value" to "hello")[name]
+        }
+        assertTrue(sel("input[type=checkbox]").matches(el))
+        assertTrue(sel("[type='checkbox']").matches(el))
+        assertTrue(sel("[value]").matches(el))
+        assertTrue(sel("[value^=he]").matches(el))
+        assertTrue(sel("[value\$=lo]").matches(el))
+        assertTrue(sel("[value*=ll]").matches(el))
+        assertFalse(sel("[type=text]").matches(el))
+        assertFalse(sel("[placeholder]").matches(el))
+        assertEquals(1_000 + 1, sel("input[type=checkbox]").specificity)
+    }
+
+    @Test
     fun parsesSelectorLists() {
         val list = Selector.parse("a, .b > c ,#d")
         assertEquals(listOf("a", ".b > c", "#d"), list.map { it.toString() })

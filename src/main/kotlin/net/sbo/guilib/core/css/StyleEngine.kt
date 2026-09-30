@@ -15,6 +15,14 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
     private val byTag = HashMap<String, MutableList<IndexedRule>>()
     private val universal = ArrayList<IndexedRule>()
 
+    /** True if some selector tests an interactive state (`:hover` …) on an ancestor/sibling, e.g. `.card:hover .title`. */
+    var dependsOnAncestorState = false
+        private set
+
+    /** True if some selector depends on sibling position (`:first-child`, `+`, `~` …). */
+    var usesStructural = false
+        private set
+
     /** Bumped whenever the stylesheets change, so callers can invalidate cached styles. */
     var generation = 0
         private set
@@ -31,11 +39,16 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
 
     private fun rebuildIndex() {
         byId.clear(); byClass.clear(); byTag.clear(); universal.clear()
+        dependsOnAncestorState = false
+        usesStructural = false
         var order = 0
         for (sheet in stylesheets) {
             for (rule in sheet.rules) {
                 for (selector in rule.selectors) {
                     val ir = IndexedRule(rule, selector, sheet.origin, order)
+                    if (selector.compounds.dropLast(1).any { c -> c.parts.any(::involvesState) }) dependsOnAncestorState = true
+                    if (selector.combinators.any { it == Combinator.NEXT_SIBLING || it == Combinator.SUBSEQUENT_SIBLING } ||
+                        selector.compounds.any { c -> c.parts.any(::involvesStructure) }) usesStructural = true
                     val subject = selector.subject.parts
                     val id = subject.firstNotNullOfOrNull { it as? SimpleSelector.Id }
                     val cls = subject.firstNotNullOfOrNull { it as? SimpleSelector.Class }
@@ -51,6 +64,19 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
             }
         }
         generation++
+    }
+
+    private fun involvesState(s: SimpleSelector): Boolean = when (s) {
+        is SimpleSelector.State -> true
+        is SimpleSelector.Structural -> s.kind == "enabled"
+        is SimpleSelector.Not -> s.inner.any { c -> c.parts.any(::involvesState) }
+        else -> false
+    }
+
+    private fun involvesStructure(s: SimpleSelector): Boolean = when (s) {
+        is SimpleSelector.Structural -> s.kind != "enabled" && s.kind != "root"
+        is SimpleSelector.Not -> s.inner.any { c -> c.parts.any(::involvesStructure) }
+        else -> false
     }
 
     private class Matched(val decl: Declaration, val rank: Int, val specificity: Int, val order: Int)

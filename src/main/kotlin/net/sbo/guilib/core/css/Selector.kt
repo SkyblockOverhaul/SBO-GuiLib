@@ -16,6 +16,8 @@ interface Selectable {
     val stylePreviousSibling: Selectable?
     val styleNextSibling: Selectable?
     fun hasState(state: PseudoState): Boolean
+    /** String value of an attribute for `[attr]` / `[attr=value]` selectors, or `null` if absent. */
+    fun styleAttribute(name: String): String? = null
 }
 
 sealed interface SimpleSelector {
@@ -53,6 +55,21 @@ sealed interface SimpleSelector {
         }
     }
 
+    /** `[name]`, `[name=value]`, `[name^=value]`, `[name$=value]`, `[name*=value]`. */
+    data class Attribute(val name: String, val op: String?, val value: String?) : SimpleSelector {
+        override fun matches(el: Selectable): Boolean {
+            val actual = el.styleAttribute(name) ?: return false
+            val v = value ?: return true
+            return when (op) {
+                "=" -> actual == v
+                "^=" -> actual.startsWith(v)
+                "$=" -> actual.endsWith(v)
+                "*=" -> actual.contains(v)
+                else -> false
+            }
+        }
+    }
+
     data class Not(val inner: List<Compound>) : SimpleSelector {
         override fun matches(el: Selectable) = inner.none { it.matches(el) }
     }
@@ -73,13 +90,14 @@ data class Compound(val parts: List<SimpleSelector>) {
             is SimpleSelector.State -> ":${it.state.css}"
             is SimpleSelector.Structural -> ":${it.kind}"
             is SimpleSelector.Not -> ":not(${it.inner.joinToString(", ")})"
+            is SimpleSelector.Attribute -> "[${it.name}${it.op ?: ""}${it.value?.let { v -> "\"$v\"" } ?: ""}]"
         }
     }
 
     private companion object {
         fun specificityOf(s: SimpleSelector): Int = when (s) {
             is SimpleSelector.Id -> Selector.ID_WEIGHT
-            is SimpleSelector.Class, is SimpleSelector.State, is SimpleSelector.Structural -> Selector.CLASS_WEIGHT
+            is SimpleSelector.Class, is SimpleSelector.State, is SimpleSelector.Structural, is SimpleSelector.Attribute -> Selector.CLASS_WEIGHT
             is SimpleSelector.Type -> 1
             SimpleSelector.Universal -> 0
             is SimpleSelector.Not -> s.inner.maxOf { it.specificity }
@@ -277,7 +295,31 @@ object SelectorParser {
                         else -> throw Fail("unsupported pseudo-class ':${n.text}'", n)
                     }
                 }
-                t.type == TokenType.LBRACKET -> throw Fail("attribute selectors are not supported", t)
+                t.type == TokenType.LBRACKET -> {
+                    var j = i + 1
+                    fun skipWs() { while (j < tokens.size && tokens[j].type == TokenType.WHITESPACE) j++ }
+                    skipWs()
+                    val name = tokens.getOrNull(j)?.takeIf { it.type == TokenType.IDENT } ?: throw Fail("expected an attribute name after '['", t)
+                    j++; skipWs()
+                    var op: String? = null
+                    var value: String? = null
+                    val o = tokens.getOrNull(j)
+                    if (o != null && o.type == TokenType.DELIM) {
+                        op = when {
+                            o.text == "=" -> "="
+                            o.text in listOf("^", "$", "*") && tokens.getOrNull(j + 1)?.isDelim('=') == true -> { j++; o.text + "=" }
+                            else -> throw Fail("unsupported attribute operator '${o.text}'", o)
+                        }
+                        j++; skipWs()
+                        val v = tokens.getOrNull(j)?.takeIf { it.type == TokenType.IDENT || it.type == TokenType.STRING || it.type == TokenType.NUMBER }
+                            ?: throw Fail("expected a value in attribute selector", o)
+                        value = v.text
+                        j++; skipWs()
+                    }
+                    if (tokens.getOrNull(j)?.type != TokenType.RBRACKET) throw Fail("expected ']'", t)
+                    parts += SimpleSelector.Attribute(name.text.lowercase(), op, value)
+                    i = j + 1
+                }
                 else -> break@loop
             }
         }
