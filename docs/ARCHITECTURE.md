@@ -1,6 +1,6 @@
 # GuiLib – Architektur
 
-> Freigegebener Architektur-Vorschlag (Stand 2026-09-30). Wird bei Änderungen der Architektur aktualisiert.
+> Freigegebener Architektur-Vorschlag (2026-09-30) plus Umsetzungsstand und Abweichungen am Ende des Dokuments.
 
 
 ## Context
@@ -181,3 +181,30 @@ kein volles Inline-Formatting (gemischte span/Text-Kinder werden zu einem Rich-T
   Texteingabe, Dropdown, Modal, Tooltip, Bilder/SVG/Items, border-radius, Inter-Text scharf bei GUI-Scale 1–4 und Fenster-Resize.
 - Hot-Reload: CSS-Datei im Dev-Run ändern → Showcase aktualisiert sich ohne Neustart; fehlerhafte CSS → Warnung mit Zeile, kein Crash.
 - SBO-Repo bleibt unverändert (bis optionaler Schritt 10).
+
+
+## Umsetzungsstand & Entscheidungen während der Umsetzung (2026-09-30)
+
+Umgesetzt: Schritte 0–9 (Scaffold, CSS-Core, Layout, DOM/Reconciler/Hooks, Fabric-Backend, eigene Pipeline + PNG/SVG,
+TTF, Controls, Hot-Reload, Doku/Showcase). 97 Unit-Tests; visuell geprüft auf 26.1.2 und 26.2 über `DevAutomation`
+(automatische Screenshots). Schritt 10 (SBO-Einbindung) ist offen und wartet auf Rückfrage.
+
+Entscheidungen/Abweichungen gegenüber dem Vorschlag:
+- **Paketstruktur:** eine Gradle-Quelle statt getrennter Module; `net.sbo.guilib.core` bleibt MC-frei (per Test erzwungen),
+  `net.sbo.guilib.fabric` ist das Backend. Zusätzlich `core/controls` (Input, Select, Tooltip, Modal).
+- **Fonts:** Graustufen-Atlas pro physischer Pixelgröße statt SDF (siehe Abschnitt Fonts).
+- **Portale & globale Listener:** `portal { }` (wie `createPortal`) rendert in `#guilib-overlay` (letztes Kind von `body`);
+  `document.addEventListener` / `useDocumentEvent` für „Klick außerhalb“, Escape usw. Select, Tooltip und Modal nutzen das.
+- **Controls:** `input` bekommt intern generierte Kinder (`.guilib-input-text`, `.guilib-caret`, `.guilib-selection`,
+  `.guilib-check`), die der Reconciler nicht anfasst (Shadow-DOM-artig). `select` ist eine Komponente, die ein
+  `select`-Element rendert. `onChange` feuert bei jeder Änderung (React-Semantik, nicht DOM-`change`).
+- **Render-Reihenfolge:** Minecraft sortiert GUI-Quads innerhalb eines Layers nach Scissor/Pipeline/Textur und zeichnet
+  Vanilla-Text/Items nach allen Quads. `CommandRenderer` startet deshalb einen neuen Layer (`guiRenderState.up()`),
+  sobald sich ein Quad mit anderem Batch-Key überlappt oder nach Vanilla-Text/Items gezeichnet wird.
+- **Stacking:** jedes positionierte Element ist eine eigene Paint-Ebene; `z-index` ordnet Geschwister-Ebenen.
+- **Hot-Reload:** Polling der Quelldatei unter `src/main/resources` (gefunden über den Mod-Container, nach oben gesucht,
+  oder `-Dguilib.resourceDirs`), statt WatchService.
+- **Doku-Ort:** Doku liegt im Library-Repo (`README.md`, `llms.txt`, `docs/AI_GUIDE.md`, `docs/ARCHITECTURE.md`) statt
+  unter `docs/ui-library/` im SBO-Repo, weil die Library ein eigenes Repo ist.
+
+Vollständige Liste der Web-Abweichungen: `docs/AI_GUIDE.md`, Abschnitt 6.

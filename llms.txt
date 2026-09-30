@@ -1,0 +1,25 @@
+# GuiLib
+
+> Web-style UI library for Minecraft Fabric mods (MC 26.1.x / 26.2, Kotlin): React-like function components and hooks
+> in a Kotlin DSL with HTML tag names, styled with real CSS files (cascade, specificity, flexbox, variables, :hover …).
+> Write it like React + CSS; px are GUI pixels and the default font-size is 8px.
+
+Key facts:
+- Components: `val App = component("App") { var n by useState(0); button(onClick = { n++ }) { +"Clicked $n" } }`
+- Open: `GuiLib.open(App, stylesheets = listOf("modid:ui/app.css"))` (file at `assets/modid/ui/app.css`)
+- Props: `className`, `id`, `style` (CSS string), `key`, `title`, `ref`, `onClick`/`onChange`/… (Kotlin lambdas)
+- Hooks: useState, useEffect (no deps = once), useMemo, useRef, useContext, useInterval, useDocumentEvent
+- Controls: input (text/password/number/checkbox), select/option, checkbox, tooltip, modal, portal, img, item, scroll
+- CSS: selectors incl. combinators and :hover/:focus/:disabled/:checked/:not(); flexbox; position incl. fixed; var(); no calc/grid/@media/transitions
+- Differences from the web are listed in docs/AI_GUIDE.md section 6 — read them before writing CSS.
+
+## Docs
+
+- [AI guide / full reference](docs/AI_GUIDE.md): every element, prop, hook, event, CSS property and web difference
+- [README](README.md): setup, dependency, dev workflow
+- [Architecture](docs/ARCHITECTURE.md): pipeline (tree → style → layout → paint → events), design decisions (German)
+
+## Examples
+
+- [Showcase](src/main/kotlin/net/sbo/guilib/fabric/showcase/Showcase.kt) and [its CSS](src/main/resources/assets/guilib/showcase/showcase.css)
+- [Default styles](src/main/resources/assets/guilib/css/ua.css)
