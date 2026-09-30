@@ -248,6 +248,13 @@ class ControlsTest {
     }
 
     @Test
+    fun autoFocusFocusesOnMount() {
+        val root = ui { input(className = "a"); input(className = "b", autoFocus = true) }
+        root.frame(300f, 200f)
+        assertEquals("b", root.document.focusedElement?.className)
+    }
+
+    @Test
     fun titleShowsTooltipAfterDelay() {
         val root = ui { div(className = "t", title = "Hello", style = "width: 50px; height: 20px") }
         root.input.mouseMove(5f, 5f)

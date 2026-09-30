@@ -12,12 +12,14 @@ internal object Controls {
 
     fun install(doc: Document, input: InteractionController) {
         val inputs = WeakHashMap<Element, InputControl>()
-        doc.controlInitializer = { el, _ ->
+        doc.controlInitializer = { el, created ->
             if (el.tagName == "input") {
                 val c = el.control as? InputControl ?: InputControl(el).also { el.control = it }
                 inputs[el] = c
                 c.sync()
             }
+            // Like the HTML attribute: focus once when the element appears.
+            if (created && el.getAttribute("autofocus") == true) doc.post { doc.focus(el) }
         }
         input.defaultActions += { ev -> controlFor(ev.target)?.handle(ev, doc) ?: false }
         doc.addEventListener(EventType.BLUR) { ev -> (ev.target.control as? InputControl)?.onBlur() }
