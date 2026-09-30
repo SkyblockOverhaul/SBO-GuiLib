@@ -70,6 +70,7 @@ class ComputedStyle internal constructor(
     /** `auto`, `thin` or `none`. */
     val scrollbarWidth get() = values[Prop.SCROLLBAR_WIDTH.ordinal] as String
     /** `(thumb, track)` colors, or `null` for the default. */
+    @Suppress("UNCHECKED_CAST")
     val scrollbarColor get() = values[Prop.SCROLLBAR_COLOR.ordinal] as Pair<Int, Int>?
 
     val flexDirection get() = values[Prop.FLEX_DIRECTION.ordinal] as FlexDirection

@@ -221,7 +221,7 @@ internal class Reconciler(private val document: Document) {
     fun nearestHost(inst: Instance): HostInstance? {
         var p = inst.parent
         while (p != null && p !is HostInstance) p = p.parent
-        return p as HostInstance?
+        return p
     }
 
     // ---- components --------------------------------------------------------------------------------------------

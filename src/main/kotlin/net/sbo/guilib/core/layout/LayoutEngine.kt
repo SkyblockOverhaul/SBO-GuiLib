@@ -348,7 +348,7 @@ class LayoutEngine(val measurer: TextMeasurer) {
             var used = 0f
             for (item in items) {
                 val add = item.outerHypo + if (cur.isEmpty()) 0f else gapMain
-                if (wrap && cur.isNotEmpty() && used + add > mainSize!! + 0.01f) {
+                if (wrap && cur.isNotEmpty() && used + add > mainSize + 0.01f) {
                     lines += cur; cur = ArrayList(); used = 0f
                     cur += item; used = item.outerHypo
                 } else {

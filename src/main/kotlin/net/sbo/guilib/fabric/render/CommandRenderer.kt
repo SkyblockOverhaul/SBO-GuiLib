@@ -2,12 +2,16 @@ package net.sbo.guilib.fabric.render
 
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
+import net.minecraft.client.gui.navigation.ScreenRectangle
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.world.item.ItemStack
 import net.sbo.guilib.core.Log
 import net.sbo.guilib.core.css.Colors
 import net.sbo.guilib.core.css.ObjectFit
 import net.sbo.guilib.core.paint.PaintCommand
+import net.sbo.guilib.fabric.font.FontManager
+import net.sbo.guilib.fabric.font.GlyphAtlas
+import net.sbo.guilib.fabric.font.TrueTypeFont
 import net.sbo.guilib.fabric.font.VanillaFont
 import net.sbo.guilib.fabric.image.Images
 import org.joml.Matrix3x2f
@@ -19,25 +23,36 @@ import kotlin.math.roundToInt
 object CommandRenderer {
 
     /**
-     * Minecraft draws all quads of a GUI layer before its items and text. When a quad follows text/items in our
-     * paint order it must go to a new layer, otherwise it would end up underneath.
+     * Keeps our paint order intact on top of Minecraft's GUI batching:
+     * - vanilla text and items are drawn after all quads of their layer, so a quad following them needs a new layer;
+     * - quads inside a layer are sorted by scissor/pipeline/texture, so a quad overlapping an earlier quad with a
+     *   different batch key needs a new layer too.
      */
     private var layerHasOverlay = false
+    private val layerQuads = ArrayList<Quad>()
+
+    private class Quad(val key: Any, val x0: Float, val y0: Float, val x1: Float, val y1: Float)
+
+    private fun beforeQuad(ctx: GuiGraphicsExtractor, kind: Any, x0: Float, y0: Float, x1: Float, y1: Float) {
+        val key = kind to ctx.scissorStack.peek()
+        val conflict = layerHasOverlay || layerQuads.any { it.key != key && it.x0 < x1 && x0 < it.x1 && it.y0 < y1 && y0 < it.y1 }
+        if (conflict) {
+            ctx.guiRenderState.up()
+            layerHasOverlay = false
+            layerQuads.clear()
+        }
+        layerQuads += Quad(key, x0, y0, x1, y1)
+    }
 
     fun draw(ctx: GuiGraphicsExtractor, commands: List<PaintCommand>) {
         layerHasOverlay = false
+        layerQuads.clear()
         var clipDepth = 0
         for (cmd in commands) {
             when (cmd) {
-                is PaintCommand.Box -> {
-                    quadLayer(ctx); drawBox(ctx, cmd)
-                }
-                is PaintCommand.Image -> {
-                    quadLayer(ctx); drawImage(ctx, cmd)
-                }
-                is PaintCommand.Text -> {
-                    drawText(ctx, cmd); layerHasOverlay = true
-                }
+                is PaintCommand.Box -> drawBox(ctx, cmd)
+                is PaintCommand.Image -> drawImage(ctx, cmd)
+                is PaintCommand.Text -> drawText(ctx, cmd)
                 is PaintCommand.Replaced -> {
                     drawReplaced(ctx, cmd); layerHasOverlay = true
                 }
@@ -52,22 +67,21 @@ object CommandRenderer {
             }
         }
         repeat(clipDepth) { ctx.disableScissor() }
-    }
-
-    private fun quadLayer(ctx: GuiGraphicsExtractor) {
-        if (layerHasOverlay) {
-            ctx.guiRenderState.up()
-            layerHasOverlay = false
-        }
+        GlyphAtlas.flush()
     }
 
     private fun r(v: Float) = v.roundToInt()
 
+    // ---- boxes -------------------------------------------------------------------------------------------------
+
     private fun drawBox(ctx: GuiGraphicsExtractor, b: PaintCommand.Box) {
         if (b.width <= 0f || b.height <= 0f) return
         if (b.hasRadius) {
-            drawRoundedBox(ctx, b); return
+            beforeQuad(ctx, "rounded", b.x, b.y, b.x + b.width, b.y + b.height)
+            drawRoundedBox(ctx, b)
+            return
         }
+        beforeQuad(ctx, "fill", b.x, b.y, b.x + b.width, b.y + b.height)
         val x0 = r(b.x)
         val y0 = r(b.y)
         val x1 = r(b.x + b.width)
@@ -105,17 +119,96 @@ object CommandRenderer {
         }
     }
 
+    // ---- text --------------------------------------------------------------------------------------------------
+
     private fun drawText(ctx: GuiGraphicsExtractor, t: PaintCommand.Text) {
         if (Colors.alpha(t.color) == 0) return
+        val shadow = t.style.shadow
+        var x = t.x
+        for (seg in FontManager.segments(t.text, t.style)) {
+            val font = seg.font
+            if (font == null) {
+                x += drawVanillaText(ctx, seg.text, t, x)
+            } else {
+                if (shadow != null) {
+                    val sc = Colors.withOpacity(shadow.color as? Int ?: t.color, t.alpha)
+                    drawTtf(ctx, seg.text, font, t, x + shadow.offsetX, t.y + shadow.offsetY, sc)
+                }
+                x += drawTtf(ctx, seg.text, font, t, x, t.y, t.color)
+            }
+        }
+    }
+
+    /** Draws with the Minecraft font; returns the advance in GUI px. */
+    private fun drawVanillaText(ctx: GuiGraphicsExtractor, text: String, t: PaintCommand.Text, x: Float): Float {
         val font = Minecraft.getInstance().font
         val scale = VanillaFont.scale(t.style)
         val pose = ctx.pose()
         pose.pushMatrix()
-        pose.translate(t.x, t.y)
+        // t.y is the top of the style's ascent; the Minecraft font's baseline is 7px below its top at scale 1.
+        val ascent = FontManager.metrics(t.style).ascent
+        pose.translate(x, t.y + ascent - 7f * scale)
         if (scale != 1f) pose.scale(scale, scale)
-        ctx.text(font, VanillaFont.component(t.text, t.style), 0, 0, t.color, t.style.shadow != null)
+        ctx.text(font, VanillaFont.component(text, t.style), 0, 0, t.color, t.style.shadow != null)
         pose.popMatrix()
+        layerHasOverlay = true
+        return VanillaFont.width(text, t.style)
     }
+
+    /** Draws TTF glyphs snapped to physical pixels; returns the advance in GUI px. */
+    private fun drawTtf(ctx: GuiGraphicsExtractor, text: String, font: TrueTypeFont, t: PaintCommand.Text, x: Float, y: Float, color: Int): Float {
+        val scale = FontManager.guiScale()
+        val px = FontManager.pixelSize(t.style)
+        if (Colors.alpha(color) == 0) return FontManager.ttfWidth(text, font, px) / scale
+        val metrics = font.metrics(px)
+        var penX = (x * scale).roundToInt().toFloat()
+        val startX = penX
+        val baseline = (y * scale + metrics.ascent).roundToInt().toFloat()
+        val byPage = LinkedHashMap<GlyphAtlas.Page, FloatArrayBuilder>()
+        var i = 0
+        while (i < text.length) {
+            val cp = text.codePointAt(i)
+            i += Character.charCount(cp)
+            val g = GlyphAtlas.glyph(font, px, cp)
+            if (g.page != null) {
+                val gx = penX + g.left
+                val gy = baseline - g.top
+                byPage.getOrPut(g.page) { FloatArrayBuilder() }.add(
+                    gx / scale, gy / scale, (gx + g.width) / scale, (gy + g.height) / scale, g.u0, g.v0, g.u1, g.v1,
+                )
+            }
+            penX += font.advance(cp, px)
+        }
+        val advance = (penX - startX) / scale
+        if (byPage.isEmpty()) return advance
+        val x1 = x + advance
+        val y1 = y + metrics.lineHeight / scale
+        val pose = Matrix3x2f(ctx.pose())
+        val scissor = ctx.scissorStack.peek()
+        val bounds = ScreenRectangle(
+            floor(x).toInt(), floor(y).toInt(),
+            (ceil(x1) - floor(x)).toInt().coerceAtLeast(1), (ceil(y1) - floor(y)).toInt().coerceAtLeast(1),
+        )
+        for ((page, quads) in byPage) {
+            beforeQuad(ctx, page.id, x, y, x1, y1)
+            ctx.guiRenderState.addGuiElement(TextRunState(pose, page, quads.toArray(), color, scissor, bounds))
+        }
+        return advance
+    }
+
+    private class FloatArrayBuilder {
+        private var data = FloatArray(64)
+        private var size = 0
+        fun add(vararg v: Float) {
+            if (size + v.size > data.size) data = data.copyOf(maxOf(data.size * 2, size + v.size))
+            v.copyInto(data, size)
+            size += v.size
+        }
+
+        fun toArray() = data.copyOf(size)
+    }
+
+    // ---- images ------------------------------------------------------------------------------------------------
 
     private fun drawImage(ctx: GuiGraphicsExtractor, img: PaintCommand.Image) {
         val entry = Images.entry(img.src) ?: return
@@ -164,6 +257,7 @@ object CommandRenderer {
         val regionW = maxOf(1, (sw * tx).roundToInt())
         val regionH = maxOf(1, (sh * ty).roundToInt())
 
+        beforeQuad(ctx, tex.id, dx, dy, dx + dw, dy + dh)
         val pose = ctx.pose()
         pose.pushMatrix()
         pose.translate(dx, dy)
@@ -172,6 +266,8 @@ object CommandRenderer {
         ctx.blit(RenderPipelines.GUI_TEXTURED, tex.id, 0, 0, u, v, regionW, regionH, regionW, regionH, tex.width, tex.height, color)
         pose.popMatrix()
     }
+
+    // ---- replaced content --------------------------------------------------------------------------------------
 
     private fun drawReplaced(ctx: GuiGraphicsExtractor, cmd: PaintCommand.Replaced) {
         val el = cmd.element

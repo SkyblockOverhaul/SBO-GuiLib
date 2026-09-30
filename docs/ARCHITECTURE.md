@@ -133,11 +133,18 @@ GuiLib.open(App, stylesheets = listOf("sbo:ui/partyfinder.css"))
    `stopPropagation()`/`preventDefault()`, Fokus-Management (Tab-Navigation), `:hover`/`:active`/`:focus` werden daraus gesetzt, Wheel scrollt nächsten Scroll-Container.
 
 ## Fonts (eigenes TTF)
-FreeType (LWJGL, bereits in MC) → Glyphen als **SDF** in dynamischem Atlas (eigene Textur, bei Bedarf wachsend) → eigener Text-Shader,
-dadurch scharf in jeder Größe/GUI-Scale. Inter Regular/Medium/SemiBold/Bold gebündelt, Kerning über FreeType.
+FreeType (LWJGL, über Minecrafts `FreeTypeUtil`, bereits in MC) rastert Glyphen **in der exakten physischen Pixelgröße**
+(`font-size × GUI-Scale`, Light-Hinting) in einen Graustufen-Atlas (1024² Seiten, Shelf-Packing). Gezeichnet wird mit der
+Vanilla-Pipeline `GUI_TEXTURED` (weiße Glyphen, Alpha = Coverage, Vertex-Farbe färbt), Glyphen auf ganze Pixel gesnappt.
+Inter Regular/Medium/SemiBold/Bold/Italic/BoldItalic gebündelt (OFL, `assets/guilib/fonts`). Mods registrieren eigene
+Fonts per `FontManager.register(family, weight, italic, "modid:fonts/x.ttf")`.
 §-Codes werden in Runs (Farbe/Bold/Italic/Underline/Strikethrough) übersetzt. `font-family: minecraft` nutzt Vanilla-`Font`.
-Fehlende Glyphen → Fallback auf Vanilla-Font. `@font-face` für eigene Fonts später.
-Risiko: SDF-Qualität bei sehr kleinen Größen → Fallback-Option Bitmap-Atlas pro physischer Größe, falls nötig.
+Fehlende Glyphen → Fallback auf Vanilla-Font (pro Zeichen).
+
+> **Änderung gegenüber dem ursprünglichen Vorschlag (SDF-Atlas):** Da Minecraft-GUIs nie frei skaliert/rotiert werden,
+> ist Text immer an ganzzahlige physische Pixelgrößen gebunden. Ein Atlas pro Größe ist dort schärfer als SDF (Hinting,
+> keine Weichzeichnung bei kleinen Größen) und braucht keinen eigenen Shader. Kerning (GPOS) wird mangels HarfBuzz
+> nicht angewendet.
 
 ## Basis-Komponenten (alle nur über CSS stylebar, Defaults in `ua.css`)
 `button`, `span/p/text`, `input` (Cursor, Selektion, Clipboard, Placeholder, maxLength), `checkbox`, `select` (Dropdown als Overlay-Layer),

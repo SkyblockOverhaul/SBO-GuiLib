@@ -44,7 +44,7 @@ object DevAutomation {
             try {
                 step.action()
             } catch (e: Throwable) {
-                Log.error("GuiLib dev automation step failed: $e")
+                Log.error("GuiLib dev automation step failed: ${e.stackTraceToString().lineSequence().take(12).joinToString("\n")}")
             }
             wait = steps.firstOrNull()?.ticks ?: 0
         }
