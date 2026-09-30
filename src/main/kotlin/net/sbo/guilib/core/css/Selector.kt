@@ -1,0 +1,287 @@
+package net.sbo.guilib.core.css
+
+/** Interactive states that map to CSS pseudo-classes. */
+enum class PseudoState(val css: String) {
+    HOVER("hover"), ACTIVE("active"), FOCUS("focus"), FOCUS_WITHIN("focus-within"), DISABLED("disabled"), CHECKED("checked");
+
+    val bit get() = 1 shl ordinal
+}
+
+/** What the selector engine needs to know about an element. Implemented by the DOM element (and by test fakes). */
+interface Selectable {
+    val styleTag: String
+    val styleId: String?
+    val styleClasses: Collection<String>
+    val styleParent: Selectable?
+    val stylePreviousSibling: Selectable?
+    val styleNextSibling: Selectable?
+    fun hasState(state: PseudoState): Boolean
+}
+
+sealed interface SimpleSelector {
+    fun matches(el: Selectable): Boolean
+
+    data class Type(val name: String) : SimpleSelector {
+        override fun matches(el: Selectable) = el.styleTag.equals(name, ignoreCase = true)
+    }
+
+    data object Universal : SimpleSelector {
+        override fun matches(el: Selectable) = true
+    }
+
+    data class Id(val id: String) : SimpleSelector {
+        override fun matches(el: Selectable) = el.styleId == id
+    }
+
+    data class Class(val name: String) : SimpleSelector {
+        override fun matches(el: Selectable) = name in el.styleClasses
+    }
+
+    data class State(val state: PseudoState) : SimpleSelector {
+        override fun matches(el: Selectable) = el.hasState(state)
+    }
+
+    data class Structural(val kind: String) : SimpleSelector {
+        override fun matches(el: Selectable) = when (kind) {
+            "first-child" -> el.stylePreviousSibling == null
+            "last-child" -> el.styleNextSibling == null
+            "only-child" -> el.stylePreviousSibling == null && el.styleNextSibling == null
+            "root" -> el.styleParent == null
+            // Negations of the interactive states, so `:enabled` works as on the web.
+            "enabled" -> !el.hasState(PseudoState.DISABLED)
+            else -> false
+        }
+    }
+
+    data class Not(val inner: List<Compound>) : SimpleSelector {
+        override fun matches(el: Selectable) = inner.none { it.matches(el) }
+    }
+}
+
+data class Compound(val parts: List<SimpleSelector>) {
+    fun matches(el: Selectable) = parts.all { it.matches(el) }
+
+    val specificity: Int
+        get() = parts.sumOf { specificityOf(it) }
+
+    override fun toString() = parts.joinToString("") {
+        when (it) {
+            is SimpleSelector.Type -> it.name
+            SimpleSelector.Universal -> "*"
+            is SimpleSelector.Id -> "#${it.id}"
+            is SimpleSelector.Class -> ".${it.name}"
+            is SimpleSelector.State -> ":${it.state.css}"
+            is SimpleSelector.Structural -> ":${it.kind}"
+            is SimpleSelector.Not -> ":not(${it.inner.joinToString(", ")})"
+        }
+    }
+
+    private companion object {
+        fun specificityOf(s: SimpleSelector): Int = when (s) {
+            is SimpleSelector.Id -> Selector.ID_WEIGHT
+            is SimpleSelector.Class, is SimpleSelector.State, is SimpleSelector.Structural -> Selector.CLASS_WEIGHT
+            is SimpleSelector.Type -> 1
+            SimpleSelector.Universal -> 0
+            is SimpleSelector.Not -> s.inner.maxOf { it.specificity }
+        }
+    }
+}
+
+enum class Combinator(val css: String) { DESCENDANT(" "), CHILD(" > "), NEXT_SIBLING(" + "), SUBSEQUENT_SIBLING(" ~ ") }
+
+/**
+ * A complex selector like `.list > .row:hover span`. [compounds] are in source order, the last one is the subject;
+ * `combinators[i]` joins `compounds[i]` and `compounds[i + 1]`.
+ */
+class Selector(val compounds: List<Compound>, val combinators: List<Combinator>) {
+    /** (ids, classes, types) packed as `ids * 1_000_000 + classes * 1_000 + types`, compared as a single int like the web. */
+    val specificity: Int = compounds.sumOf { it.specificity }
+
+    val subject get() = compounds.last()
+
+    fun matches(el: Selectable): Boolean = matchAt(el, compounds.size - 1)
+
+    private fun matchAt(el: Selectable, index: Int): Boolean {
+        if (!compounds[index].matches(el)) return false
+        if (index == 0) return true
+        return when (combinators[index - 1]) {
+            Combinator.CHILD -> el.styleParent?.let { matchAt(it, index - 1) } ?: false
+            Combinator.DESCENDANT -> {
+                var p = el.styleParent
+                while (p != null) {
+                    if (matchAt(p, index - 1)) return true
+                    p = p.styleParent
+                }
+                false
+            }
+            Combinator.NEXT_SIBLING -> el.stylePreviousSibling?.let { matchAt(it, index - 1) } ?: false
+            Combinator.SUBSEQUENT_SIBLING -> {
+                var s = el.stylePreviousSibling
+                while (s != null) {
+                    if (matchAt(s, index - 1)) return true
+                    s = s.stylePreviousSibling
+                }
+                false
+            }
+        }
+    }
+
+    override fun toString() = buildString {
+        compounds.forEachIndexed { i, c ->
+            if (i > 0) append(combinators[i - 1].css)
+            append(c)
+        }
+    }
+
+    companion object {
+        const val ID_WEIGHT = 1_000_000
+        const val CLASS_WEIGHT = 1_000
+
+        /** Parses a selector list such as `button.primary:hover, .card > span`. Throws [IllegalArgumentException] if invalid. */
+        fun parse(text: String): List<Selector> =
+            when (val r = SelectorParser.parse(Tokenizer(text).tokenize().filter { it.type != TokenType.EOF })) {
+                is SelectorParser.Result.Ok -> r.selectors
+                is SelectorParser.Result.Error -> throw IllegalArgumentException(r.message)
+            }
+    }
+}
+
+object SelectorParser {
+    sealed interface Result {
+        data class Ok(val selectors: List<Selector>) : Result
+        data class Error(val message: String, val at: Token?) : Result
+    }
+
+    private class Fail(message: String, val at: Token?) : Exception(message)
+
+    private val STATES = PseudoState.entries.associateBy { it.css }
+    private val STRUCTURAL = setOf("first-child", "last-child", "only-child", "root", "enabled")
+
+    fun parse(tokens: List<Token>): Result = try {
+        val lists = splitTopLevel(tokens.filter { it.type != TokenType.EOF })
+        Result.Ok(lists.map { parseComplex(it) })
+    } catch (e: Fail) {
+        Result.Error(e.message ?: "invalid selector", e.at)
+    }
+
+    private fun splitTopLevel(tokens: List<Token>): List<List<Token>> {
+        val out = ArrayList<List<Token>>()
+        var depth = 0
+        var start = 0
+        for ((i, t) in tokens.withIndex()) {
+            when (t.type) {
+                TokenType.FUNCTION, TokenType.LPAREN -> depth++
+                TokenType.RPAREN -> depth--
+                TokenType.COMMA -> if (depth == 0) {
+                    out += tokens.subList(start, i); start = i + 1
+                }
+                else -> {}
+            }
+        }
+        out += tokens.subList(start, tokens.size)
+        return out
+    }
+
+    private fun parseComplex(raw: List<Token>): Selector {
+        val tokens = raw.dropWhile { it.type == TokenType.WHITESPACE }.dropLastWhile { it.type == TokenType.WHITESPACE }
+        if (tokens.isEmpty()) throw Fail("empty selector", raw.firstOrNull())
+        val compounds = ArrayList<Compound>()
+        val combinators = ArrayList<Combinator>()
+        var i = 0
+        var pending: Combinator? = null
+        while (i < tokens.size) {
+            val t = tokens[i]
+            val explicit = when {
+                t.isDelim('>') -> Combinator.CHILD
+                t.isDelim('+') -> Combinator.NEXT_SIBLING
+                t.isDelim('~') -> Combinator.SUBSEQUENT_SIBLING
+                else -> null
+            }
+            when {
+                t.type == TokenType.WHITESPACE -> {
+                    if (pending == null) pending = Combinator.DESCENDANT
+                    i++
+                }
+                explicit != null -> {
+                    if (compounds.isEmpty()) throw Fail("selector can't start with '${t.text}'", t)
+                    if (pending != null && pending != Combinator.DESCENDANT) throw Fail("two combinators in a row", t)
+                    pending = explicit
+                    i++
+                }
+                else -> {
+                    if (compounds.isNotEmpty()) {
+                        combinators += pending ?: throw Fail("missing combinator", t)
+                    }
+                    pending = null
+                    val (compound, next) = parseCompound(tokens, i)
+                    compounds += compound
+                    i = next
+                }
+            }
+        }
+        if (pending != null && pending != Combinator.DESCENDANT) throw Fail("selector ends with a combinator", tokens.last())
+        return Selector(compounds, combinators)
+    }
+
+    /** Parses one compound starting at [start]; returns it and the index after it. */
+    private fun parseCompound(tokens: List<Token>, start: Int): Pair<Compound, Int> {
+        val parts = ArrayList<SimpleSelector>()
+        var i = start
+        loop@ while (i < tokens.size) {
+            val t = tokens[i]
+            when {
+                t.type == TokenType.IDENT -> {
+                    if (parts.isNotEmpty()) throw Fail("type selector '${t.text}' must come first in a compound", t)
+                    parts += SimpleSelector.Type(t.text.lowercase()); i++
+                }
+                t.isDelim('*') -> {
+                    if (parts.isNotEmpty()) throw Fail("'*' must come first in a compound", t)
+                    parts += SimpleSelector.Universal; i++
+                }
+                t.type == TokenType.HASH -> {
+                    parts += SimpleSelector.Id(t.text); i++
+                }
+                t.isDelim('.') -> {
+                    val n = tokens.getOrNull(i + 1)
+                    if (n?.type != TokenType.IDENT) throw Fail("expected a class name after '.'", t)
+                    parts += SimpleSelector.Class(n.text); i += 2
+                }
+                t.type == TokenType.COLON -> {
+                    val n = tokens.getOrNull(i + 1) ?: throw Fail("expected a pseudo-class after ':'", t)
+                    when {
+                        n.type == TokenType.COLON -> throw Fail("pseudo-elements (::${tokens.getOrNull(i + 2)?.text ?: ""}) are not supported", n)
+                        n.type == TokenType.IDENT -> {
+                            val name = n.text.lowercase()
+                            parts += STATES[name]?.let { SimpleSelector.State(it) }
+                                ?: if (name in STRUCTURAL) SimpleSelector.Structural(name) else throw Fail("unsupported pseudo-class ':$name'", n)
+                            i += 2
+                        }
+                        n.type == TokenType.FUNCTION && n.text.equals("not", ignoreCase = true) -> {
+                            var depth = 1
+                            var j = i + 2
+                            while (j < tokens.size && depth > 0) {
+                                if (tokens[j].type == TokenType.FUNCTION || tokens[j].type == TokenType.LPAREN) depth++
+                                if (tokens[j].type == TokenType.RPAREN) depth--
+                                j++
+                            }
+                            if (depth != 0) throw Fail("unclosed ':not('", n)
+                            val inner = splitTopLevel(tokens.subList(i + 2, j - 1)).map { part ->
+                                val trimmed = part.dropWhile { it.type == TokenType.WHITESPACE }.dropLastWhile { it.type == TokenType.WHITESPACE }
+                                val (c, end) = parseCompound(trimmed, 0)
+                                if (end != trimmed.size) throw Fail(":not() only accepts compound selectors", n)
+                                c
+                            }
+                            parts += SimpleSelector.Not(inner)
+                            i = j
+                        }
+                        else -> throw Fail("unsupported pseudo-class ':${n.text}'", n)
+                    }
+                }
+                t.type == TokenType.LBRACKET -> throw Fail("attribute selectors are not supported", t)
+                else -> break@loop
+            }
+        }
+        if (parts.isEmpty()) throw Fail("unexpected '${tokens.getOrNull(start)}'", tokens.getOrNull(start))
+        return Compound(parts) to i
+    }
+}
