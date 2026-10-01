@@ -136,8 +136,34 @@ object DevAutomation : ClientModInitializer {
                 val dy = arg.substringAfterLast(':').toFloat()
                 find(sel)?.getBoundingClientRect()?.let { r -> root.input.wheel(r.x + r.width / 2f, r.y + r.height / 2f, 0f, dy) }
             }
+            // "hwheel:.h-scroll:100" scrolls sideways (like Shift + wheel or a trackpad).
+            "hwheel" -> {
+                val sel = arg.substringBeforeLast(':')
+                val dx = arg.substringAfterLast(':').toFloat()
+                find(sel)?.getBoundingClientRect()?.let { r -> root.input.wheel(r.x + r.width / 2f, r.y + r.height / 2f, dx, 0f) }
+            }
+            // Dragging: "press:.item" holds the left button at the element's center, "move:0,30" moves the mouse
+            // relative to the last position (button still held), "release" lets go.
+            "press" -> find(arg)?.getBoundingClientRect()?.let { r ->
+                pointerX = r.x + r.width / 2f
+                pointerY = r.y + r.height / 2f
+                root.input.mouseDown(pointerX, pointerY, 0)
+            }
+            "move" -> {
+                val (dx, dy) = arg.split(',').map { it.trim().toFloat() }
+                // In small steps, like a real mouse.
+                repeat(4) {
+                    pointerX += dx / 4f
+                    pointerY += dy / 4f
+                    root.input.mouseMove(pointerX, pointerY)
+                }
+            }
+            "release" -> root.input.mouseUp(pointerX, pointerY, 0)
         }
     }
+
+    private var pointerX = 0f
+    private var pointerY = 0f
 
     private fun unescape(s: String) = Regex("""U\+([0-9a-fA-F]{4,6})""").replace(s) { String(Character.toChars(it.groupValues[1].toInt(16))) }
 

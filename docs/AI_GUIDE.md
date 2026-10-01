@@ -93,6 +93,7 @@ Children go in the trailing lambda; text with `+"text"` or `text(value)`.
 | `tooltip("text", placement = "top|bottom|left|right") { anchor }` / `tooltip(content = { … }) { anchor }` | – | Hover tooltip (300 ms delay). For simple cases use the `title` prop. |
 | `modal(open, onClose) { … }` | – | Dialog in a portal with backdrop; Escape and backdrop click call `onClose`. |
 | `presence(visible, exitMs) { leaving -> … }` | – | Exit animations (like Framer Motion's `AnimatePresence`): when `visible` turns false, the children render with `leaving = true` and are removed after `exitMs`. Use `leaving` to switch to an exit `animation`/`transition`. |
+| `sortableList(items, key = { it.id }, onReorder = { items = it }, horizontal = false, handle = false) { item, dragging -> … }` | flex column (row if `horizontal`) | Drag-to-reorder list. Items move with `transform` while dragging; dropping calls `onReorder` with the reordered list. A drag starts after 3 px, so clicks inside items still work, and the release after a drag clicks nothing. `handle = true`: only elements with class `guilib-drag-handle` start a drag (use it when items contain inputs). Escape cancels. Classes: `.guilib-sortable` (`.horizontal`, `.handle`, `.sorting`), `.guilib-sortable-item` (`.dragging`). |
 | `portal { … }` | – | Like `createPortal(children, document.body)`: renders above everything. Position content with `position: fixed`. |
 | `fragment(key) { … }` | – | `<>…</>` with a key. |
 | `colorPicker(value, onChange, alpha = false)` | – | Inline picker (saturation/value area, hue slider, optional alpha slider, hex input). Colors are ARGB `Int`s; `onChange: (Int) -> Unit`. |
@@ -131,8 +132,9 @@ Invalid or unsupported CSS is **skipped with a warning** (`file:line:col`, "did 
 
 **Selectors:** `*`, `tag`, `.class`, `#id`, `[attr]`, `[attr=value]`, `[attr^=v]`, `[attr$=v]`, `[attr*=v]`, compounds
 (`button.primary:hover`), descendant (`a b`), child (`a > b`), `a + b`, `a ~ b`, lists (`a, b`);
-pseudo-classes `:hover :active :focus :focus-within :disabled :enabled :checked :first-child :last-child :only-child :root :not(…)`.
-At-rules: `@keyframes` is supported. Not supported: pseudo-elements (`::before`), `:nth-child`, `@media`, `@import`, `@font-face`.
+pseudo-classes `:hover :active :focus :focus-within :disabled :enabled :checked :first-child :last-child :only-child :root :not(…)`,
+`:nth-child() :nth-last-child() :nth-of-type() :nth-last-of-type()` (`odd`, `even`, `3`, `2n+1`, `-n+3`; not the `of S` form).
+At-rules: `@keyframes` is supported. Not supported: pseudo-elements (`::before`), `@media`, `@import`, `@font-face`.
 
 **Values:** `px`, `%`, `em`, `rem`, `vw`, `vh`, `vmin`, `vmax`, unitless `0`; colors `#rgb #rgba #rrggbb #rrggbbaa`,
 `rgb()/rgba()` (comma or space syntax), `hsl()/hsla()`, all CSS named colors, `transparent`, `currentColor`;
@@ -152,10 +154,13 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
   Animatable: colors, lengths (also px ↔ % via calc), numbers (`opacity`, `flex-grow`, `font-size` …), radii, `line-height`,
   `text-shadow`, scrollbar colors, gradient stop colors, `visibility`, `transform`, `transform-origin`; other values switch at 50%
   in keyframes and don't transition.
-- Transform: `transform` with `translate() translateX() translateY() scale() scaleX() scaleY()` (`none` to reset) and
-  `transform-origin` (lengths, %, `left center right top bottom`; default `50% 50%`). Like CSS it doesn't affect layout; clicks,
-  clipping and `getBoundingClientRect()` follow the transformed box. Scaled text is re-rendered at the new size (stays sharp).
-  Transforms interpolate when both lists have the same functions in the same order (`none` counts as matching anything).
+- Transform: `transform` with `translate() translateX() translateY() scale() scaleX() scaleY() rotate() skew() skewX() skewY()
+  matrix(a, b, c, d, tx, ty)` (`none` to reset; angles in `deg rad grad turn`) and
+  `transform-origin` (lengths, %, `left center right top bottom`; default `50% 50%`). Like CSS it doesn't affect layout; clicks
+  and `getBoundingClientRect()` follow the transformed box (hit-testing uses the exact rotated shape). Translate/scale stay
+  pixel-exact and scaled text is re-rendered at the new size (stays sharp); rotated/skewed content is drawn through a matrix
+  (text stays at its unrotated resolution). Transforms interpolate when both lists have the same functions in the same order
+  (`none` counts as matching anything), e.g. `@keyframes spin { to { transform: rotate(360deg) } }`.
 - Text: `color font-family font-size font-weight font-style line-height text-align white-space text-overflow text-decoration text-shadow`
 - Visual: `background background-color background-image opacity visibility object-fit`. `background-image` takes a comma list of layers
   (first = top): `url("modid:path.png")` (stretched to the box), `linear-gradient(…)` (angles, `to right`, `to top left`, stops with
@@ -185,8 +190,8 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
 11. Inline elements (`span`, …) ignore padding/border/background; use `display: inline-block` for boxes inside text.
 12. `border-width` default (`medium`) is 1px; like the web, a border without `border-style` draws nothing.
 13. Every positioned element (`relative/absolute/fixed`) is its own paint layer; `z-index` orders layers among siblings in the same layer. Use `portal { }` for things that must be on top of everything. `position: fixed` elements ignore their ancestors' `transform`.
-14. Not supported (yet): `rotate`/`skew`/`matrix` transforms (a `transform` containing them is ignored), box-shadow, `repeating-*-gradient`, `conic-gradient`, `@media`,
-    `:nth-child`, pseudo-elements, float, `align-content`, `vertical-align`, letter-spacing, subgrid, named grid lines (`[name]` is ignored).
+14. Not supported (yet): 3D transforms (a `transform` containing them is ignored), box-shadow, `repeating-*-gradient`, `conic-gradient`, `@media`,
+    `:nth-child(… of S)`, pseudo-elements, float, `align-content`, `vertical-align`, letter-spacing, subgrid, named grid lines (`[name]` is ignored).
     Grid: `auto-fit` behaves like `auto-fill` (empty tracks aren't collapsed); items can't be placed before line 1.
 15. Images: `src` is a resource location (`"modid:textures/x.png"`), PNG or SVG only; no URLs yet.
 16. Text has no kerning; `text-align: justify` behaves like `left`. No right-to-left or complex-script shaping: Arabic/Hebrew
@@ -210,6 +215,11 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
 - **Slide out before removal:** `presence(visible = open, exitMs = 200) { leaving -> div(className = classNames("panel", "leaving" to leaving)) { … } }`
   with `.panel.leaving { animation: slide-out 200ms ease-in forwards }`.
 - **Grow on hover:** `.card { transition: transform 150ms ease-out } .card:hover { transform: scale(1.05) }`.
+- **Spinner:** `@keyframes spin { to { transform: rotate(360deg) } }` + `.spinner { animation: spin 1s linear infinite }`.
+- **Zebra rows:** `.row:nth-child(even) { background-color: #2b2d31 }`.
+- **Horizontal scroll row:** `display: flex; overflow-x: auto; overflow-y: hidden` with `flex-shrink: 0` on the children.
+  Shift + wheel (or a trackpad) scrolls it; the plain wheel keeps scrolling the page.
+- **Reorderable list:** `sortableList(tasks, key = { it.id }, onReorder = { tasks = it }) { task, _ -> div { +task.name } }`.
 - **Responsive tiles:** `display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 4px`.
 - **Sidebar + content:** `display: grid; grid-template-columns: 80px 1fr` (or `grid-template-areas`).
 - **Keyboard shortcut for the whole screen:** `useDocumentEvent("keydown") { e -> if ((e as KeyboardEvent).key == "r") refresh() }`.

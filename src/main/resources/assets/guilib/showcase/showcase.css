@@ -227,3 +227,79 @@ button.primary:hover { background-color: #6f9cf2; }
 .tile.wide { grid-column: span 2; background: linear-gradient(to right, #5b8def, #b16cea); }
 
 .color-preview { width: 120px; height: 60px; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-weight: bold; text-shadow: 1px 1px #0008; }
+
+/* ---- rotate & skew ---- */
+@keyframes spin { to { transform: rotate(360deg); } }
+.rotate-row { gap: 10px; padding: 6px 0; }
+.spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--panel-2);
+    border-top-color: var(--accent);
+    border-radius: 3px;
+    animation: spin 1.2s linear infinite;
+}
+.tilt-card {
+    padding: 4px 8px;
+    background-image: linear-gradient(135deg, #5b8def, #b16cea);
+    border-radius: 4px;
+    transition: transform 200ms ease-out;
+}
+.tilt-card:hover { transform: rotate(-6deg) scale(1.08); }
+.skewed { transform: skewX(-12deg); }
+.turn-btn { transition: transform 250ms ease-out; }
+
+/* ---- horizontal scroll ---- */
+.h-scroll {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    margin-bottom: 4px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    background-color: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    scrollbar-color: var(--accent) transparent;
+}
+.h-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+    width: 52px;
+    padding: 4px 2px 6px;
+    background-color: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    font-size: 7px;
+    text-align: center;
+    cursor: pointer;
+}
+.h-card:hover { border-color: var(--accent); }
+.h-card.selected { background-color: #3a4a6b; border-color: var(--accent); }
+.timeline { gap: 0; padding: 0; }
+.hour { flex-shrink: 0; width: 34px; padding: 3px 0 5px; text-align: center; color: var(--muted); border-right: 1px solid var(--border); }
+
+/* ---- sortable ---- */
+.sort-list { gap: 2px; margin-bottom: 6px; }
+.sort-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 6px;
+    background-color: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+}
+.task { flex-grow: 1; }
+.guilib-sortable-item:hover .sort-row { border-color: #4e5058; }
+.sort-row.dragging, .chip.dragging { background-color: #3a4a6b; border-color: var(--accent); }
+.dragging .sort-row { border-color: var(--accent); }
+.grip { color: var(--muted); padding: 0 2px; }
+.grip:hover { color: #fff; }
+button.small { padding: 0 4px; }
+.tab-strip { gap: 3px; flex-shrink: 0; }
+.tab-strip .chip { flex-shrink: 0; white-space: nowrap; }
+.hour:nth-child(even) { background-color: var(--panel-2); }

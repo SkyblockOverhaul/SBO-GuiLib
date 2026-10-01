@@ -24,13 +24,14 @@ import net.sbo.guilib.core.dsl.nav
 import net.sbo.guilib.core.dsl.p
 import net.sbo.guilib.core.dsl.presence
 import net.sbo.guilib.core.dsl.scroll
+import net.sbo.guilib.core.dsl.sortableList
 import net.sbo.guilib.core.dsl.span
 import net.sbo.guilib.fabric.GuiLib
 import net.sbo.guilib.fabric.entity.FakePlayer
 
 /** Demo UI showing every feature; open with `/guilib showcase`. */
 object Showcase {
-    val SECTIONS = listOf("Buttons", "Forms", "Colors", "Boxes", "Animation", "Layout", "Grid", "Text", "Scroll", "Images", "Items", "Entities", "State")
+    val SECTIONS = listOf("Buttons", "Forms", "Colors", "Boxes", "Animation", "Layout", "Grid", "Text", "Scroll", "Sortable", "Images", "Items", "Entities", "State")
 
     private val App = component<String>("Showcase") { initialSection ->
         var section by useState(initialSection)
@@ -57,6 +58,7 @@ object Showcase {
                         "Layout" -> LayoutDemo()
                         "Text" -> TextDemo()
                         "Scroll" -> ScrollDemo()
+                        "Sortable" -> SortableDemo()
                         "Items" -> ItemsDemo()
                         "Entities" -> EntitiesDemo()
                         "State" -> StateDemo()
@@ -210,6 +212,15 @@ object Showcase {
         presence(visible = panel, exitMs = 250) { leaving ->
             div(className = classNames("slide-panel", "leaving" to leaving)) { +"I slide in and out (transform + presence)." }
         }
+
+        var turns by useState(0)
+        h3 { +"Rotate & skew" }
+        div(className = "row rotate-row") {
+            div(className = "spinner")
+            div(className = "tilt-card") { +"Hover: tilt" }
+            span(className = "chip skewed") { +"skewX(-12deg)" }
+            button(className = "turn-btn", style = "transform: rotate(${turns * 90}deg)", onClick = { turns++ }) { +"Click: +90°" }
+        }
     }
 
     private val GridDemo = component("GridDemo") {
@@ -282,6 +293,60 @@ object Showcase {
             }
         }
     }
+
+    private val HorizontalScrollDemo = component("HorizontalScrollDemo") {
+        var picked by useState<String?>(null)
+        h3 { +"Horizontal scroll" }
+        p(className = "muted") { +"Shift + mouse wheel (or a trackpad) scrolls sideways; the wheel alone still scrolls the page." }
+        scroll(className = "h-scroll") {
+            for (stackItem in HOTBAR) {
+                val name = stackItem.descriptionId.substringAfterLast('.')
+                div(key = name, className = classNames("h-card", "selected" to (picked == name)), onClick = { picked = name }) {
+                    div(className = "item-slot big") { item(ItemStack(stackItem)) }
+                    span { +name.replace('_', ' ') }
+                }
+            }
+        }
+        p(className = "muted") { +if (picked == null) "Click a card." else "Picked: $picked" }
+        scroll(className = "h-scroll timeline") {
+            for (h in 0..23) span(key = h, className = "hour") { +"%02d:00".format(h) }
+        }
+    }
+
+    private val SortableDemo = component("SortableDemo") {
+        var tasks by useState(listOf("Kill Diana", "Dig burrows", "Sell loot", "Craft a hyperion", "Touch grass"))
+        var tabs by useState(listOf("Overview", "Party", "Bazaar", "Auction", "Collections", "Skills", "Garden", "Rift", "Museum", "Settings"))
+        h2 { +"Sortable lists" }
+        p { +"Drag items to reorder them; Escape cancels a drag." }
+        h3 { +"Vertical (drag anywhere)" }
+        sortableList(tasks, key = { it }, onReorder = { tasks = it }, className = "sort-list") { task, dragging ->
+            div(className = classNames("sort-row", "dragging" to dragging)) {
+                span(className = "muted") { +"${tasks.indexOf(task) + 1}." }
+                span(className = "task") { +task }
+            }
+        }
+        h3 { +"With handle" }
+        sortableList(tasks, key = { it }, onReorder = { tasks = it }, handle = true, className = "sort-list") { task, _ ->
+            div(className = "sort-row") {
+                span(className = "guilib-drag-handle grip") { +"⠿" }
+                span(className = "task") { +task }
+                button(className = "small", onClick = { tasks = tasks - task }) { +"✕" }
+            }
+        }
+        if (tasks.size < 5) button(onClick = { tasks = tasks + "Task ${tasks.size + 1}" }) { +"Add task" }
+        h3 { +"Horizontal, inside a horizontal scroll" }
+        scroll(className = "h-scroll") {
+            sortableList(tabs, key = { it }, onReorder = { tabs = it }, horizontal = true, className = "tab-strip") { tab, dragging ->
+                div(className = classNames("chip", "dragging" to dragging)) { +tab }
+            }
+        }
+        HorizontalScrollDemo()
+    }
+
+    private val HOTBAR = listOf(
+        Items.DIAMOND_SWORD, Items.BOW, Items.GOLDEN_APPLE, Items.ENDER_PEARL, Items.COMPASS, Items.CLOCK, Items.MAP,
+        Items.FISHING_ROD, Items.SHEARS, Items.TNT, Items.CAKE, Items.ELYTRA,
+    )
 
     private val ItemsDemo = component("ItemsDemo") {
         h2 { +"Items" }

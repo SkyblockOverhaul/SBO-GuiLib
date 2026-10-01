@@ -7,6 +7,8 @@ import net.sbo.guilib.core.controls.PresenceProps
 import net.sbo.guilib.core.controls.SelectComponent
 import net.sbo.guilib.core.controls.SelectOption
 import net.sbo.guilib.core.controls.SelectProps
+import net.sbo.guilib.core.controls.SortableComponent
+import net.sbo.guilib.core.controls.SortableProps
 import net.sbo.guilib.core.controls.TooltipComponent
 import net.sbo.guilib.core.controls.TooltipProps
 import net.sbo.guilib.core.dom.VText
@@ -113,6 +115,42 @@ fun NodeBuilder.modal(
  */
 fun NodeBuilder.presence(visible: Boolean, exitMs: Long, key: Any? = null, children: NodeBuilder.(leaving: Boolean) -> Unit) =
     PresenceComponent(PresenceProps(visible, exitMs, children), key)
+
+/**
+ * Drag-to-reorder list, controlled like React: [items] are rendered in order and dropping an item calls [onReorder]
+ * with the reordered list (store it in state):
+ *
+ * ```kotlin
+ * var tasks by useState(listOf("Wash", "Cook", "Sleep"))
+ * sortableList(tasks, key = { it }, onReorder = { tasks = it }) { task, dragging ->
+ *     span { +task }
+ * }
+ * ```
+ * A drag starts after the mouse moved a few pixels, so clicks inside items keep working. With [handle] = true only
+ * elements with the class `guilib-drag-handle` start a drag (use it when items contain inputs). [horizontal] sorts
+ * along x (e.g. in a horizontally scrolling row). Escape cancels a drag. Items need a stable [key].
+ * Styled with `.guilib-sortable` (`.horizontal`, `.handle`, `.sorting`), `.guilib-sortable-item` (`.dragging`).
+ */
+fun <T> NodeBuilder.sortableList(
+    items: List<T>,
+    key: (T) -> Any?,
+    onReorder: ((List<T>) -> Unit)?,
+    horizontal: Boolean = false,
+    handle: Boolean = false,
+    className: String? = null,
+    itemClassName: String? = null,
+    listKey: Any? = null,
+    children: NodeBuilder.(item: T, dragging: Boolean) -> Unit,
+) {
+    @Suppress("UNCHECKED_CAST")
+    SortableComponent(
+        SortableProps(
+            items, key as (Any?) -> Any?, onReorder as ((List<Any?>) -> Unit)?, horizontal, handle, className, itemClassName,
+            children as NodeBuilder.(Any?, Boolean) -> Unit,
+        ),
+        listKey,
+    )
+}
 
 /**
  * Inline color picker (saturation/value area, hue slider, optional alpha, hex input), controlled like React:
