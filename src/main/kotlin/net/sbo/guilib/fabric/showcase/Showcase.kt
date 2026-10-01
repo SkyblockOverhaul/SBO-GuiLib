@@ -24,7 +24,7 @@ import net.sbo.guilib.fabric.GuiLib
 
 /** Demo UI showing every feature; open with `/guilib showcase`. */
 object Showcase {
-    val SECTIONS = listOf("Buttons", "Forms", "Boxes", "Layout", "Text", "Scroll", "Images", "Items", "State")
+    val SECTIONS = listOf("Buttons", "Forms", "Boxes", "Animation", "Layout", "Text", "Scroll", "Images", "Items", "State")
 
     private val App = component<String>("Showcase") { initialSection ->
         var section by useState(initialSection)
@@ -44,6 +44,7 @@ object Showcase {
                         "Buttons" -> ButtonsDemo()
                         "Forms" -> FormsDemo()
                         "Boxes" -> BoxesDemo()
+                        "Animation" -> AnimationDemo()
                         "Images" -> ImagesDemo()
                         "Layout" -> LayoutDemo()
                         "Text" -> TextDemo()
@@ -150,6 +151,23 @@ object Showcase {
         }
         p(className = "muted") { +"background-image: url(...)" }
         div(className = "bg-demo") { +"Text over a background image" }
+    }
+
+    private val AnimationDemo = component("AnimationDemo") {
+        var open by useState(false)
+        h2 { +"Animation" }
+        p { +"CSS transitions and @keyframes animations." }
+        div(className = "row") {
+            div(className = "pulse-dot")
+            span { +"animation: pulse 1.2s ease-in-out infinite alternate" }
+        }
+        div(className = "loader") { div(className = "loader-bar") }
+        div(className = "row") {
+            div(className = "hover-card") { +"Hover me (transition)" }
+            button(className = "primary", onClick = { open = !open }) { +if (open) "Collapse" else "Expand" }
+        }
+        div(className = classNames("drawer", "open" to open)) { +"This panel animates its height and background." }
+        div(className = "fade-in") { +"I faded in when this section opened." }
     }
 
     private val LayoutDemo = component("LayoutDemo") {

@@ -104,6 +104,47 @@ class ComputedStyle internal constructor(
     val userSelect get() = values[Prop.USER_SELECT.ordinal] as UserSelect
     val objectFit get() = values[Prop.OBJECT_FIT.ordinal] as ObjectFit
 
+    /** `transition` entries, with comma lists paired up like CSS (shorter lists repeat). */
+    @Suppress("UNCHECKED_CAST")
+    val transitions: List<TransitionSpec>
+        get() {
+            val props = values[Prop.TRANSITION_PROPERTY.ordinal] as List<String>
+            val durations = values[Prop.TRANSITION_DURATION.ordinal] as List<Float>
+            val timings = values[Prop.TRANSITION_TIMING_FUNCTION.ordinal] as List<TimingFunction>
+            val delays = values[Prop.TRANSITION_DELAY.ordinal] as List<Float>
+            return props.mapIndexed { i, p ->
+                TransitionSpec(p, AnimationParser.at(durations, i, 0f), AnimationParser.at(timings, i, TimingFunction.EASE), AnimationParser.at(delays, i, 0f))
+            }
+        }
+
+    /** `animation` entries, one per `animation-name`. */
+    @Suppress("UNCHECKED_CAST")
+    val animations: List<AnimationSpec>
+        get() {
+            val names = values[Prop.ANIMATION_NAME.ordinal] as List<String>
+            if (names.isEmpty()) return emptyList()
+            fun <T> list(p: Prop) = values[p.ordinal] as List<T>
+            return names.mapIndexed { i, n ->
+                AnimationSpec(
+                    n,
+                    AnimationParser.at(list(Prop.ANIMATION_DURATION), i, 0f),
+                    AnimationParser.at(list(Prop.ANIMATION_TIMING_FUNCTION), i, TimingFunction.EASE),
+                    AnimationParser.at(list(Prop.ANIMATION_DELAY), i, 0f),
+                    AnimationParser.at(list(Prop.ANIMATION_ITERATION_COUNT), i, 1f),
+                    AnimationParser.at(list(Prop.ANIMATION_DIRECTION), i, AnimationDirection.NORMAL),
+                    AnimationParser.at(list(Prop.ANIMATION_FILL_MODE), i, AnimationFillMode.NONE),
+                    AnimationParser.at(list(Prop.ANIMATION_PLAY_STATE), i, AnimationPlayState.RUNNING),
+                )
+            }
+        }
+
+    /** A copy with some values replaced (used for running transitions/animations). */
+    fun withOverrides(overrides: Map<Prop, Any?>): ComputedStyle {
+        val copy = values.copyOf()
+        for ((p, v) in overrides) copy[p.ordinal] = v
+        return ComputedStyle(copy, customProperties)
+    }
+
     val isBold get() = fontWeight >= 600
     val isItalic get() = fontStyle == FontStyle.ITALIC
 
@@ -134,7 +175,13 @@ class ComputedStyle internal constructor(
             Prop.BORDER_TOP_COLOR, Prop.BORDER_RIGHT_COLOR, Prop.BORDER_BOTTOM_COLOR, Prop.BORDER_LEFT_COLOR,
             Prop.BORDER_TOP_LEFT_RADIUS, Prop.BORDER_TOP_RIGHT_RADIUS, Prop.BORDER_BOTTOM_RIGHT_RADIUS, Prop.BORDER_BOTTOM_LEFT_RADIUS,
             Prop.SCROLLBAR_COLOR,
+            Prop.TRANSITION_PROPERTY, Prop.TRANSITION_DURATION, Prop.TRANSITION_TIMING_FUNCTION, Prop.TRANSITION_DELAY,
+            Prop.ANIMATION_NAME, Prop.ANIMATION_DURATION, Prop.ANIMATION_TIMING_FUNCTION, Prop.ANIMATION_DELAY,
+            Prop.ANIMATION_ITERATION_COUNT, Prop.ANIMATION_DIRECTION, Prop.ANIMATION_FILL_MODE, Prop.ANIMATION_PLAY_STATE,
         )
+
+        /** Properties whose change only needs a repaint (no relayout). */
+        fun isPaintOnly(p: Prop) = p in PAINT_ONLY
         private val LAYOUT_PROPS = Prop.entries.filter { it !in PAINT_ONLY }
 
         /** Style with every property at its initial value (the implicit parent of the root). */

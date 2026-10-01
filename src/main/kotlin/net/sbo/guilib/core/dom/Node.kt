@@ -184,7 +184,12 @@ class Element internal constructor(val tagName: String) : Node(), Selectable {
     internal var styleDirty = true
     internal var subtreeStyleDirty = true
 
-    override val style: ComputedStyle get() = computed ?: ComputedStyle.INITIAL
+    /** Style with running transitions/animations applied; `null` when nothing is animating. */
+    internal var animatedStyle: ComputedStyle? = null
+    internal var animatedOverrides: Map<net.sbo.guilib.core.css.Prop, Any?>? = null
+
+    /** The style used for layout and painting: the computed style plus running transitions/animations. */
+    override val style: ComputedStyle get() = animatedStyle ?: computed ?: ComputedStyle.INITIAL
 
     private var stateBits = 0
 

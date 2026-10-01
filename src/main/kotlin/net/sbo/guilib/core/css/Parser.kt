@@ -48,7 +48,13 @@ class Declaration(
 
 class StyleRule(val selectors: List<Selector>, val declarations: List<Declaration>, val line: Int)
 
-class Stylesheet(val source: String, val rules: List<StyleRule>, val origin: Origin = Origin.AUTHOR) {
+class Stylesheet(
+    val source: String,
+    val rules: List<StyleRule>,
+    val origin: Origin = Origin.AUTHOR,
+    /** `@keyframes` defined in this sheet, by name. */
+    val keyframes: Map<String, Keyframes> = emptyMap(),
+) {
     companion object {
         fun parse(text: String, source: String = "<inline>", origin: Origin = Origin.AUTHOR) = CssParser.parseStylesheet(text, source, origin)
     }
@@ -63,6 +69,7 @@ object CssParser {
     fun parseStylesheet(text: String, source: String = "<inline>", origin: Origin = Origin.AUTHOR): Stylesheet {
         val tokens = Tokenizer(text).tokenize()
         val rules = ArrayList<StyleRule>()
+        val keyframes = LinkedHashMap<String, Keyframes>()
         var i = 0
         while (i < tokens.size) {
             val t = tokens[i]
@@ -70,8 +77,12 @@ object CssParser {
                 TokenType.EOF -> break
                 TokenType.WHITESPACE, TokenType.SEMICOLON -> i++
                 TokenType.AT_KEYWORD -> {
-                    warn(source, t, "at-rule '@${t.text}' is not supported yet and was ignored")
-                    i = skipAtRule(tokens, i + 1)
+                    if (t.text.equals("keyframes", true) || t.text.equals("-webkit-keyframes", true)) {
+                        i = parseKeyframes(tokens, i + 1, source, keyframes)
+                    } else {
+                        warn(source, t, "at-rule '@${t.text}' is not supported yet and was ignored")
+                        i = skipAtRule(tokens, i + 1)
+                    }
                 }
                 else -> {
                     val preludeStart = i
@@ -95,12 +106,58 @@ object CssParser {
                 }
             }
         }
-        return Stylesheet(source, rules, origin)
+        return Stylesheet(source, rules, origin, keyframes)
     }
 
     /** Parses `color: red; padding: 4px` as used by inline `style` attributes. */
     fun parseDeclarations(text: String, source: String = "<style>"): List<Declaration> =
         parseDeclarationTokens(Tokenizer(text).tokenize().filter { it.type != TokenType.EOF }, source)
+
+    /** `@keyframes name { from { … } 50% { … } to { … } }`; returns the index after the rule. */
+    private fun parseKeyframes(tokens: List<Token>, start: Int, source: String, out: MutableMap<String, Keyframes>): Int {
+        var i = start
+        while (i < tokens.size && tokens[i].type == TokenType.WHITESPACE) i++
+        val nameTok = tokens.getOrNull(i)
+        if (nameTok == null || (nameTok.type != TokenType.IDENT && nameTok.type != TokenType.STRING)) {
+            warn(source, nameTok ?: tokens.last(), "@keyframes needs a name; rule ignored")
+            return skipAtRule(tokens, i)
+        }
+        i++
+        while (i < tokens.size && tokens[i].type != TokenType.LBRACE) {
+            if (tokens[i].type == TokenType.EOF) return i
+            i++
+        }
+        val end = findBlockEnd(tokens, i)
+        val body = tokens.subList(i + 1, end)
+        val frames = ArrayList<Keyframe>()
+        var j = 0
+        while (j < body.size) {
+            val t = body[j]
+            if (t.type == TokenType.WHITESPACE || t.type == TokenType.SEMICOLON) {
+                j++; continue
+            }
+            var k = j
+            while (k < body.size && body[k].type != TokenType.LBRACE) k++
+            if (k >= body.size) break
+            val prelude = body.subList(j, k).filter { it.type != TokenType.WHITESPACE }
+            val blockEnd = findBlockEnd(body, k)
+            val decls = parseDeclarationTokens(body.subList(k + 1, blockEnd), source)
+            val offsets = ArrayList<Float>()
+            var valid = true
+            for (p in prelude) when {
+                p.type == TokenType.COMMA -> {}
+                p.isIdent("from") -> offsets += 0f
+                p.isIdent("to") -> offsets += 1f
+                p.type == TokenType.PERCENTAGE && p.number in 0.0..100.0 -> offsets += p.number.toFloat() / 100f
+                else -> valid = false
+            }
+            if (!valid || offsets.isEmpty()) warn(source, t, "invalid keyframe selector '${prelude.joinToString("")}'; keyframe ignored")
+            else offsets.forEach { frames += Keyframe(it, decls) }
+            j = blockEnd + 1
+        }
+        out[nameTok.text] = Keyframes(nameTok.text, frames.sortedBy { it.offset })
+        return end + 1
+    }
 
     private fun parseDeclarationTokens(tokens: List<Token>, source: String): List<Declaration> {
         val out = ArrayList<Declaration>()

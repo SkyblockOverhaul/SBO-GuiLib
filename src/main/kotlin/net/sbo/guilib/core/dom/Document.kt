@@ -25,6 +25,14 @@ class Document(
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     val styleEngine = StyleEngine(stylesheets)
+    private val animator = net.sbo.guilib.core.anim.Animator(styleEngine)
+    private val timeOrigin = clock()
+
+    /** Milliseconds since this document was created (small numbers keep float precision for animations). */
+    private fun animationTime(): Float = (clock() - timeOrigin).toFloat()
+
+    /** True while transitions or animations are running (the backend keeps repainting). */
+    val isAnimating get() = animator.isActive
     private val layoutEngine = LayoutEngine(measurer)
     private val reconciler = Reconciler(this)
 
@@ -256,12 +264,18 @@ class Document(
             invalidateLayout()
         }
         styleAndLayout()
-        // Controls position carets etc. from the layout; if that changed something, settle it in the same frame.
-        if (frameHooks.isNotEmpty()) {
-            val now = clock()
-            for (h in frameHooks) h(now)
-            styleAndLayout()
+        // Transitions/animations write their current values, then layout catches up within the same frame.
+        if (animator.isActive) {
+            animator.tick(animationTime()) { el, props ->
+                if (props.any { !ComputedStyle.isPaintOnly(it) }) invalidateLayout() else invalidatePaint()
+                // Inherited values (e.g. color) must reach the children.
+                if (props.any { it.inherited }) el.styleChanged(true)
+            }
         }
+        // Controls position carets etc. from the layout; if that changed something, settle it in the same frame.
+        val now = clock()
+        for (h in frameHooks) h(now)
+        styleAndLayout()
         val repaint = paintDirty
         paintDirty = false
         return repaint
@@ -299,6 +313,7 @@ class Document(
             val old = el.computed
             if (!next.sameAs(old)) {
                 if (next.layoutDiffers(old)) invalidateLayout() else invalidatePaint()
+                animator.onStyleComputed(el, old, next, parentStyle, ctx, animationTime())
                 el.computed = next
                 forceChildren = true
             }
@@ -354,6 +369,7 @@ class Document(
         if (node is Element && focusedElement === node) {
             focusedElement = null
         }
+        if (node is Element) animator.remove(node)
         detachListeners.forEach { it(node) }
     }
 

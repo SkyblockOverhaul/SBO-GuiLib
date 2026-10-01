@@ -1,0 +1,123 @@
+package net.sbo.guilib.core.anim
+
+import net.sbo.guilib.core.css.BackgroundLayer
+import net.sbo.guilib.core.css.CalcNode
+import net.sbo.guilib.core.css.Colors
+import net.sbo.guilib.core.css.Dim
+import net.sbo.guilib.core.css.Length
+import net.sbo.guilib.core.css.LineHeight
+import net.sbo.guilib.core.css.Prop
+import net.sbo.guilib.core.css.TextShadow
+import net.sbo.guilib.core.css.Visibility
+import net.sbo.guilib.core.css.Z_INDEX_AUTO
+import kotlin.math.roundToInt
+
+/** Interpolation of computed values, following CSS "animation types" where it matters for UIs. */
+object Interpolation {
+    private val COLOR_PROPS = setOf(
+        Prop.COLOR, Prop.BACKGROUND_COLOR,
+        Prop.BORDER_TOP_COLOR, Prop.BORDER_RIGHT_COLOR, Prop.BORDER_BOTTOM_COLOR, Prop.BORDER_LEFT_COLOR,
+    )
+
+    /** Properties that are never animated (they configure animations themselves). */
+    val NOT_ANIMATABLE = setOf(
+        Prop.TRANSITION_PROPERTY, Prop.TRANSITION_DURATION, Prop.TRANSITION_TIMING_FUNCTION, Prop.TRANSITION_DELAY,
+        Prop.ANIMATION_NAME, Prop.ANIMATION_DURATION, Prop.ANIMATION_TIMING_FUNCTION, Prop.ANIMATION_DELAY,
+        Prop.ANIMATION_ITERATION_COUNT, Prop.ANIMATION_DIRECTION, Prop.ANIMATION_FILL_MODE, Prop.ANIMATION_PLAY_STATE,
+        Prop.DISPLAY,
+    )
+
+    private fun lerp(a: Float, b: Float, t: Float) = a + (b - a) * t
+
+    /** Color mix like CSS (premultiplied: a fully transparent end takes the other end's RGB). */
+    fun color(a: Int, b: Int, t: Float): Int {
+        var ca = a
+        var cb = b
+        if (Colors.alpha(ca) == 0) ca = cb and 0x00FFFFFF
+        if (Colors.alpha(cb) == 0) cb = ca and 0x00FFFFFF
+        fun ch(shift: Int) = lerp(((ca ushr shift) and 0xFF).toFloat(), ((cb ushr shift) and 0xFF).toFloat(), t).roundToInt().coerceIn(0, 255)
+        return (ch(24) shl 24) or (ch(16) shl 16) or (ch(8) shl 8) or ch(0)
+    }
+
+    private fun calcNode(d: Dim): CalcNode? = when (d) {
+        is Dim.Px -> CalcNode.Px(d.px)
+        is Dim.Pct -> CalcNode.Pct(d.pct)
+        is Dim.Calc -> d.node
+        else -> null
+    }
+
+    private fun dim(a: Dim, b: Dim, t: Float): Dim? = when {
+        a is Dim.Px && b is Dim.Px -> Dim.Px(lerp(a.px, b.px, t))
+        a is Dim.Pct && b is Dim.Pct -> Dim.Pct(lerp(a.pct, b.pct, t))
+        else -> {
+            val na = calcNode(a) ?: return null
+            val nb = calcNode(b) ?: return null
+            Dim.Calc(CalcNode.Op('+', CalcNode.Op('*', na, CalcNode.Num(1f - t)), CalcNode.Op('*', nb, CalcNode.Num(t))))
+        }
+    }
+
+    private fun length(a: Length?, b: Length?, t: Float): Length? {
+        if (a == null || b == null) return if (a == b) a else null
+        if (a.unit != b.unit || a.isCalc || b.isCalc) return null
+        return Length(lerp(a.value, b.value, t), a.unit)
+    }
+
+    private fun backgrounds(a: List<*>, b: List<*>, t: Float): List<BackgroundLayer>? {
+        if (a.size != b.size) return null
+        return a.indices.map { i ->
+            val la = a[i] as BackgroundLayer
+            val lb = b[i] as BackgroundLayer
+            when {
+                la == lb -> la
+                la is BackgroundLayer.Gradient && lb is BackgroundLayer.Gradient &&
+                    la.radial == lb.radial && la.stops.size == lb.stops.size && la.toCorner == lb.toCorner -> la.copy(
+                    angle = lerp(la.angle, lb.angle, t),
+                    stops = la.stops.indices.map { s ->
+                        val sa = la.stops[s]
+                        val sb = lb.stops[s]
+                        BackgroundLayer.Stop(color(sa.color as Int, sb.color as Int, t), length(sa.position, sb.position, t) ?: (if (t < 0.5f) sa.position else sb.position))
+                    },
+                )
+                else -> return null
+            }
+        }
+    }
+
+    /**
+     * Value of [p] at [t] (0..1) between [a] and [b], or `null` if the values can't be interpolated
+     * (callers then switch discretely).
+     */
+    fun interpolate(p: Prop, a: Any?, b: Any?, t: Float): Any? {
+        if (p in NOT_ANIMATABLE) return null
+        if (a == b) return a
+        return when {
+            p in COLOR_PROPS && a is Int && b is Int -> color(a, b, t)
+            p == Prop.Z_INDEX && a is Int && b is Int -> if (a == Z_INDEX_AUTO || b == Z_INDEX_AUTO) null else lerp(a.toFloat(), b.toFloat(), t).roundToInt()
+            a is Int && b is Int -> lerp(a.toFloat(), b.toFloat(), t).roundToInt()
+            a is Float && b is Float -> lerp(a, b, t)
+            a is Dim && b is Dim -> dim(a, b, t)
+            a is LineHeight.Px && b is LineHeight.Px -> LineHeight.Px(lerp(a.px, b.px, t))
+            a is LineHeight.Multiplier && b is LineHeight.Multiplier -> LineHeight.Multiplier(lerp(a.factor, b.factor, t))
+            p == Prop.TEXT_SHADOW && (a is TextShadow || b is TextShadow) -> {
+                val sa = a as TextShadow? ?: (b as TextShadow).copy(color = Colors.TRANSPARENT)
+                val sb = b as TextShadow? ?: sa.copy(color = Colors.TRANSPARENT)
+                TextShadow(lerp(sa.offsetX, sb.offsetX, t), lerp(sa.offsetY, sb.offsetY, t), color(sa.color as Int, sb.color as Int, t))
+            }
+            p == Prop.SCROLLBAR_COLOR && a is Pair<*, *> && b is Pair<*, *> ->
+                Pair(color(a.first as Int, b.first as Int, t), color(a.second as Int, b.second as Int, t))
+            p == Prop.BACKGROUND_IMAGE && a is List<*> && b is List<*> -> backgrounds(a, b, t)
+            // Like CSS: visibility is "visible" during the whole transition if either end is visible.
+            p == Prop.VISIBILITY && a is Visibility && b is Visibility -> when {
+                t <= 0f -> a
+                t >= 1f -> b
+                else -> Visibility.VISIBLE
+            }
+            else -> null
+        }
+    }
+
+    fun canInterpolate(p: Prop, a: Any?, b: Any?): Boolean = a != b && interpolate(p, a, b, 0.5f) != null
+
+    /** Interpolates, or switches at the halfway point for discrete values (keyframe animations). */
+    fun interpolateOrSwitch(p: Prop, a: Any?, b: Any?, t: Float): Any? = interpolate(p, a, b, t) ?: if (t < 0.5f) a else b
+}

@@ -89,7 +89,20 @@ enum class Prop(val css: String, val inherited: Boolean, val initial: Any?) {
     CURSOR("cursor", true, Cursor.AUTO),
     POINTER_EVENTS("pointer-events", true, PointerEvents.AUTO),
     USER_SELECT("user-select", false, UserSelect.AUTO),
-    OBJECT_FIT("object-fit", false, ObjectFit.FILL);
+    OBJECT_FIT("object-fit", false, ObjectFit.FILL),
+
+    TRANSITION_PROPERTY("transition-property", false, listOf("all")),
+    TRANSITION_DURATION("transition-duration", false, listOf(0f)),
+    TRANSITION_TIMING_FUNCTION("transition-timing-function", false, listOf(TimingFunction.EASE)),
+    TRANSITION_DELAY("transition-delay", false, listOf(0f)),
+    ANIMATION_NAME("animation-name", false, emptyList<String>()),
+    ANIMATION_DURATION("animation-duration", false, listOf(0f)),
+    ANIMATION_TIMING_FUNCTION("animation-timing-function", false, listOf(TimingFunction.EASE)),
+    ANIMATION_DELAY("animation-delay", false, listOf(0f)),
+    ANIMATION_ITERATION_COUNT("animation-iteration-count", false, listOf(1f)),
+    ANIMATION_DIRECTION("animation-direction", false, listOf(AnimationDirection.NORMAL)),
+    ANIMATION_FILL_MODE("animation-fill-mode", false, listOf(AnimationFillMode.NONE)),
+    ANIMATION_PLAY_STATE("animation-play-state", false, listOf(AnimationPlayState.RUNNING));
 
     companion object {
         val byName: Map<String, Prop> = entries.associateBy { it.css }
@@ -159,6 +172,14 @@ object Properties {
         enumParser(Prop.POINTER_EVENTS) { single(it)?.let { v -> keyword<PointerEvents>(v) } }
         enumParser(Prop.USER_SELECT) { single(it)?.let { v -> keyword<UserSelect>(v) } }
         enumParser(Prop.OBJECT_FIT) { single(it)?.let { v -> keyword<ObjectFit>(v) } }
+        enumParser(Prop.TRANSITION_PROPERTY) { AnimationParser.propertyList(it) }
+        enumParser(Prop.TRANSITION_DURATION, Prop.TRANSITION_DELAY, Prop.ANIMATION_DURATION, Prop.ANIMATION_DELAY) { AnimationParser.timeList(it) }
+        enumParser(Prop.TRANSITION_TIMING_FUNCTION, Prop.ANIMATION_TIMING_FUNCTION) { AnimationParser.timingList(it) }
+        enumParser(Prop.ANIMATION_NAME) { AnimationParser.nameList(it) }
+        enumParser(Prop.ANIMATION_ITERATION_COUNT) { AnimationParser.iterationList(it) }
+        enumParser(Prop.ANIMATION_DIRECTION) { AnimationParser.enumList<AnimationDirection>(it) }
+        enumParser(Prop.ANIMATION_FILL_MODE) { AnimationParser.enumList<AnimationFillMode>(it) }
+        enumParser(Prop.ANIMATION_PLAY_STATE) { AnimationParser.enumList<AnimationPlayState>(it) }
     }
 
     private val sides = listOf("top", "right", "bottom", "left")
@@ -227,6 +248,8 @@ object Properties {
             listOf(Prop.BACKGROUND_COLOR to (col ?: Colors.TRANSPARENT), Prop.BACKGROUND_IMAGE to (if (layers.isEmpty()) NoImage else layers))
         }
         put("place-items") { v -> words(v).singleOrNull()?.let(::alignItems)?.let { listOf(Prop.ALIGN_ITEMS to it) } }
+        put("transition") { v -> AnimationParser.transitionShorthand(v) }
+        put("animation") { v -> AnimationParser.animationShorthand(v) }
     }
 
     /** Longhands a shorthand expands to, used for CSS-wide keywords like `margin: inherit`. */
@@ -239,6 +262,9 @@ object Properties {
         put("overflow", listOf(Prop.OVERFLOW_X, Prop.OVERFLOW_Y)); put("gap", listOf(Prop.ROW_GAP, Prop.COLUMN_GAP))
         put("flex", listOf(Prop.FLEX_GROW, Prop.FLEX_SHRINK, Prop.FLEX_BASIS)); put("flex-flow", listOf(Prop.FLEX_DIRECTION, Prop.FLEX_WRAP))
         put("background", listOf(Prop.BACKGROUND_COLOR, Prop.BACKGROUND_IMAGE)); put("place-items", listOf(Prop.ALIGN_ITEMS))
+        put("transition", listOf(Prop.TRANSITION_PROPERTY, Prop.TRANSITION_DURATION, Prop.TRANSITION_TIMING_FUNCTION, Prop.TRANSITION_DELAY))
+        put("animation", listOf(Prop.ANIMATION_NAME, Prop.ANIMATION_DURATION, Prop.ANIMATION_TIMING_FUNCTION, Prop.ANIMATION_DELAY,
+            Prop.ANIMATION_ITERATION_COUNT, Prop.ANIMATION_DIRECTION, Prop.ANIMATION_FILL_MODE, Prop.ANIMATION_PLAY_STATE))
     }
 
     val knownNames: Set<String> = Prop.byName.keys + shorthands.keys
@@ -252,6 +278,9 @@ object Properties {
      * Parses [value] for property [name] into longhand values. Returns `null` if the value is invalid.
      * CSS-wide keywords yield [CssWide] values.
      */
+    /** The longhand properties behind a property or shorthand name (e.g. `padding` → 4 sides). */
+    fun longhandsOf(name: String): List<Prop> = Prop.byName[name]?.let { listOf(it) } ?: shorthandLonghands[name] ?: emptyList()
+
     fun parse(name: String, value: Values): List<Pair<Prop, Any>>? {
         val words = words(value)
         if (words.size == 1) {

@@ -11,6 +11,7 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
     private class IndexedRule(val rule: StyleRule, val selector: Selector, val origin: Origin, val order: Int)
 
     private val byId = HashMap<String, MutableList<IndexedRule>>()
+    private val keyframesByName = HashMap<String, Keyframes>()
     private val byClass = HashMap<String, MutableList<IndexedRule>>()
     private val byTag = HashMap<String, MutableList<IndexedRule>>()
     private val universal = ArrayList<IndexedRule>()
@@ -37,7 +38,12 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
         stylesheets = sheets
     }
 
+    /** The `@keyframes` rule called [name] (later stylesheets win), or `null`. */
+    fun keyframes(name: String): Keyframes? = keyframesByName[name]
+
     private fun rebuildIndex() {
+        keyframesByName.clear()
+        for (sheet in stylesheets) keyframesByName.putAll(sheet.keyframes)
         byId.clear(); byClass.clear(); byTag.clear(); universal.clear()
         dependsOnAncestorState = false
         usesStructural = false
