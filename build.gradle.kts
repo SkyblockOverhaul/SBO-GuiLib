@@ -63,7 +63,7 @@ tasks.withType<JavaCompile> {
 tasks.withType<KotlinJvmCompile>().configureEach {
     compilerOptions {
         jvmTarget.set(JvmTarget.fromTarget(versionedProperty("java.version")))
-        freeCompilerArgs.addAll("-Xbackend-threads=0")
+        // No -Xbackend-threads: parallel codegen races in the compiler (ArrayIndexOutOfBounds in JvmSerializationBindings).
         moduleName.set("guilib-$mcVersion")
     }
 }
