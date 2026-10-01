@@ -79,7 +79,7 @@ enum class BorderStyle { NONE, HIDDEN, SOLID, DASHED, DOTTED }
 enum class PointerEvents { AUTO, NONE }
 enum class FontStyle { NORMAL, ITALIC }
 enum class ObjectFit { FILL, CONTAIN, COVER, NONE, SCALE_DOWN }
-enum class Cursor { AUTO, DEFAULT, POINTER, TEXT, NOT_ALLOWED, CROSSHAIR, MOVE, NS_RESIZE, EW_RESIZE, GRAB }
+enum class Cursor { AUTO, DEFAULT, POINTER, TEXT, NOT_ALLOWED, CROSSHAIR, MOVE, NS_RESIZE, EW_RESIZE, ROW_RESIZE, COL_RESIZE, GRAB, GRABBING }
 enum class UserSelect { AUTO, NONE, TEXT }
 
 data class TextDecoration(val underline: Boolean = false, val lineThrough: Boolean = false) {

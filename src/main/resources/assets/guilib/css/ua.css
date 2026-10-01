@@ -348,6 +348,8 @@ select:disabled { opacity: 0.5; cursor: not-allowed; }
 .guilib-sortable.sorting .guilib-sortable-item.dragging { transition: none; position: relative; z-index: 10; }
 .guilib-sortable.handle .guilib-sortable-item { cursor: default; }
 .guilib-drag-handle { cursor: grab; }
+.guilib-sortable-item:active, .guilib-drag-handle:active { cursor: grabbing; }
+.guilib-sortable.sorting .guilib-sortable-item.dragging, .guilib-sortable.sorting .dragging .guilib-drag-handle { cursor: grabbing; }
 
 /* ---- radio group ---- */
 .guilib-radio-group { display: flex; flex-wrap: wrap; gap: 4px 10px; }

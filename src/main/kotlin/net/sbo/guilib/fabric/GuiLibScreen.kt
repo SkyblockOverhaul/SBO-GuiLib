@@ -1,6 +1,5 @@
 package net.sbo.guilib.fabric
 
-import com.mojang.blaze3d.platform.cursor.CursorTypes
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.CharacterEvent
@@ -8,9 +7,9 @@ import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import net.sbo.guilib.core.UiRoot
-import net.sbo.guilib.core.css.Cursor
 import net.sbo.guilib.core.dom.VNode
 import net.sbo.guilib.fabric.font.FontManager
+import net.sbo.guilib.fabric.input.Cursors
 import net.sbo.guilib.fabric.input.Keys
 import net.sbo.guilib.fabric.render.CommandRenderer
 import net.sbo.guilib.fabric.resources.Stylesheets
@@ -58,16 +57,7 @@ open class GuiLibScreen(
     override fun extractRenderState(ctx: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         val commands = root.frame(width.toFloat(), height.toFloat())
         CommandRenderer.draw(ctx, commands, mouseX, mouseY)
-        when (root.input.cursor) {
-            Cursor.POINTER -> ctx.requestCursor(CursorTypes.POINTING_HAND)
-            Cursor.TEXT -> ctx.requestCursor(CursorTypes.IBEAM)
-            Cursor.NOT_ALLOWED -> ctx.requestCursor(CursorTypes.NOT_ALLOWED)
-            Cursor.CROSSHAIR -> ctx.requestCursor(CursorTypes.CROSSHAIR)
-            Cursor.MOVE, Cursor.GRAB -> ctx.requestCursor(CursorTypes.RESIZE_ALL)
-            Cursor.NS_RESIZE -> ctx.requestCursor(CursorTypes.RESIZE_NS)
-            Cursor.EW_RESIZE -> ctx.requestCursor(CursorTypes.RESIZE_EW)
-            Cursor.AUTO, Cursor.DEFAULT -> {}
-        }
+        Cursors.of(root.input.cursor)?.let(ctx::requestCursor)
     }
 
     override fun mouseMoved(x: Double, y: Double) {

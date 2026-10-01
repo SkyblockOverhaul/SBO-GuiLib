@@ -181,7 +181,8 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
 - Visual: `background background-color background-image opacity visibility object-fit`. `background-image` takes a comma list of layers
   (first = top): `url("modid:path.png")` (stretched to the box), `linear-gradient(…)` (angles, `to right`, `to top left`, stops with
   positions, hard stops) and `radial-gradient(…)` (`circle`/`ellipse`, size keywords, `at <position>`). Gradients respect `border-radius`.
-- Interaction: `cursor` (`auto default pointer text not-allowed crosshair move ns-resize ew-resize grab`), `pointer-events`, `user-select` (parsed only)
+- Interaction: `cursor` (`auto default pointer text not-allowed crosshair move ns-resize ew-resize row-resize col-resize grab grabbing`;
+  while the left button is held on an element with `grab`/`grabbing`/`move`/a resize cursor, that cursor stays even when the mouse leaves it), `pointer-events`, `user-select` (parsed only)
 - Scrollbars: `scrollbar-width` (`auto thin none`), `scrollbar-color: <thumb> <track>`
 
 `font-family`: `inter` (default, bundled), `minecraft` (vanilla font; alias `monospace`), or fonts registered with

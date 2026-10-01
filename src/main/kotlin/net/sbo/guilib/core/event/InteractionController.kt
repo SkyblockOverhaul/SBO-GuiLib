@@ -40,9 +40,13 @@ class InteractionController(private val doc: Document, private val hitTest: (Flo
     /** The element under the mouse, if any. */
     val hovered: Element? get() = hoverChain.lastOrNull()
 
-    /** Cursor requested by the hovered element's `cursor` property. */
+    /**
+     * Cursor requested by the hovered element's `cursor` property. While the left button is held on an element with a
+     * drag cursor (`grab`, `grabbing`, `move`, resize cursors) that cursor stays, even when the mouse leaves it.
+     */
     val cursor: Cursor
         get() {
+            pressTarget?.takeIf { pressButton == 0 }?.style?.cursor?.let { if (it in DRAG_CURSORS) return it }
             val el = hovered ?: return Cursor.DEFAULT
             if (disabledAncestor(el) != null && el.style.cursor == Cursor.POINTER) return Cursor.NOT_ALLOWED
             return el.style.cursor
@@ -313,5 +317,11 @@ class InteractionController(private val doc: Document, private val hitTest: (Flo
         val idx = all.indexOfFirst { it === doc.focusedElement }
         val next = if (idx < 0) (if (dir > 0) 0 else all.size - 1) else Math.floorMod(idx + dir, all.size)
         doc.focus(all[next])
+    }
+
+    private companion object {
+        val DRAG_CURSORS = setOf(
+            Cursor.GRAB, Cursor.GRABBING, Cursor.MOVE, Cursor.NS_RESIZE, Cursor.EW_RESIZE, Cursor.ROW_RESIZE, Cursor.COL_RESIZE,
+        )
     }
 }
