@@ -86,7 +86,7 @@ TAGS = {
     "button": ("Button (`display: inline-flex`, centered content). Disabled buttons receive no mouse events.", BUTTON, True),
     "br": ("Line break inside text.", [], False),
     "hr": ("Horizontal rule.", [], False),
-    "img": ("Image: `src` is a resource location (`\"modid:textures/x.png\"`, `.svg` supported) or `file:`/`http(s):` URL.", IMG, False),
+    "img": ("Image: `src` is a resource location (`\"modid:textures/x.png\"`); PNG, SVG and (animated) GIF are supported.", IMG, False),
     "item": ("Minecraft item icon (16×16 by default). `stack` is a `net.minecraft.world.item.ItemStack`. (Not an HTML tag.)", ITEM, False),
     "entity": ("Minecraft entity model (48×72 by default), scaled to fit the box. `entity` is a `net.minecraft.world.entity.LivingEntity`, e.g. `FakePlayer.of(\"Notch\")`. `followMouse` turns it towards the cursor; otherwise it looks at its center offset by `lookX`/`lookY` px. `scale` multiplies the fitted size. (Not an HTML tag.)", ENTITY, False),
     "input": ("Form input. `type`: `text`, `password`, `number`, `checkbox`. Controlled like React: pass `value`/`checked` and update them in `onInput`/`onChange`.", INPUT, False),

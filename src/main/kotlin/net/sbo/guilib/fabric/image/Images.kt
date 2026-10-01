@@ -19,6 +19,7 @@ import kotlin.math.ceil
  * Resolves `<img src>` / `background-image: url()` sources to textures.
  * - `modid:path/file.png` → the resource's texture (loaded by Minecraft's TextureManager)
  * - `modid:path/file.svg` → rasterized with JSVG at the exact on-screen pixel size (cached per size)
+ * - `modid:path/file.gif` → decoded into composited frames (one texture each); animated GIFs play on their own clock
  */
 object Images {
     class Entry(
@@ -27,7 +28,36 @@ object Images {
         override val height: Float,
         val svg: SVGDocument?,
         val pngId: Identifier?,
+        val gif: AnimatedGif? = null,
     ) : ReplacedContent
+
+    /**
+     * A decoded GIF. Frames are uploaded on first draw; all `<img>`s showing the same GIF play in sync from the moment
+     * it was first loaded (like browsers do for one image resource).
+     */
+    class AnimatedGif internal constructor(private var decoded: GifDecoder.Gif?) {
+        private val timing = decoded!!.timing
+        private val start = System.nanoTime()
+        internal var textures: List<Texture>? = null
+
+        fun frame(): Texture? {
+            val tex = textures ?: upload() ?: return null
+            return tex[timing.frameAt((System.nanoTime() - start) / 1_000_000)]
+        }
+
+        private fun upload(): List<Texture>? {
+            val d = decoded ?: return null
+            decoded = null // the pixels live in the textures from now on
+            val serial = gifCounter++
+            return d.frames.mapIndexed { i, f ->
+                val native = NativeImage(d.width, d.height, false)
+                for (y in 0 until d.height) for (x in 0 until d.width) native.setPixel(x, y, f.argb[y * d.width + x])
+                val id = Identifier.fromNamespaceAndPath("guilib", "dynamic/gif_${serial}_$i")
+                Minecraft.getInstance().textureManager.register(id, DynamicTexture({ "GuiLib GIF $id" }, native))
+                Texture(id, d.width, d.height)
+            }.also { textures = it }
+        }
+    }
 
     /** A drawable texture region: the texture and its size in texels. */
     class Texture(val id: Identifier, val width: Int, val height: Int)
@@ -35,13 +65,14 @@ object Images {
     private val entries = HashMap<String, Entry?>()
     private val svgTextures = LinkedHashMap<String, Texture>()
     private var svgCounter = 0
+    private var gifCounter = 0
 
     /** Metadata of [src] (natural size), or `null` if it can't be loaded. Cached. */
     fun entry(src: String): Entry? = entries.getOrPut(src) { load(src) }
 
     private fun load(src: String): Entry? {
         val id = Identifier.tryParse(src) ?: run {
-            Log.warnOnce("GuiLib: invalid image src '$src' (expected 'modid:path/file.png' or '.svg')")
+            Log.warnOnce("GuiLib: invalid image src '$src' (expected 'modid:path/file.png', '.svg' or '.gif')")
             return null
         }
         val resource = Minecraft.getInstance().resourceManager.getResource(id)
@@ -55,6 +86,11 @@ object Images {
                     ?: throw IllegalArgumentException("not a valid SVG")
                 val size = doc.size()
                 Entry(src, size.width, size.height, doc, null)
+            } else if (id.path.endsWith(".gif", ignoreCase = true)) {
+                val gif = resource.get().open().use { input ->
+                    GifDecoder.decode(input) { kept -> Log.warnOnce("GuiLib: GIF '$src' is too large, only its first $kept frames are shown") }
+                }
+                Entry(src, gif.width.toFloat(), gif.height.toFloat(), null, null, AnimatedGif(gif))
             } else {
                 // Read the PNG header for the natural size; the texture itself is loaded lazily by the TextureManager.
                 val (w, h) = resource.get().open().use { pngSize(DataInputStream(it)) }
@@ -69,7 +105,7 @@ object Images {
     private fun pngSize(input: DataInputStream): Pair<Int, Int> {
         val sig = ByteArray(8)
         input.readFully(sig)
-        require(sig[1] == 'P'.code.toByte() && sig[2] == 'N'.code.toByte() && sig[3] == 'G'.code.toByte()) { "only PNG and SVG images are supported" }
+        require(sig[1] == 'P'.code.toByte() && sig[2] == 'N'.code.toByte() && sig[3] == 'G'.code.toByte()) { "only PNG, SVG and GIF images are supported" }
         input.readInt() // IHDR length
         input.readInt() // "IHDR"
         return input.readInt() to input.readInt()
@@ -78,6 +114,7 @@ object Images {
     /** Texture to draw [entry] at [pixelWidth]×[pixelHeight] physical pixels. */
     fun texture(entry: Entry, pixelWidth: Int, pixelHeight: Int): Texture? {
         entry.pngId?.let { return Texture(it, entry.width.toInt(), entry.height.toInt()) }
+        entry.gif?.let { return it.frame() }
         val svg = entry.svg ?: return null
         val w = pixelWidth.coerceIn(1, 4096)
         val h = pixelHeight.coerceIn(1, 4096)
@@ -117,6 +154,7 @@ object Images {
 
     /** Drops cached metadata (e.g. after a resource reload). */
     fun clear() {
+        entries.values.forEach { e -> e?.gif?.textures?.forEach { Minecraft.getInstance().textureManager.release(it.id) } }
         entries.clear()
         svgTextures.values.forEach { Minecraft.getInstance().textureManager.release(it.id) }
         svgTextures.clear()

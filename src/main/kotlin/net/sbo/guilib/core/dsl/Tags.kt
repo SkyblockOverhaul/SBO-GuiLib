@@ -1399,7 +1399,7 @@ fun NodeBuilder.hr(
     element("hr", key, id, className, style, ref, attrs, handlers, null)
 }
 
-/** Image: `src` is a resource location (`"modid:textures/x.png"`, `.svg` supported) or `file:`/`http(s):` URL. */
+/** Image: `src` is a resource location (`"modid:textures/x.png"`); PNG, SVG and (animated) GIF are supported. */
 fun NodeBuilder.img(
     src: String,
     className: String? = null,

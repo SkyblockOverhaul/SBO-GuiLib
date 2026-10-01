@@ -326,13 +326,15 @@ object Showcase {
 
     private val ImagesDemo = component("ImagesDemo") {
         h2 { +"Images" }
-        p { +"img(src) takes a resource location. PNGs use Minecraft's texture manager, SVGs are rasterized per size." }
+        p { +"img(src) takes a resource location. PNGs use Minecraft's texture manager, SVGs are rasterized per size, GIFs animate." }
         div(className = "row") {
             img("guilib:showcase/logo.svg", className = "svg-small")
             img("guilib:showcase/logo.svg", className = "svg-big")
             img("minecraft:textures/item/diamond.png", style = "width: 32px; height: 32px")
             img("minecraft:textures/block/oak_planks.png", style = "width: 48px; height: 24px; object-fit: cover")
             img("minecraft:textures/block/oak_planks.png", style = "width: 48px; height: 24px; object-fit: contain; background-color: #0006")
+            img("guilib:showcase/spinner.gif")
+            img("guilib:showcase/spinner.gif", style = "width: 16px; height: 16px")
         }
         p(className = "muted") { +"background-image: url(...)" }
         div(className = "bg-demo") { +"Text over a background image" }

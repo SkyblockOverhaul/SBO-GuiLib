@@ -46,7 +46,7 @@ UIs can be written quickly and correctly. Differences from the web are documente
 - **Rendering:** own anti-aliased SDF shader for `border-radius` and borders, exact `linear-gradient`/`radial-gradient`
   backgrounds (multiple layers), **TTF text** (Inter bundled; FreeType,
   pixel-exact at every GUI scale) with wrapping, ellipsis and Minecraft `§` codes, the vanilla font via
-  `font-family: minecraft`, PNG and **SVG** images, item icons, opacity.
+  `font-family: minecraft`, PNG, **SVG** and animated **GIF** images, item icons, opacity.
 - **Events like the DOM:** click/dblclick/contextmenu, mouse enter/leave/move, wheel, keys, focus/blur, bubbling,
   `stopPropagation()`, `preventDefault()`, Tab navigation, `document`-level listeners.
 - **Controls:** text/password/number inputs (caret, selection, clipboard), checkbox, switch, slider, range slider, number field, radio/segmented buttons, chips, tabs, multi-line textarea,
