@@ -55,6 +55,28 @@ sealed interface SimpleSelector {
         }
     }
 
+    /**
+     * `:nth-child(An+B)` and friends: matches if the element's 1-based position among its siblings (counted from the
+     * end for [fromEnd], only siblings with the same tag for [ofType]) is `a·n + b` for some n ≥ 0.
+     */
+    data class NthChild(val a: Int, val b: Int, val fromEnd: Boolean, val ofType: Boolean) : SimpleSelector {
+        override fun matches(el: Selectable): Boolean {
+            var index = 1
+            var s = if (fromEnd) el.styleNextSibling else el.stylePreviousSibling
+            while (s != null) {
+                if (!ofType || s.styleTag.equals(el.styleTag, ignoreCase = true)) index++
+                s = if (fromEnd) s.styleNextSibling else s.stylePreviousSibling
+            }
+            if (a == 0) return index == b
+            val n = index - b
+            return n % a == 0 && n / a >= 0
+        }
+
+        val name get() = (if (fromEnd) "nth-last-" else "nth-") + (if (ofType) "of-type" else "child")
+
+        override fun toString() = ":$name(${a}n${if (b >= 0) "+" else ""}$b)"
+    }
+
     /** `[name]`, `[name=value]`, `[name^=value]`, `[name$=value]`, `[name*=value]`. */
     data class Attribute(val name: String, val op: String?, val value: String?) : SimpleSelector {
         override fun matches(el: Selectable): Boolean {
@@ -89,6 +111,7 @@ data class Compound(val parts: List<SimpleSelector>) {
             is SimpleSelector.Class -> ".${it.name}"
             is SimpleSelector.State -> ":${it.state.css}"
             is SimpleSelector.Structural -> ":${it.kind}"
+            is SimpleSelector.NthChild -> it.toString()
             is SimpleSelector.Not -> ":not(${it.inner.joinToString(", ")})"
             is SimpleSelector.Attribute -> "[${it.name}${it.op ?: ""}${it.value?.let { v -> "\"$v\"" } ?: ""}]"
         }
@@ -97,7 +120,8 @@ data class Compound(val parts: List<SimpleSelector>) {
     private companion object {
         fun specificityOf(s: SimpleSelector): Int = when (s) {
             is SimpleSelector.Id -> Selector.ID_WEIGHT
-            is SimpleSelector.Class, is SimpleSelector.State, is SimpleSelector.Structural, is SimpleSelector.Attribute -> Selector.CLASS_WEIGHT
+            is SimpleSelector.Class, is SimpleSelector.State, is SimpleSelector.Structural, is SimpleSelector.NthChild,
+            is SimpleSelector.Attribute -> Selector.CLASS_WEIGHT
             is SimpleSelector.Type -> 1
             SimpleSelector.Universal -> 0
             is SimpleSelector.Not -> s.inner.maxOf { it.specificity }
@@ -173,6 +197,32 @@ object SelectorParser {
     private class Fail(message: String, val at: Token?) : Exception(message)
 
     private val STATES = PseudoState.entries.associateBy { it.css }
+    private val NTH = setOf("nth-child", "nth-last-child", "nth-of-type", "nth-last-of-type")
+
+    private val AN_PLUS_B = Regex("""^([+-]?\d*)n([+-]\d+)?$""")
+
+    /** `An+B`, `odd`, `even` or a plain integer, from the tokens between the parentheses. */
+    private fun parseAnPlusB(tokens: List<Token>): Pair<Int, Int>? {
+        val text = tokens.filter { it.type != TokenType.WHITESPACE }.map {
+            when (it.type) {
+                TokenType.IDENT, TokenType.NUMBER, TokenType.DELIM -> it.text
+                TokenType.DIMENSION -> it.text + it.unit
+                else -> return null
+            }
+        }.joinToString("").lowercase()
+        if (text == "odd") return 2 to 1
+        if (text == "even") return 2 to 0
+        text.toIntOrNull()?.let { return 0 to it }
+        val m = AN_PLUS_B.matchEntire(text) ?: return null
+        val a = when (val s = m.groupValues[1]) {
+            "", "+" -> 1
+            "-" -> -1
+            else -> s.toInt()
+        }
+        val b = m.groupValues[2].takeIf { it.isNotEmpty() }?.toInt() ?: 0
+        return a to b
+    }
+
     private val STRUCTURAL = setOf("first-child", "last-child", "only-child", "root", "enabled")
 
     fun parse(tokens: List<Token>): Result = try {
@@ -273,6 +323,14 @@ object SelectorParser {
                             parts += STATES[name]?.let { SimpleSelector.State(it) }
                                 ?: if (name in STRUCTURAL) SimpleSelector.Structural(name) else throw Fail("unsupported pseudo-class ':$name'", n)
                             i += 2
+                        }
+                        n.type == TokenType.FUNCTION && n.text.lowercase() in NTH -> {
+                            val close = (i + 2 until tokens.size).firstOrNull { tokens[it].type == TokenType.RPAREN }
+                                ?: throw Fail("unclosed ':${n.text}('", n)
+                            val (a, b) = parseAnPlusB(tokens.subList(i + 2, close)) ?: throw Fail("invalid argument for ':${n.text}()'", n)
+                            val name = n.text.lowercase()
+                            parts += SimpleSelector.NthChild(a, b, fromEnd = "-last-" in name, ofType = name.endsWith("of-type"))
+                            i = close + 1
                         }
                         n.type == TokenType.FUNCTION && n.text.equals("not", ignoreCase = true) -> {
                             var depth = 1

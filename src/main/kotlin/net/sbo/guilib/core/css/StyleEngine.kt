@@ -81,6 +81,7 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
 
     private fun involvesStructure(s: SimpleSelector): Boolean = when (s) {
         is SimpleSelector.Structural -> s.kind != "enabled" && s.kind != "root"
+        is SimpleSelector.NthChild -> true
         is SimpleSelector.Not -> s.inner.any { c -> c.parts.any(::involvesStructure) }
         else -> false
     }

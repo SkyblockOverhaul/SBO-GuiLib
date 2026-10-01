@@ -85,9 +85,30 @@ class SelectorTest {
     }
 
     @Test
+    fun matchesNthChild() {
+        val list = FakeElement("ul")
+        // li, li, p, li, li, li  (positions 1..6)
+        val kids = listOf("li", "li", "p", "li", "li", "li").map { list.add(FakeElement(it)) }
+        fun matching(selector: String) = kids.indices.filter { sel(selector).matches(kids[it]) }.map { it + 1 }
+        assertEquals(listOf(1, 3, 5), matching(":nth-child(odd)"))
+        assertEquals(listOf(2, 4, 6), matching(":nth-child(even)"))
+        assertEquals(listOf(2, 4, 6), matching(":nth-child(2n)"))
+        assertEquals(listOf(3), matching(":nth-child(3)"))
+        assertEquals(listOf(1, 2, 3), matching(":nth-child(-n+3)"))
+        assertEquals(listOf(3, 4, 5, 6), matching(":nth-child(n + 3)"))
+        assertEquals(listOf(2, 5), matching(":nth-child(3n-1)"))
+        assertEquals(listOf(5, 6), matching(":nth-last-child(-n+2)"))
+        assertEquals(listOf(1, 4, 6), matching("li:nth-of-type(odd)")) // li #1, #3, #5
+        assertEquals(listOf(6), matching("li:nth-last-of-type(1)"))
+        assertEquals(1_000, sel(":nth-child(2n+1)").specificity)
+        assertEquals("li:nth-child(2n+1)", sel("li:nth-child(odd)").toString())
+    }
+
+    @Test
     fun rejectsUnsupportedSyntax() {
         assertThrows(IllegalArgumentException::class.java) { Selector.parse("a::after") }
-        assertThrows(IllegalArgumentException::class.java) { Selector.parse("a:nth-child(2)") }
+        assertThrows(IllegalArgumentException::class.java) { Selector.parse("a:nth-child(foo)") }
+        assertThrows(IllegalArgumentException::class.java) { Selector.parse("a:nth-child(2n+1 of .x)") }
         assertThrows(IllegalArgumentException::class.java) { Selector.parse("> a") }
         assertThrows(IllegalArgumentException::class.java) { Selector.parse("a >") }
         assertThrows(IllegalArgumentException::class.java) { Selector.parse(".a.") }
