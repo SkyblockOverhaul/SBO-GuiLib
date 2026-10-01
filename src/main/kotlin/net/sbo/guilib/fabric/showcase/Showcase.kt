@@ -6,6 +6,7 @@ import net.sbo.guilib.core.dom.component
 import net.sbo.guilib.core.dsl.button
 import net.sbo.guilib.core.dsl.classNames
 import net.sbo.guilib.core.dsl.div
+import net.sbo.guilib.core.dsl.entity
 import net.sbo.guilib.core.dsl.h2
 import net.sbo.guilib.core.dsl.h3
 import net.sbo.guilib.core.css.Colors
@@ -24,10 +25,11 @@ import net.sbo.guilib.core.dsl.p
 import net.sbo.guilib.core.dsl.scroll
 import net.sbo.guilib.core.dsl.span
 import net.sbo.guilib.fabric.GuiLib
+import net.sbo.guilib.fabric.entity.FakePlayer
 
 /** Demo UI showing every feature; open with `/guilib showcase`. */
 object Showcase {
-    val SECTIONS = listOf("Buttons", "Forms", "Colors", "Boxes", "Animation", "Layout", "Grid", "Text", "Scroll", "Images", "Items", "State")
+    val SECTIONS = listOf("Buttons", "Forms", "Colors", "Boxes", "Animation", "Layout", "Grid", "Text", "Scroll", "Images", "Items", "Entities", "State")
 
     private val App = component<String>("Showcase") { initialSection ->
         var section by useState(initialSection)
@@ -55,6 +57,7 @@ object Showcase {
                         "Text" -> TextDemo()
                         "Scroll" -> ScrollDemo()
                         "Items" -> ItemsDemo()
+                        "Entities" -> EntitiesDemo()
                         "State" -> StateDemo()
                     }
                 }
@@ -282,6 +285,22 @@ object Showcase {
                 div(className = "item-slot", title = stack.hoverName.string) { item(stack) }
             }
             div(className = "item-slot big") { item(ItemStack(Items.ENDER_EYE), style = "width: 32px; height: 32px") }
+        }
+    }
+
+    private val EntitiesDemo = component("EntitiesDemo") {
+        // Created once per mount; fake players need a loaded world.
+        val players = useMemo { listOfNotNull(FakePlayer.ofLocalPlayer(), FakePlayer.of("Notch")) }
+        h2 { +"Entities" }
+        if (players.isEmpty()) {
+            p(className = "muted") { +"Join a world to see player models." }
+            return@component
+        }
+        p(className = "muted") { +"entity(FakePlayer.ofLocalPlayer(), followMouse = true), FakePlayer.of(\"Notch\")" }
+        div(className = "row") {
+            entity(players[0], className = "entity-box", followMouse = true, title = "Follows the mouse")
+            players.getOrNull(1)?.let { entity(it, className = "entity-box", lookX = 30f, title = "Notch") }
+            entity(players[0], className = "entity-box small", title = "Fits any box size")
         }
     }
 

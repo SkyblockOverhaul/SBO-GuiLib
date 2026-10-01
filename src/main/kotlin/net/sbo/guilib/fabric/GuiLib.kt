@@ -81,11 +81,17 @@ object GuiLib {
         override val height = 16f
     }
 
-    /** Wires backend services into a new UI (replaced content for `<item>`/`<img>`, default actions of controls). */
+    private object EntityContent : ReplacedContent {
+        override val width = 48f
+        override val height = 72f
+    }
+
+    /** Wires backend services into a new UI (replaced content for `<item>`/`<entity>`/`<img>`, default actions of controls). */
     internal fun initDocument(root: UiRoot) {
         root.document.elementInitializer = { el ->
             when (el.tagName) {
                 "item" -> if (el.replaced == null) el.replaced = ItemContent
+                "entity" -> if (el.replaced == null) el.replaced = EntityContent
                 "img" -> {
                     val src = el.getAttribute("src") as? String
                     val entry = src?.let { Images.entry(it) }

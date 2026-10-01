@@ -46,6 +46,13 @@ SELECT = [
 OPTION = [("value", "String", None, "value"), ("disabled", "Boolean", "false", "disabled")]
 IMG = [("src", "String", None, "src"), ("alt", "String?", "null", "alt")]
 ITEM = [("stack", "Any", None, "stack"), ("decorations", "Boolean", "true", "decorations")]
+ENTITY = [
+    ("entity", "Any", None, "entity"),
+    ("followMouse", "Boolean", "false", "followmouse"),
+    ("lookX", "Float", "0f", "lookx"),
+    ("lookY", "Float", "0f", "looky"),
+    ("scale", "Float", "1f", "scale"),
+]
 
 # tag -> (doc, extra props, has children)
 TAGS = {
@@ -81,6 +88,7 @@ TAGS = {
     "hr": ("Horizontal rule.", [], False),
     "img": ("Image: `src` is a resource location (`\"modid:textures/x.png\"`, `.svg` supported) or `file:`/`http(s):` URL.", IMG, False),
     "item": ("Minecraft item icon (16×16 by default). `stack` is a `net.minecraft.world.item.ItemStack`. (Not an HTML tag.)", ITEM, False),
+    "entity": ("Minecraft entity model (48×72 by default), scaled to fit the box. `entity` is a `net.minecraft.world.entity.LivingEntity`, e.g. `FakePlayer.of(\"Notch\")`. `followMouse` turns it towards the cursor; otherwise it looks at its center offset by `lookX`/`lookY` px. `scale` multiplies the fitted size. (Not an HTML tag.)", ENTITY, False),
     "input": ("Form input. `type`: `text`, `password`, `number`, `checkbox`. Controlled like React: pass `value`/`checked` and update them in `onInput`/`onChange`.", INPUT, False),
 }
 
@@ -166,7 +174,7 @@ def main():
     parts = [HEADER]
     for tag, (doc, extra, children) in TAGS.items():
         parts.append(gen_tag(tag, doc, extra, children))
-    OUT.write_text("\n\n".join(parts) + "\n", encoding="utf-8")
+    OUT.write_text("\n\n".join(parts) + "\n", encoding="utf-8", newline="\n")
     print(f"wrote {OUT}")
 
 

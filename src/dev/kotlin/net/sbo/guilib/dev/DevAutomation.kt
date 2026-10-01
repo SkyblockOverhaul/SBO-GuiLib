@@ -6,6 +6,11 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.Minecraft
 import net.minecraft.client.Screenshot
 import net.minecraft.client.gui.screens.TitleScreen
+import net.minecraft.world.level.GameType
+import net.minecraft.world.level.LevelSettings
+import net.minecraft.world.level.WorldDataConfiguration
+import net.minecraft.world.level.levelgen.WorldOptions
+import net.minecraft.world.level.levelgen.presets.WorldPresets
 import net.sbo.guilib.core.Log
 import net.sbo.guilib.fabric.GuiLib
 import net.sbo.guilib.fabric.GuiLibScreen
@@ -18,6 +23,9 @@ import net.sbo.guilib.fabric.showcase.Showcase
  * Visual checks without manual clicking: start the client with `-Pguilib.dev.shots=Buttons,Layout` (or `all`).
  * Once the title screen is up, each showcase section is opened, optionally hovered/clicked/typed into, captured to
  * `run/screenshots/guilib-*.png`, and the game quits afterwards.
+ *
+ * With `-Pguilib.dev.world=<name>` a creative singleplayer world (created on first use, kept in `run/saves`) is loaded
+ * first, for things that need one (items, `entity`/`FakePlayer`).
  */
 object DevAutomation : ClientModInitializer {
     private class Step(val ticks: Int, val action: () -> Unit)
@@ -25,6 +33,8 @@ object DevAutomation : ClientModInitializer {
     private val steps = ArrayDeque<Step>()
     private var wait = 0
     private var started = false
+    private val world: String? = System.getProperty("guilib.dev.world")
+    private var worldRequested = false
 
     override fun onInitializeClient() {
         val spec = System.getProperty("guilib.dev.shots") ?: return
@@ -48,7 +58,19 @@ object DevAutomation : ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register {
             if (!started) {
+                if (world != null && worldRequested) {
+                    val mc = Minecraft.getInstance()
+                    if (mc.level == null || mc.player == null || GuiLib.currentScreen() != null) return@register
+                    started = true
+                    wait = 60 // let chunks and skins load
+                    return@register
+                }
                 if (GuiLib.currentScreen() !is TitleScreen) return@register
+                if (world != null) {
+                    worldRequested = true
+                    openWorld(world)
+                    return@register
+                }
                 started = true
                 wait = 40
                 return@register
@@ -61,6 +83,18 @@ object DevAutomation : ClientModInitializer {
                 Log.error("GuiLib dev automation step failed: ${e.stackTraceToString().lineSequence().take(12).joinToString("\n")}")
             }
             wait = steps.firstOrNull()?.ticks ?: 0
+        }
+    }
+
+    private fun openWorld(name: String) {
+        val mc = Minecraft.getInstance()
+        Log.info("GuiLib dev automation: loading world '$name'")
+        val flows = mc.createWorldOpenFlows()
+        if (mc.levelSource.levelExists(name)) {
+            flows.openWorld(name) { Log.error("GuiLib dev automation: could not open world '$name'") }
+        } else {
+            val settings = LevelSettings(name, GameType.CREATIVE, LevelSettings.DifficultySettings.DEFAULT, true, WorldDataConfiguration.DEFAULT)
+            flows.createFreshLevel(name, settings, WorldOptions(0L, false, false), WorldPresets::createNormalWorldDimensions, TitleScreen())
         }
     }
 

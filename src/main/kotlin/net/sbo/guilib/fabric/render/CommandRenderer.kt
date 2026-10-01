@@ -3,7 +3,9 @@ package net.sbo.guilib.fabric.render
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.navigation.ScreenRectangle
+import net.minecraft.client.gui.screens.inventory.InventoryScreen
 import net.minecraft.client.renderer.RenderPipelines
+import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.item.ItemStack
 import net.sbo.guilib.core.Log
 import net.sbo.guilib.core.css.Colors
@@ -44,7 +46,13 @@ object CommandRenderer {
         layerQuads += Quad(key, x0, y0, x1, y1)
     }
 
-    fun draw(ctx: GuiGraphicsExtractor, commands: List<PaintCommand>) {
+    /** Mouse position of the current frame, for `entity` elements that follow the cursor. */
+    private var mouseX = 0
+    private var mouseY = 0
+
+    fun draw(ctx: GuiGraphicsExtractor, commands: List<PaintCommand>, mouseX: Int = 0, mouseY: Int = 0) {
+        this.mouseX = mouseX
+        this.mouseY = mouseY
         layerHasOverlay = false
         layerQuads.clear()
         var clipDepth = 0
@@ -308,6 +316,37 @@ object CommandRenderer {
             ctx.item(stack, 0, 0)
             if (el.getAttribute("decorations") == true) ctx.itemDecorations(Minecraft.getInstance().font, stack, 0, 0)
             pose.popMatrix()
+        } else if (el.tagName == "entity") {
+            drawEntity(ctx, cmd)
         }
+    }
+
+    /**
+     * Draws an entity like the player model in the inventory, centered in and scaled to fit the element's box.
+     * Approach based on SkyHanni's `FakePlayerRenderable` (https://github.com/hannibal002/SkyHanni, LGPL-2.1).
+     */
+    private fun drawEntity(ctx: GuiGraphicsExtractor, cmd: PaintCommand.Replaced) {
+        val el = cmd.element
+        val entity = el.getAttribute("entity") as? LivingEntity ?: return
+        val x1 = r(cmd.x)
+        val y1 = r(cmd.y)
+        val x2 = r(cmd.x + cmd.width)
+        val y2 = r(cmd.y + cmd.height)
+        if (x2 <= x1 || y2 <= y1) return
+        // The renderer centers the bounding box; leave room for limbs and the head turning (vanilla: 30 in a 49×70 box).
+        val fit = minOf((y2 - y1) * 0.85f / entity.bbHeight, (x2 - x1) * 0.85f / (entity.bbWidth + 0.5f))
+        val size = (fit * ((el.getAttribute("scale") as? Float) ?: 1f)).roundToInt()
+        if (size <= 0) return
+        // Vanilla turns the entity towards (lookAtX, lookAtY) relative to the box center.
+        val lookAtX: Float
+        val lookAtY: Float
+        if (el.getAttribute("followmouse") == true) {
+            lookAtX = mouseX.toFloat()
+            lookAtY = mouseY.toFloat()
+        } else {
+            lookAtX = (x1 + x2) / 2f + ((el.getAttribute("lookx") as? Float) ?: 0f)
+            lookAtY = (y1 + y2) / 2f + ((el.getAttribute("looky") as? Float) ?: 0f)
+        }
+        InventoryScreen.extractEntityInInventoryFollowsMouse(ctx, x1, y1, x2, y2, size, 0.0625f, lookAtX, lookAtY, entity)
     }
 }

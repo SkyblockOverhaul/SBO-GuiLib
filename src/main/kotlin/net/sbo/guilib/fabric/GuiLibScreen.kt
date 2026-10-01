@@ -57,7 +57,7 @@ open class GuiLibScreen(
 
     override fun extractRenderState(ctx: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         val commands = root.frame(width.toFloat(), height.toFloat())
-        CommandRenderer.draw(ctx, commands)
+        CommandRenderer.draw(ctx, commands, mouseX, mouseY)
         when (root.input.cursor) {
             Cursor.POINTER -> ctx.requestCursor(CursorTypes.POINTING_HAND)
             Cursor.TEXT -> ctx.requestCursor(CursorTypes.IBEAM)

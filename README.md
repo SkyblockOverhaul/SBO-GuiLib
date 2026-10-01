@@ -102,6 +102,7 @@ Releasing a new version is described in [docs/PUBLISHING.md](docs/PUBLISHING.md)
   section, saves screenshots to `versions/26.2-fabric/run/screenshots/` and quits
   (see `src/dev/kotlin/.../DevAutomation.kt` for hover/click/type scripts). This lives in a separate `dev` source set
   that is only loaded by this repository's own `runClient` — it is never packaged into the jar or published.
+  Add `-Pguilib.dev.world=GuiLibTest` to load (or create) a creative world first, for items and entities.
 
 ## License
 
@@ -112,3 +113,7 @@ changes to GuiLib itself must be published under the LGPL.
 Bundled third-party components:
 - Inter font — SIL Open Font License 1.1 (`src/main/resources/assets/guilib/fonts/inter-license.txt`)
 - JSVG (bundled jar-in-jar) — MIT License
+
+Credits:
+- `FakePlayer` and the `entity` rendering are based on SkyHanni's `FakePlayer`/`FakePlayerRenderable`
+  ([hannibal002/SkyHanni](https://github.com/hannibal002/SkyHanni), LGPL-2.1).

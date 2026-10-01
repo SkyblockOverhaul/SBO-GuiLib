@@ -1497,6 +1497,61 @@ fun NodeBuilder.item(
     element("item", key, id, className, style, ref, attrs, handlers, null)
 }
 
+/** Minecraft entity model (48×72 by default), scaled to fit the box. `entity` is a `net.minecraft.world.entity.LivingEntity`, e.g. `FakePlayer.of("Notch")`. `followMouse` turns it towards the cursor; otherwise it looks at its center offset by `lookX`/`lookY` px. `scale` multiplies the fitted size. (Not an HTML tag.) */
+fun NodeBuilder.entity(
+    entity: Any,
+    className: String? = null,
+    id: String? = null,
+    style: String? = null,
+    key: Any? = null,
+    title: String? = null,
+    ref: Ref<Element?>? = null,
+    tabIndex: Int? = null,
+    followMouse: Boolean = false,
+    lookX: Float = 0f,
+    lookY: Float = 0f,
+    scale: Float = 1f,
+    onClick: ((MouseEvent) -> Unit)? = null,
+    onDoubleClick: ((MouseEvent) -> Unit)? = null,
+    onContextMenu: ((MouseEvent) -> Unit)? = null,
+    onMouseDown: ((MouseEvent) -> Unit)? = null,
+    onMouseUp: ((MouseEvent) -> Unit)? = null,
+    onMouseMove: ((MouseEvent) -> Unit)? = null,
+    onMouseEnter: ((MouseEvent) -> Unit)? = null,
+    onMouseLeave: ((MouseEvent) -> Unit)? = null,
+    onWheel: ((WheelEvent) -> Unit)? = null,
+    onKeyDown: ((KeyboardEvent) -> Unit)? = null,
+    onKeyUp: ((KeyboardEvent) -> Unit)? = null,
+    onFocus: ((FocusEvent) -> Unit)? = null,
+    onBlur: ((FocusEvent) -> Unit)? = null,
+    onScroll: ((ScrollEvent) -> Unit)? = null,
+) {
+    val attrs = HashMap<String, Any?>()
+    if (title != null) attrs["title"] = title
+    if (tabIndex != null) attrs["tabindex"] = tabIndex
+    attrs["entity"] = entity
+    if (followMouse) attrs["followmouse"] = true
+    attrs["lookx"] = lookX
+    attrs["looky"] = lookY
+    attrs["scale"] = scale
+    val handlers = HashMap<String, (UIEvent) -> Unit>()
+    handlers.on("click", onClick)
+    handlers.on("dblclick", onDoubleClick)
+    handlers.on("contextmenu", onContextMenu)
+    handlers.on("mousedown", onMouseDown)
+    handlers.on("mouseup", onMouseUp)
+    handlers.on("mousemove", onMouseMove)
+    handlers.on("mouseenter", onMouseEnter)
+    handlers.on("mouseleave", onMouseLeave)
+    handlers.on("wheel", onWheel)
+    handlers.on("keydown", onKeyDown)
+    handlers.on("keyup", onKeyUp)
+    handlers.on("focus", onFocus)
+    handlers.on("blur", onBlur)
+    handlers.on("scroll", onScroll)
+    element("entity", key, id, className, style, ref, attrs, handlers, null)
+}
+
 /** Form input. `type`: `text`, `password`, `number`, `checkbox`. Controlled like React: pass `value`/`checked` and update them in `onInput`/`onChange`. */
 fun NodeBuilder.input(
     className: String? = null,

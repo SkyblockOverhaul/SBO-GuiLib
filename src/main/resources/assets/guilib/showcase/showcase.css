@@ -137,6 +137,9 @@ button.primary:hover { background-color: #6f9cf2; }
 .item-slot.big { width: 36px; height: 36px; }
 .item-slot:hover { background-color: #a0a0a0; }
 
+.entity-box { width: 60px; height: 90px; background-color: var(--panel); border: 1px solid var(--border); border-radius: 4px; }
+.entity-box.small { width: 30px; height: 45px; }
+
 .todo {
     padding: 3px 6px;
     margin-bottom: 2px;

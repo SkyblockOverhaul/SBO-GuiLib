@@ -84,7 +84,8 @@ Children go in the trailing lambda; text with `+"text"` or `text(value)`.
 | `button` | inline-flex (centered) | `disabled`. Disabled elements get no mouse events. Enter/Space activate a focused button. |
 | `scroll` *(GuiLib tag)* | block + `overflow: auto` | Scroll container with a thin scrollbar. Any element with `overflow: auto/scroll` scrolls too. |
 | `img("modid:path.png")` | inline (replaced) | `src` = resource location (PNG or SVG), `alt`. Natural size = image size. `object-fit` supported. |
-| `item(stack)` *(GuiLib tag)* | inline (replaced, 16×16) | `stack: ItemStack`, `decorations = true` (count/durability). |
+| `item(stack)` *(GuiLib tag)* | inline (replaced, 16×16) | `stack: ItemStack`, `decorations = true` (count/durability). Needs a loaded world. |
+| `entity(entity)` *(GuiLib tag)* | inline (replaced, 48×72) | `entity: LivingEntity`, scaled to fit the box like the inventory player model. `followMouse = false`, `lookX`/`lookY` (look offset in px when not following), `scale = 1f`. Player models: `FakePlayer.ofLocalPlayer()`, `FakePlayer.of("name")`, `.of(uuid)`, `.of(gameProfile)`, `.of(player)` (`net.sbo.guilib.fabric.entity`; `null` without a world – create once with `useMemo`). |
 | `input(...)` | inline-block | `type = "text" | "password" | "number" | "checkbox"`, `value`, `placeholder`, `checked`, `disabled`, `maxLength`, `autoFocus`, `onInput`, `onChange` (InputEvent: `.value`, `.checked`). |
 | `br` | – | Line break inside text. |
 | `select(value, onChange) { option("v") { +"Label" }; option("v2", "Label 2", disabled = true) }` | inline-flex | Component; menu opens in a portal (never clipped). `placeholder`, `disabled`. |
