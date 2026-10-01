@@ -24,18 +24,22 @@ class SortableTest {
         .guilib-sortable { display: flex; flex-direction: column; gap: 2px }
         .guilib-sortable.horizontal { flex-direction: row }
         .guilib-sortable-item { height: 10px; width: 40px }
+        .s { height: 20px; overflow: auto }
     """.trimIndent()
 
     private var order = listOf("a", "b", "c", "d")
     private var clicks = 0
 
-    private fun ui(horizontal: Boolean = false, handle: Boolean = false): UiRoot {
+    private fun ui(horizontal: Boolean = false, handle: Boolean = false, scrolled: Boolean = false): UiRoot {
         val app = component("T") {
             var items by useState(order)
-            sortableList(items, key = { it }, onReorder = { items = it; order = it }, horizontal = horizontal, handle = handle) { item, _ ->
+            fun list(b: net.sbo.guilib.core.dsl.NodeBuilder) = b.sortableList(
+                items, key = { it }, onReorder = { items = it; order = it }, horizontal = horizontal, handle = handle,
+            ) { item, _ ->
                 if (handle) span(className = "guilib-drag-handle") { +"=" }
-                button(className = "btn-$item", onClick = { clicks++ }) { +item }
+                button(className = "btn-$item", disabled = item == "z", onClick = { clicks++ }) { +item }
             }
+            if (scrolled) div(className = "s") { list(this) } else list(this)
         }
         val root = UiRoot(FakeMeasurer, listOf(Stylesheet.parse(ua, "ua", Origin.USER_AGENT)), clock = { 0L })
         root.render(VComponent(app, Unit, null))
@@ -106,5 +110,35 @@ class SortableTest {
         root.drag(1f, 5f, 1f, 31f) // the "=" handle is at the left edge
         root.input.mouseUp(1f, 31f, 0)
         assertEquals(listOf("b", "c", "a", "d"), order)
+    }
+
+    @Test
+    fun releasingOverADisabledElementStillEndsTheDrag() {
+        order = listOf("a", "b", "c", "z")
+        val root = ui()
+        root.drag(1f, 5f, 1f, 31f)
+        root.input.mouseUp(1f, 41f, 0); root.frame(300f, 200f) // over the disabled button of "z"
+        assertEquals(listOf("b", "c", "z", "a"), order) // dragged to the end, then dropped
+        assertTrue(root.items().none { it.classList.contains("dragging") || it.style.transform.isNotEmpty() })
+    }
+
+    @Test
+    fun scrollingWhileDraggingKeepsPositionsRight() {
+        val root = ui(scrolled = true)
+        root.drag(1f, 5f, 1f, 18f) // "a" moved 13px: just past "b"
+        root.input.wheel(1f, 18f, 0f, 12f); root.frame(300f, 200f) // the list moves up 12px under the still mouse
+        root.input.mouseUp(1f, 18f, 0); root.frame(300f, 200f)
+        // Relative to the list the mouse moved 25px, past the center of "c" (29 - 5 = 24).
+        assertEquals(listOf("b", "c", "a", "d"), order)
+    }
+
+    @Test
+    fun aNewPressClearsADragWhoseReleaseNeverArrived() {
+        val root = ui()
+        root.drag(1f, 5f, 1f, 31f)
+        root.input.mouseDown(1f, 41f, 0); root.frame(300f, 200f) // the release got lost; press again
+        assertTrue(root.items().none { it.classList.contains("dragging") })
+        root.input.mouseUp(1f, 41f, 0)
+        assertEquals(listOf("a", "b", "c", "d"), order)
     }
 }

@@ -33,18 +33,21 @@ internal const val SORTABLE_DRAG_THRESHOLD = 3f
  * (`.dragging`) and `.guilib-drag-handle`.
  */
 internal val SortableComponent = component<SortableProps>("Sortable") { p ->
-    class Drag(val from: Int, val startX: Float, val startY: Float, val rects: List<Rect>) {
+    /**
+     * One drag. All positions are relative to the list's own box, so scrolling while dragging keeps them valid.
+     * Everything lives here (not in state) so event handlers never see values from an older render.
+     */
+    class Drag(val from: Int, val key: Any?, val startX: Float, val startY: Float, val rects: List<Rect>) {
         var active = false
+        var target = from
+        var offset = 0f
     }
 
     val drag = useRef<Drag?>(null)
     val suppressClick = useRef(false)
     val listRef = useElementRef()
-    var dragIndex by useState(-1)
-    var target by useState(-1)
-    var offset by useState(0f)
+    val rerender = useForceUpdate()
 
-    val n = p.items.size
     fun start(r: Rect) = if (p.horizontal) r.x else r.y
     fun end(r: Rect) = if (p.horizontal) r.right else r.bottom
     fun center(r: Rect) = (start(r) + end(r)) / 2f
@@ -61,43 +64,52 @@ internal val SortableComponent = component<SortableProps>("Sortable") { p ->
     }
 
     fun reset() {
+        val wasActive = drag.current?.active == true
         drag.current = null
-        dragIndex = -1
-        target = -1
-        offset = 0f
+        if (wasActive) rerender()
     }
+
+    /** Mouse position relative to the list's border box. */
+    fun local(m: MouseEvent): Pair<Float, Float>? {
+        val list = listRef.current?.getBoundingClientRect() ?: return null
+        return (m.clientX - list.x) to (m.clientY - list.y)
+    }
+
+    /** The drag no longer matches the items (they changed while dragging): drop it without reordering. */
+    fun stale(d: Drag) = d.rects.size != p.items.size || d.from >= p.items.size || p.key(p.items[d.from]) != d.key
 
     useDocumentEvent(EventType.MOUSEMOVE) { e ->
         val d = drag.current ?: return@useDocumentEvent
-        val m = e as MouseEvent
-        var delta = if (p.horizontal) m.clientX - d.startX else m.clientY - d.startY
+        if (stale(d)) return@useDocumentEvent reset()
+        val (mx, my) = local(e as MouseEvent) ?: return@useDocumentEvent
+        val main = if (p.horizontal) mx - d.startX else my - d.startY
+        val cross = if (p.horizontal) my - d.startY else mx - d.startX
         if (!d.active) {
-            if (abs(delta) < SORTABLE_DRAG_THRESHOLD && abs((if (p.horizontal) m.clientY - d.startY else m.clientX - d.startX)) < SORTABLE_DRAG_THRESHOLD) {
-                return@useDocumentEvent
-            }
+            if (abs(main) < SORTABLE_DRAG_THRESHOLD && abs(cross) < SORTABLE_DRAG_THRESHOLD) return@useDocumentEvent
             d.active = true
-            dragIndex = d.from
         }
         val r = d.rects[d.from]
         // Keep the dragged item within the list.
-        delta = delta.coerceIn(start(d.rects.first()) - start(r), (end(d.rects.last()) - end(r)).coerceAtLeast(start(d.rects.first()) - start(r)))
-        offset = delta
-        val c = center(r) + delta
+        val min = start(d.rects.first()) - start(r)
+        val max = (end(d.rects.last()) - end(r)).coerceAtLeast(min)
+        d.offset = main.coerceIn(min, max)
+        val c = center(r) + d.offset
         var t = d.from
         for (i in d.from + 1 until d.rects.size) if (c >= center(d.rects[i])) t = i
         for (i in d.from - 1 downTo 0) if (c <= center(d.rects[i])) t = i
-        target = t
+        d.target = t
+        rerender()
     }
 
-    useDocumentEvent(EventType.MOUSEUP) { _ ->
+    useDocumentEvent(EventType.MOUSEUP) { e ->
         val d = drag.current ?: return@useDocumentEvent
-        val to = target
+        if ((e as MouseEvent).button != 0) return@useDocumentEvent
         reset()
         if (!d.active) return@useDocumentEvent
         suppressClick.current = true
-        if (to >= 0 && to != d.from && d.from < p.items.size) {
+        if (d.target != d.from && !stale(d)) {
             val next = p.items.toMutableList()
-            next.add(to.coerceAtMost(next.size - 1), next.removeAt(d.from))
+            next.add(d.target.coerceIn(0, next.size - 1), next.removeAt(d.from))
             p.onReorder?.invoke(next)
         }
     }
@@ -110,7 +122,11 @@ internal val SortableComponent = component<SortableProps>("Sortable") { p ->
             e.preventDefault()
         }
     }
-    useDocumentEvent(EventType.MOUSEDOWN) { suppressClick.current = false }
+    useDocumentEvent(EventType.MOUSEDOWN) {
+        suppressClick.current = false
+        // A drag whose release never arrived (e.g. the window lost focus) must not stay stuck.
+        reset()
+    }
 
     useDocumentEvent(EventType.KEYDOWN) { e ->
         if (drag.current?.active == true && e is KeyboardEvent && e.key == "Escape") {
@@ -129,33 +145,41 @@ internal val SortableComponent = component<SortableProps>("Sortable") { p ->
         return false
     }
 
-    val d = drag.current
-    val dragging = dragIndex >= 0 && d != null
-    val shiftSize = if (dragging) slot(d!!) else 0f
+    val d = drag.current?.takeIf { it.active && !stale(it) }
+    val dragIndex = d?.from ?: -1
+    val target = d?.target ?: -1
+    val shiftSize = if (d != null) slot(d) else 0f
     div(
-        className = classNames("guilib-sortable", "horizontal" to p.horizontal, "handle" to p.handle, "sorting" to dragging, p.className),
+        className = classNames("guilib-sortable", "horizontal" to p.horizontal, "handle" to p.handle, "sorting" to (d != null), p.className),
         ref = listRef,
     ) {
         p.items.forEachIndexed { i, item ->
             val shift = when {
-                !dragging -> 0f
-                i == dragIndex -> offset
+                d == null -> 0f
+                i == dragIndex -> d.offset
                 dragIndex < target && i in dragIndex + 1..target -> -shiftSize
                 target < dragIndex && i in target until dragIndex -> shiftSize
                 else -> 0f
             }
             val axis = if (p.horizontal) "X" else "Y"
+            val dragging = d != null && i == dragIndex
             div(
-                className = classNames("guilib-sortable-item", "dragging" to (dragging && i == dragIndex), p.itemClassName),
-                style = if (dragging) "transform: translate$axis(${String.format(Locale.ROOT, "%.2f", shift)}px)" else null,
+                className = classNames("guilib-sortable-item", "dragging" to dragging, p.itemClassName),
+                style = if (d != null) "transform: translate$axis(${String.format(Locale.ROOT, "%.2f", shift)}px)" else null,
                 key = p.key(item),
                 onMouseDown = { e ->
-                    if (e.button == 0 && drag.current == null && (!p.handle || isHandle(e.target, e.currentTarget))) {
-                        val rects = listRef.current?.children?.filterIsInstance<Element>()?.map { it.getBoundingClientRect() }
-                        if (rects != null && rects.size == n) drag.current = Drag(i, e.clientX, e.clientY, rects)
+                    if (e.button == 0 && (!p.handle || isHandle(e.target, e.currentTarget))) {
+                        val list = listRef.current
+                        val origin = list?.getBoundingClientRect()
+                        val rects = list?.children?.filterIsInstance<Element>()?.map { it.getBoundingClientRect() }
+                        if (origin != null && rects != null && rects.size == p.items.size) {
+                            // Item boxes relative to the list (no item is transformed between drags).
+                            val local = rects.map { Rect(it.x - origin.x, it.y - origin.y, it.width, it.height) }
+                            drag.current = Drag(i, p.key(item), e.clientX - origin.x, e.clientY - origin.y, local)
+                        }
                     }
                 },
-            ) { p.children(this, item, dragging && i == dragIndex) }
+            ) { p.children(this, item, dragging) }
         }
     }
 }

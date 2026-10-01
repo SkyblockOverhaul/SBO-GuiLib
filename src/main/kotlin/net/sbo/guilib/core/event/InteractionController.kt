@@ -93,8 +93,7 @@ class InteractionController(private val doc: Document, private val hitTest: (Flo
     fun mouseMove(x: Float, y: Float, modifiers: Modifiers = Modifiers.NONE) {
         mouseX = x; mouseY = y
         updateHover(x, y, modifiers)
-        val target = hovered
-        if (target != null && disabledAncestor(target) == null) EventDispatcher.dispatch(MouseEvent(EventType.MOUSEMOVE, x, y, modifiers = modifiers), target)
+        dispatchMouse(MouseEvent(EventType.MOUSEMOVE, x, y, modifiers = modifiers), hovered)
         // Dragging (e.g. selecting text) keeps going to the pressed element even outside of it.
         pressTarget?.let { pressed ->
             val drag = MouseEvent(EventType.MOUSEMOVE, x, y, pressButton, modifiers)
@@ -102,6 +101,20 @@ class InteractionController(private val doc: Document, private val hitTest: (Flo
             runDefaultActions(drag)
         }
         doc.flush()
+    }
+
+    /**
+     * Dispatches a mousemove/mouseup to [target]. Without a target, or on a disabled one, only the document listeners
+     * get it (like `window` listeners on the web), so drags started elsewhere always see the mouse.
+     */
+    private fun dispatchMouse(ev: MouseEvent, target: Element?) {
+        if (target != null && disabledAncestor(target) == null) {
+            EventDispatcher.dispatch(ev, target)
+            return
+        }
+        ev.target = target ?: doc.body
+        ev.currentTarget = ev.target
+        doc.dispatchGlobal(ev)
     }
 
     /** Returns true if the press hit an element (the backend should then not pass it on). */
@@ -132,13 +145,21 @@ class InteractionController(private val doc: Document, private val hitTest: (Flo
         val target = hovered
         val pressed = pressTarget
         pressTarget = null
-        if (target == null) return false
-        if (disabledAncestor(target) != null) return true
-        EventDispatcher.dispatch(MouseEvent(EventType.MOUSEUP, x, y, button, modifiers), target)
+        // Document listeners and the pressed element's default actions (ending drags, text selection) always see
+        // the release, even over empty space or a disabled element.
+        dispatchMouse(MouseEvent(EventType.MOUSEUP, x, y, button, modifiers), target)
         if (pressed != null) {
             val up = MouseEvent(EventType.MOUSEUP, x, y, button, modifiers)
             up.target = pressed
             runDefaultActions(up)
+        }
+        if (target == null) {
+            doc.flush()
+            return false
+        }
+        if (disabledAncestor(target) != null) {
+            doc.flush()
+            return true
         }
         if (pressed != null && button == pressButton) {
             // click goes to the nearest common ancestor of press and release targets.
