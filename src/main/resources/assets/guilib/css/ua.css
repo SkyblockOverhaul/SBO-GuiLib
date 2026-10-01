@@ -330,3 +330,201 @@ select:disabled { opacity: 0.5; cursor: not-allowed; }
 .guilib-sortable.sorting .guilib-sortable-item.dragging { transition: none; position: relative; z-index: 10; }
 .guilib-sortable.handle .guilib-sortable-item { cursor: default; }
 .guilib-drag-handle { cursor: grab; }
+
+/* ---- radio group ---- */
+.guilib-radio-group { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.guilib-radio-group.vertical { flex-direction: column; }
+.guilib-radio { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; }
+.guilib-radio-dot {
+    display: block;
+    flex-shrink: 0;
+    width: 10px;
+    height: 10px;
+    background-color: #1e1f22;
+    border: 1px solid #4e5058;
+    border-radius: 50%;
+    transition: border-color 120ms ease, border-width 120ms ease;
+}
+.guilib-radio:hover .guilib-radio-dot { border-color: #80848e; }
+.guilib-radio.checked .guilib-radio-dot { border: 3px solid var(--guilib-accent); background-color: #ffffff; }
+.guilib-radio:focus .guilib-radio-dot { border-color: #ffffff; }
+.guilib-radio.checked:focus .guilib-radio-dot { border-color: var(--guilib-accent); background-color: #ffffff; }
+.guilib-radio:focus .guilib-radio-label { text-decoration: underline; }
+.guilib-radio.disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ---- segmented buttons ---- */
+.guilib-segmented {
+    display: inline-flex;
+    position: relative;
+    padding: 2px;
+    gap: 2px;
+    background-color: #1e1f22;
+    border: 1px solid #4e5058;
+    border-radius: 4px;
+    user-select: none;
+}
+.guilib-segmented.vertical { flex-direction: column; }
+.guilib-segment-indicator {
+    position: absolute;
+    background-color: var(--guilib-accent);
+    border-radius: 3px;
+    transition: left 160ms ease-out, top 160ms ease-out, width 160ms ease-out, height 160ms ease-out;
+}
+.guilib-segment {
+    position: relative;
+    padding: 2px 8px;
+    border-radius: 3px;
+    color: var(--guilib-text-muted);
+    cursor: pointer;
+    white-space: nowrap;
+    text-align: center;
+    transition: color 120ms ease;
+}
+.guilib-segment:hover { color: #f2f3f5; background-color: rgba(255, 255, 255, 0.06); }
+.guilib-segment.selected { color: #ffffff; background-color: transparent; }
+.guilib-segment:focus .guilib-segment-label { text-decoration: underline; }
+.guilib-segment.disabled { opacity: 0.4; cursor: not-allowed; }
+.guilib-segmented.disabled { opacity: 0.5; }
+
+/* ---- chips ---- */
+.guilib-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.guilib-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 7px;
+    background-color: #1e1f22;
+    border: 1px solid #4e5058;
+    border-radius: 8px;
+    color: var(--guilib-text-muted);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+.guilib-chip:hover { border-color: #80848e; color: #f2f3f5; }
+.guilib-chip:focus { border-color: #ffffff; }
+.guilib-chip.selected { background-color: rgba(91, 141, 239, 0.25); border-color: var(--guilib-accent); color: #ffffff; }
+.guilib-chip-check { display: none; font-weight: bold; color: var(--guilib-accent); }
+.guilib-chip.selected .guilib-chip-check { display: inline; }
+.guilib-chip.disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ---- tabs ---- */
+.guilib-tabs { display: flex; flex-direction: column; }
+.guilib-tab-list { display: flex; position: relative; overflow-x: auto; overflow-y: hidden; user-select: none; }
+.guilib-tabs.underline > .guilib-tab-list { border-bottom: 1px solid #3f4147; }
+.guilib-tab {
+    position: relative;
+    padding: 4px 8px;
+    color: var(--guilib-text-muted);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color 120ms ease;
+}
+.guilib-tab:hover { color: #f2f3f5; }
+.guilib-tab.active { color: #ffffff; }
+.guilib-tab:focus { text-decoration: underline; }
+.guilib-tab.disabled { opacity: 0.4; cursor: not-allowed; }
+.guilib-tab-indicator {
+    position: absolute;
+    background-color: var(--guilib-accent);
+    transition: left 180ms ease-out, top 180ms ease-out, width 180ms ease-out, height 180ms ease-out;
+}
+.guilib-tabs.underline .guilib-tab-indicator { bottom: 0; height: 2px; border-radius: 1px; }
+.guilib-tabs.pills > .guilib-tab-list { gap: 2px; }
+.guilib-tabs.pills .guilib-tab { padding: 2px 8px; border-radius: 8px; }
+.guilib-tabs.pills .guilib-tab-indicator { border-radius: 8px; }
+.guilib-tab-panel { padding-top: 6px; }
+
+/* ---- collapse / details (accordion) ---- */
+.guilib-collapse { overflow: hidden; }
+/* A flex column doesn't let the children's margins escape, so its height is the full content height. */
+.guilib-collapse-inner { display: flex; flex-direction: column; }
+.guilib-details { border: 1px solid #3f4147; border-radius: 4px; background-color: rgba(0, 0, 0, 0.15); }
+.guilib-details + .guilib-details { margin-top: 3px; }
+.guilib-details-summary {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 6px;
+    border-radius: 3px;
+    cursor: pointer;
+    user-select: none;
+}
+.guilib-details-summary:hover { background-color: rgba(255, 255, 255, 0.05); }
+.guilib-details-summary:focus .guilib-details-title { text-decoration: underline; }
+.guilib-details-title { flex-grow: 1; min-width: 0; }
+.guilib-details-chevron { color: var(--guilib-text-muted); transition: transform 200ms ease; }
+.guilib-details.open .guilib-details-chevron { transform: rotate(90deg); }
+.guilib-details-content { padding: 2px 8px 6px 8px; }
+.guilib-details.disabled { opacity: 0.5; }
+.guilib-details.disabled .guilib-details-summary { cursor: not-allowed; }
+
+/* ---- toasts ---- */
+.guilib-toasts {
+    position: fixed;
+    right: 8px;
+    bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    pointer-events: none;
+}
+.guilib-toast {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    min-width: 110px;
+    max-width: 200px;
+    padding: 5px 7px;
+    background-color: #111214;
+    border: 1px solid #3f4147;
+    border-left: 3px solid var(--guilib-accent);
+    border-radius: 4px;
+    pointer-events: auto;
+    cursor: pointer;
+    animation: guilib-toast-in 180ms ease-out;
+}
+.guilib-toast.success { border-left-color: #3ba55d; }
+.guilib-toast.warning { border-left-color: #faa61a; }
+.guilib-toast.error { border-left-color: #ed4245; }
+.guilib-toast.leaving { animation: guilib-toast-out 180ms ease-in; opacity: 0; }
+.guilib-toast-body { flex-grow: 1; min-width: 0; }
+.guilib-toast-title { font-weight: bold; margin-bottom: 1px; }
+.guilib-toast-message { color: #dbdee1; }
+.guilib-toast-close { color: #80848e; }
+.guilib-toast:hover .guilib-toast-close { color: #f2f3f5; }
+@keyframes guilib-toast-in { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes guilib-toast-out { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(24px); } }
+
+/* ---- menu / context menu ---- */
+.guilib-context-anchor { display: block; }
+.guilib-menu {
+    position: fixed;
+    min-width: 90px;
+    padding: 2px;
+    background-color: #111214;
+    border: 1px solid #3f4147;
+    border-radius: 4px;
+    animation: guilib-menu-in 90ms ease-out;
+}
+.guilib-menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 3px 6px;
+    border-radius: 2px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.guilib-menu-item.highlighted { background-color: var(--guilib-accent); color: #ffffff; }
+.guilib-menu-item.danger { color: #f47b7d; }
+.guilib-menu-item.danger.highlighted { background-color: #ed4245; color: #ffffff; }
+.guilib-menu-item.disabled { opacity: 0.45; cursor: not-allowed; }
+.guilib-menu-shortcut { color: #80848e; font-size: 7px; }
+.guilib-menu-item.highlighted .guilib-menu-shortcut { color: #e3e5e8; }
+.guilib-menu-header { padding: 3px 6px 2px 6px; color: #80848e; font-size: 7px; font-weight: bold; white-space: nowrap; }
+.guilib-menu-separator { height: 1px; margin: 2px 4px; background-color: #3f4147; }
+@keyframes guilib-menu-in { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }

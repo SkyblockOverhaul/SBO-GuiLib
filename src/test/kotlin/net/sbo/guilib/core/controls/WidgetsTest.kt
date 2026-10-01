@@ -1,0 +1,275 @@
+package net.sbo.guilib.core.controls
+
+import net.sbo.guilib.core.UiRoot
+import net.sbo.guilib.core.css.Origin
+import net.sbo.guilib.core.css.Stylesheet
+import net.sbo.guilib.core.dom.Element
+import net.sbo.guilib.core.dom.TextNode
+import net.sbo.guilib.core.dom.VComponent
+import net.sbo.guilib.core.dom.component
+import net.sbo.guilib.core.dsl.ComponentScope
+import net.sbo.guilib.core.dsl.chips
+import net.sbo.guilib.core.dsl.div
+import net.sbo.guilib.core.dsl.radioGroup
+import net.sbo.guilib.core.dsl.segmented
+import net.sbo.guilib.core.dsl.contextMenu
+import net.sbo.guilib.core.dsl.details
+import net.sbo.guilib.core.dsl.tabs
+import net.sbo.guilib.core.dsl.useToast
+import net.sbo.guilib.core.event.EventType
+import net.sbo.guilib.core.event.MouseEvent
+import net.sbo.guilib.core.layout.FakeMeasurer
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+
+class WidgetsTest {
+    private var now = 0L
+
+    private val ua = """
+        div { display: block } span { display: inline }
+        .guilib-radio-group, .guilib-segmented, .guilib-chips, .guilib-tab-list { display: flex; position: relative }
+        .guilib-radio, .guilib-segment, .guilib-chip, .guilib-tab { width: 30px; height: 10px }
+        .guilib-segment-indicator, .guilib-tab-indicator { position: absolute; transition: left 100ms linear, width 100ms linear }
+        .guilib-tabs.underline .guilib-tab-indicator { bottom: 0; height: 2px }
+        .guilib-segmented { padding: 2px }
+        .guilib-collapse { overflow: hidden; transition: height 100ms linear }
+        .guilib-collapse-inner { display: flex; flex-direction: column }
+        .guilib-details-summary { height: 10px }
+        .block { height: 30px; margin-top: 5px }
+        #guilib-overlay { position: fixed; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100 }
+        .guilib-portal { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none }
+        .guilib-portal > * { pointer-events: auto }
+        .guilib-menu { position: fixed; width: 60px }
+        .guilib-menu-item, .guilib-menu-header { height: 10px }
+        .guilib-menu-separator { height: 2px }
+        .guilib-toasts { position: fixed; right: 0; bottom: 0; pointer-events: none }
+        .guilib-toast { width: 80px; height: 20px; pointer-events: auto }
+        .anchor { height: 20px }
+    """.trimIndent()
+
+    private fun ui(content: ComponentScope.() -> Unit): UiRoot {
+        val root = UiRoot(FakeMeasurer, listOf(Stylesheet.parse(ua, "ua", Origin.USER_AGENT)), clock = { now })
+        root.render(VComponent(component("T") { content() }, Unit, null))
+        root.frame(300f, 200f)
+        return root
+    }
+
+    private fun UiRoot.all(sel: String): List<Element> = document.body.querySelectorAll(sel)
+
+    private fun UiRoot.click(el: Element) {
+        val r = el.getBoundingClientRect()
+        input.mouseDown(r.x + 1f, r.y + 1f, 0)
+        input.mouseUp(r.x + 1f, r.y + 1f, 0)
+        frame(300f, 200f)
+    }
+
+    private fun UiRoot.key(key: String) {
+        input.keyDown(key, 0)
+        frame(300f, 200f)
+    }
+
+    private fun UiRoot.settle() {
+        repeat(3) { now += 200; frame(300f, 200f) }
+    }
+
+    @Test
+    fun radioGroupSelectsByClickAndArrowsSkippingDisabled() {
+        var value = "1"
+        val root = ui {
+            var v by useState("1")
+            value = v
+            radioGroup(value = v, onChange = { v = it }) {
+                option("1", "Solo")
+                option("2", "Duo")
+                option("3", "Trio", disabled = true)
+                option("4", "Full")
+            }
+        }
+        val radios = root.all(".guilib-radio")
+        // Only the selected radio is a Tab stop.
+        assertEquals(listOf(0, -1, -1, -1), radios.map { it.getAttribute("tabindex") })
+        root.click(radios[1])
+        assertEquals("2", value)
+        assertTrue(root.all(".guilib-radio")[1].classList.contains("checked"))
+        root.key("ArrowRight")
+        assertEquals("4", value)
+        assertEquals(root.all(".guilib-radio")[3], root.document.focusedElement)
+        root.key("ArrowRight")
+        assertEquals("1", value)
+        root.click(root.all(".guilib-radio")[2])
+        assertEquals("1", value)
+    }
+
+    @Test
+    fun segmentedIndicatorFollowsTheSelection() {
+        val root = ui {
+            var v by useState("a")
+            segmented(value = v, onChange = { v = it }) {
+                option("a", "A")
+                option("b", "B")
+                option("c", "C")
+            }
+        }
+        root.settle()
+        val indicator = root.all(".guilib-segment-indicator").single()
+        fun left() = indicator.getBoundingClientRect().x
+        val segs = root.all(".guilib-segment")
+        assertEquals(segs[0].getBoundingClientRect().x, left(), 0.01f)
+        // The first position is applied without a transition.
+        assertEquals(segs[0].getBoundingClientRect().width, indicator.getBoundingClientRect().width, 0.01f)
+        root.click(segs[2])
+        // Animating: halfway between after 50 ms, at the target once settled.
+        now += 50; root.frame(300f, 200f)
+        val mid = left()
+        assertTrue(mid > segs[0].getBoundingClientRect().x && mid < segs[2].getBoundingClientRect().x, "mid=$mid")
+        root.settle()
+        assertEquals(segs[2].getBoundingClientRect().x, left(), 0.01f)
+    }
+
+    @Test
+    fun chipsToggleAndKeepOptionOrder() {
+        var picked = emptyList<String>()
+        val root = ui {
+            var v by useState(listOf<String>())
+            picked = v
+            chips(values = v, onChange = { v = it }) {
+                option("trophy", "Trophy")
+                option("lava", "Lava")
+                option("water", "Water")
+            }
+        }
+        root.click(root.all(".guilib-chip")[2])
+        root.click(root.all(".guilib-chip")[0])
+        assertEquals(listOf("trophy", "water"), picked)
+        root.click(root.all(".guilib-chip")[2])
+        assertEquals(listOf("trophy"), picked)
+        root.document.focus(root.all(".guilib-chip")[1])
+        root.key(" ")
+        assertEquals(listOf("trophy", "lava"), picked)
+    }
+
+    @Test
+    fun tabsRenderTheActiveContentAndSwitchWithArrows() {
+        var tab = ""
+        val root = ui {
+            var v by useState("d")
+            tab = v
+            tabs(value = v, onChange = { v = it }) {
+                tab("d", "Dungeons") { div(className = "content-d") }
+                tab("k", "Kuudra") { div(className = "content-k") }
+                tab("x", "Locked", disabled = true)
+            }
+        }
+        assertNotNull(root.document.body.querySelector(".content-d"))
+        assertNull(root.document.body.querySelector(".content-k"))
+        root.click(root.all(".guilib-tab")[1])
+        assertEquals("k", tab)
+        assertNotNull(root.document.body.querySelector(".content-k"))
+        root.settle()
+        val indicator = root.all(".guilib-tab-indicator").single().getBoundingClientRect()
+        val active = root.all(".guilib-tab")[1].getBoundingClientRect()
+        assertEquals(active.x, indicator.x, 0.01f)
+        assertEquals(active.bottom, indicator.bottom, 0.01f)
+        // The disabled tab is skipped.
+        root.key("ArrowRight")
+        assertEquals("d", tab)
+        val label = (root.all(".guilib-tab")[0].children.single() as TextNode).data
+        assertEquals("Dungeons", label)
+    }
+
+    private fun UiRoot.overlay(sel: String): List<Element> = document.overlayRoot.querySelectorAll(sel)
+
+    @Test
+    fun detailsAnimateToTheContentHeightAndUnmountWhenClosed() {
+        val root = ui {
+            details("Party") { div(className = "block") }
+        }
+        val collapse = root.all(".guilib-collapse").single()
+        assertEquals(0f, collapse.getBoundingClientRect().height, 0.01f)
+        root.click(root.all(".guilib-details-summary").single())
+        assertTrue(root.all(".guilib-details").single().classList.contains("open"))
+        now += 50; root.frame(300f, 200f)
+        val mid = collapse.getBoundingClientRect().height
+        assertTrue(mid > 0f && mid < 35f, "mid=$mid")
+        root.settle()
+        // The child's margin is part of the height.
+        assertEquals(35f, collapse.getBoundingClientRect().height, 0.01f)
+        root.click(root.all(".guilib-details-summary").single())
+        assertNotNull(root.document.body.querySelector(".block"))
+        root.settle()
+        assertEquals(0f, collapse.getBoundingClientRect().height, 0.01f)
+        assertNull(root.document.body.querySelector(".block"))
+    }
+
+    @Test
+    fun toastsStackDisappearAndDismissOnClick() {
+        val root = ui {
+            val toast = useToast()
+            useEffect {
+                toast.success("Party created")
+                toast.error("Server not reachable", durationMs = 0)
+            }
+        }
+        root.frame(300f, 200f)
+        assertEquals(2, root.overlay(".guilib-toast").size)
+        assertTrue(root.overlay(".guilib-toast")[0].classList.contains("success"))
+        now += net.sbo.guilib.core.controls.Toaster.DEFAULT_DURATION_MS + 10; root.frame(300f, 200f)
+        assertTrue(root.overlay(".guilib-toast")[0].classList.contains("leaving"))
+        now += 300; root.frame(300f, 200f)
+        val left = root.overlay(".guilib-toast")
+        assertEquals(1, left.size)
+        assertTrue(left[0].classList.contains("error"))
+        root.click(left[0])
+        now += 300; root.frame(300f, 200f)
+        assertEquals(0, root.overlay(".guilib-toast").size)
+    }
+
+    @Test
+    fun contextMenuOpensAtTheMouseStaysOnScreenAndRuns() {
+        val clicked = ArrayList<String>()
+        val root = ui {
+            contextMenu(menu = {
+                header("Steve")
+                item("Invite") { clicked += "invite" }
+                separator()
+                item("Kick", danger = true, disabled = true) { clicked += "kick" }
+                item("Profile") { clicked += "profile" }
+            }) { div(className = "anchor") }
+        }
+        fun rightClick(x: Float, y: Float) {
+            root.input.mouseDown(x, y, 2)
+            root.input.mouseUp(x, y, 2)
+            root.frame(300f, 200f)
+        }
+        rightClick(20f, 10f)
+        var menu = root.overlay(".guilib-menu").single().getBoundingClientRect()
+        assertEquals(20f, menu.x, 0.01f)
+        assertEquals(10f, menu.y, 0.01f)
+        root.click(root.overlay(".guilib-menu-item")[1]) // disabled: nothing happens, stays open
+        assertEquals(emptyList<String>(), clicked)
+        root.click(root.overlay(".guilib-menu-item")[0])
+        assertEquals(listOf("invite"), clicked)
+        assertEquals(0, root.overlay(".guilib-menu").size)
+
+        // Near the bottom right corner the menu flips to stay inside the 300x200 screen.
+        val anchor = root.all(".anchor").single()
+        anchor.inlineStyle = "height: 200px"
+        root.frame(300f, 200f)
+        rightClick(290f, 195f)
+        menu = root.overlay(".guilib-menu").single().getBoundingClientRect()
+        assertTrue(menu.right <= 300f && menu.bottom <= 200f, "menu=$menu")
+        assertEquals(290f, menu.right, 0.01f)
+        // Keyboard: ArrowDown highlights the first enabled item, again skips the disabled one, Enter runs it.
+        root.key("ArrowDown")
+        root.key("ArrowDown")
+        root.key("Enter")
+        assertEquals(listOf("invite", "profile"), clicked)
+        // Escape closes without running anything.
+        rightClick(20f, 10f)
+        root.key("Escape")
+        assertEquals(0, root.overlay(".guilib-menu").size)
+    }
+}

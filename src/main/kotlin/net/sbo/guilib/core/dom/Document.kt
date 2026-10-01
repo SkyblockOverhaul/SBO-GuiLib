@@ -281,6 +281,9 @@ class Document(
         return repaint
     }
 
+    /** Per-document singletons of other parts of the library (e.g. the toaster), keyed by their class. */
+    internal val services = HashMap<Any, Any>()
+
     /** Called every [update] after layout with the current time (ms). */
     internal val frameHooks = ArrayList<(Long) -> Unit>()
 
