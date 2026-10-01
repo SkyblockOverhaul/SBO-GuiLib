@@ -42,7 +42,8 @@ class SelectBuilder {
 
 /**
  * Dropdown, controlled like React: `select(value = mode, onChange = { mode = it.value }) { option("a") { +"A" } }`.
- * The menu opens in a portal, so it's never clipped by scroll containers.
+ * The menu opens in a portal, so it's never clipped by scroll containers. [searchable] adds a search field at the top
+ * of the menu that filters the options while typing (for long lists like items or players).
  */
 fun NodeBuilder.select(
     value: String?,
@@ -53,10 +54,38 @@ fun NodeBuilder.select(
     key: Any? = null,
     disabled: Boolean = false,
     placeholder: String? = null,
+    searchable: Boolean = false,
+    searchPlaceholder: String? = null,
     options: SelectBuilder.() -> Unit,
 ) {
     val opts = SelectBuilder().apply(options).options
-    SelectComponent(SelectProps(value, onChange, opts, className, id, style, disabled, placeholder), key)
+    SelectComponent(SelectProps(value, onChange, opts, className, id, style, disabled, placeholder, searchable, searchPlaceholder), key)
+}
+
+/**
+ * Dropdown for choosing several options (each with a check mark; the menu stays open while toggling), controlled:
+ * `multiSelect(values = cats, onChange = { cats = it }, placeholder = "All") { option("trophy", "Trophy"); option("lava", "Lava") }`.
+ * [onChange] gets the selected values in option order; the box shows the chosen labels. [searchable] adds a search field.
+ * Styled like [select] plus `select.multiple`, `.guilib-option-check`. For a few options [chips] may be nicer.
+ */
+fun NodeBuilder.multiSelect(
+    values: List<String>,
+    onChange: ((List<String>) -> Unit)? = null,
+    className: String? = null,
+    id: String? = null,
+    style: String? = null,
+    key: Any? = null,
+    disabled: Boolean = false,
+    placeholder: String? = null,
+    searchable: Boolean = false,
+    searchPlaceholder: String? = null,
+    options: SelectBuilder.() -> Unit,
+) {
+    val opts = SelectBuilder().apply(options).options
+    SelectComponent(
+        SelectProps(null, null, opts, className, id, style, disabled, placeholder, searchable, searchPlaceholder, true, values, onChange),
+        key,
+    )
 }
 
 /** Checkbox with an optional label: `checkbox(checked = on, onChange = { on = it.checked }, label = "Enabled")`. */

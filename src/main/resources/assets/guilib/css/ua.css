@@ -562,3 +562,24 @@ select:disabled { opacity: 0.5; cursor: not-allowed; }
 .guilib-number-dec:active, .guilib-number-inc:active { background-color: var(--guilib-accent); color: #ffffff; }
 .guilib-number-dec:disabled, .guilib-number-inc:disabled { opacity: 0.35; }
 .guilib-number.disabled { opacity: 0.5; }
+
+/* ---- select: search & multiple ---- */
+select.multiple .guilib-select-value { max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+.guilib-select-search { display: block; width: auto; min-width: 0; margin: 1px 1px 3px 1px; }
+.guilib-select-empty { padding: 3px 6px; color: #80848e; font-style: italic; }
+.guilib-option-check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 9px;
+    height: 9px;
+    margin-right: 4px;
+    border: 1px solid #4e5058;
+    border-radius: 2px;
+    color: transparent;
+    font-size: 7px;
+    font-weight: bold;
+    line-height: 1;
+}
+.guilib-option.selected .guilib-option-check { background-color: var(--guilib-accent); border-color: var(--guilib-accent); color: #ffffff; }
+.guilib-select-menu.multiple .guilib-option.selected { color: #f2f3f5; font-weight: normal; }

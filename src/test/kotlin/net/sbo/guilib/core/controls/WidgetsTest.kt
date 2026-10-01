@@ -14,6 +14,8 @@ import net.sbo.guilib.core.dsl.radioGroup
 import net.sbo.guilib.core.dsl.segmented
 import net.sbo.guilib.core.dsl.contextMenu
 import net.sbo.guilib.core.dsl.details
+import net.sbo.guilib.core.dsl.multiSelect
+import net.sbo.guilib.core.dsl.select
 import net.sbo.guilib.core.dsl.tabs
 import net.sbo.guilib.core.dsl.useToast
 import net.sbo.guilib.core.event.EventType
@@ -48,6 +50,9 @@ class WidgetsTest {
         .guilib-toasts { position: fixed; right: 0; bottom: 0; pointer-events: none }
         .guilib-toast { width: 80px; height: 20px; pointer-events: auto }
         .anchor { height: 20px }
+        select { display: inline-flex; width: 80px; height: 10px }
+        input { display: inline-block; position: relative; overflow: hidden; white-space: pre; width: 60px }
+        .guilib-option { height: 10px }
     """.trimIndent()
 
     private fun ui(content: ComponentScope.() -> Unit): UiRoot {
@@ -271,5 +276,77 @@ class WidgetsTest {
         rightClick(20f, 10f)
         root.key("Escape")
         assertEquals(0, root.overlay(".guilib-menu").size)
+    }
+
+    private fun UiRoot.type(text: String) {
+        for (c in text) input.charTyped(c.toString())
+        frame(300f, 200f)
+    }
+
+    private fun Element.label() = querySelector(".guilib-option-label")!!.let { (it.children.single() as TextNode).data }
+
+    @Test
+    fun searchableSelectFiltersAndChoosesWithTheKeyboard() {
+        var value: String? = null
+        val root = ui {
+            var v by useState<String?>(null)
+            value = v
+            select(value = v, onChange = { v = it.value }, searchable = true, placeholder = "Item") {
+                option("hyperion", "§6Hyperion")
+                option("terminator", "Terminator")
+                option("necron_blade", "Necron's Blade")
+                option("aote", "Aspect of the End")
+            }
+        }
+        root.click(root.document.body.querySelector("select")!!)
+        root.frame(300f, 200f) // autofocus is posted
+        val search = root.overlay(".guilib-select-search").single()
+        assertEquals(search, root.document.focusedElement)
+        root.type("ER")
+        // Case-insensitive, § codes ignored: "Hyperion", "Terminator".
+        assertEquals(listOf("§6Hyperion", "Terminator"), root.overlay(".guilib-option").map { it.label() })
+        root.key("ArrowDown")
+        root.key("ArrowDown")
+        root.key("Enter")
+        assertEquals("terminator", value)
+        assertEquals(0, root.overlay(".guilib-select-menu").size)
+        // Focus went back to the select.
+        assertEquals("select", root.document.focusedElement?.tagName)
+        root.key("ArrowDown")
+        root.frame(300f, 200f)
+        root.type("zzz")
+        assertNotNull(root.document.overlayRoot.querySelector(".guilib-select-empty"))
+        root.key("Escape")
+        assertEquals(0, root.overlay(".guilib-select-menu").size)
+        assertEquals("terminator", value)
+    }
+
+    @Test
+    fun multiSelectTogglesAndStaysOpen() {
+        var values = emptyList<String>()
+        val root = ui {
+            var v by useState(listOf<String>())
+            values = v
+            multiSelect(values = v, onChange = { v = it }, placeholder = "All") {
+                option("trophy", "Trophy")
+                option("lava", "Lava")
+                option("water", "Water")
+            }
+        }
+        root.click(root.document.body.querySelector("select")!!)
+        root.click(root.overlay(".guilib-option")[2])
+        root.click(root.overlay(".guilib-option")[0])
+        assertEquals(listOf("trophy", "water"), values)
+        assertEquals(1, root.overlay(".guilib-select-menu").size)
+        assertTrue(root.overlay(".guilib-option")[0].classList.contains("selected"))
+        val shown = root.document.body.querySelector(".guilib-select-value")!!
+        assertEquals("Trophy, Water", (shown.children.single() as TextNode).data)
+        root.click(root.overlay(".guilib-option")[0])
+        assertEquals(listOf("water"), values)
+        // A click outside closes it.
+        root.input.mouseDown(290f, 190f, 0)
+        root.input.mouseUp(290f, 190f, 0)
+        root.frame(300f, 200f)
+        assertEquals(0, root.overlay(".guilib-select-menu").size)
     }
 }

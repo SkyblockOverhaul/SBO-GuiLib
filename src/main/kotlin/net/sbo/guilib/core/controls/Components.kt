@@ -7,6 +7,7 @@ import net.sbo.guilib.core.dom.component
 import net.sbo.guilib.core.dsl.NodeBuilder
 import net.sbo.guilib.core.dsl.classNames
 import net.sbo.guilib.core.dsl.div
+import net.sbo.guilib.core.dsl.input
 import net.sbo.guilib.core.dsl.span
 import net.sbo.guilib.core.event.EventType
 import net.sbo.guilib.core.event.InputEvent
@@ -25,24 +26,56 @@ internal data class SelectProps(
     val style: String?,
     val disabled: Boolean,
     val placeholder: String?,
+    val searchable: Boolean = false,
+    val searchPlaceholder: String? = null,
+    val multiple: Boolean = false,
+    val values: List<String> = emptyList(),
+    val onChangeValues: ((List<String>) -> Unit)? = null,
 )
+
+/** Label without `§` formatting codes (for searching). */
+private fun plainLabel(label: String) = label.replace(Regex("§."), "")
 
 /**
  * `<select>`: shows the selected option and opens a menu (rendered in a portal, so it is never clipped).
- * Styled with `select`, `.guilib-select-value`, `.guilib-select-arrow`, `.guilib-select-menu`, `.guilib-option`
- * (`.selected`, `.highlighted`, `.disabled`).
+ * With `searchable` the menu starts with a search field that filters the options (case-insensitive, by label or value).
+ * With `multiple` options toggle (with a check mark) and the menu stays open; the box shows the chosen labels.
+ * Styled with `select` (`.multiple`), `.guilib-select-value`, `.guilib-select-arrow`, `.guilib-select-menu`,
+ * `.guilib-select-search`, `.guilib-select-empty`, `.guilib-option` (`.selected`, `.highlighted`, `.disabled`),
+ * `.guilib-option-check`.
  */
 internal val SelectComponent = component<SelectProps>("Select") { p ->
     var open by useState(false)
     var anchor by useState<Rect?>(null)
     var highlighted by useState(-1)
+    var query by useState("")
     val ref = useElementRef()
     val menuRef = useElementRef()
     val doc = useDocument()
 
-    fun choose(opt: SelectOption) {
+    val q = query.trim().lowercase()
+    val shown = if (!p.searchable || q.isEmpty()) p.options
+    else p.options.filter { plainLabel(it.label).lowercase().contains(q) || it.value.lowercase().contains(q) }
+
+    fun isSelected(o: SelectOption) = if (p.multiple) o.value in p.values else o.value == p.value
+
+    fun close(refocus: Boolean) {
         open = false
-        if (opt.disabled || opt.value == p.value) return
+        query = ""
+        // The search field had the focus; give it back to the select.
+        val focused = doc.focusedElement
+        if (refocus && focused != null && menuRef.current?.contains(focused) == true) ref.current?.let { doc.focus(it) }
+    }
+
+    fun choose(opt: SelectOption) {
+        if (opt.disabled) return
+        if (p.multiple) {
+            val set = if (opt.value in p.values) p.values - opt.value else p.values + opt.value
+            p.onChangeValues?.invoke(p.options.map { it.value }.filter { it in set })
+            return
+        }
+        close(true)
+        if (opt.value == p.value) return
         val ev = InputEvent(EventType.CHANGE, opt.value)
         ref.current?.let { ev.target = it; ev.currentTarget = it }
         p.onChange?.invoke(ev)
@@ -50,17 +83,43 @@ internal val SelectComponent = component<SelectProps>("Select") { p ->
 
     fun toggle() {
         if (p.disabled) return
+        if (open) return close(true)
         anchor = ref.current?.getBoundingClientRect()
-        highlighted = p.options.indexOfFirst { it.value == p.value }
-        open = !open
+        highlighted = p.options.indexOfFirst { isSelected(it) }
+        query = ""
+        open = true
     }
 
     fun inside(target: Element, ref: net.sbo.guilib.core.dom.Ref<Element?>) = ref.current?.contains(target) == true
 
-    useDocumentEvent(EventType.MOUSEDOWN) { e -> if (open && !inside(e.target, ref) && !inside(e.target, menuRef)) open = false }
-    useDocumentEvent(EventType.WHEEL) { e -> if (open && !inside(e.target, menuRef)) open = false }
+    useDocumentEvent(EventType.MOUSEDOWN) { e -> if (open && !inside(e.target, ref) && !inside(e.target, menuRef)) close(false) }
+    useDocumentEvent(EventType.WHEEL) { e -> if (open && !inside(e.target, menuRef)) close(false) }
 
-    val selected = p.options.firstOrNull { it.value == p.value }
+    /** Menu keys, shared by the select itself and the search field. Returns true if handled. */
+    fun menuKey(e: KeyboardEvent): Boolean {
+        val enabled = shown.indices.filter { !shown[it].disabled }
+        when (e.key) {
+            "ArrowDown", "ArrowUp" -> {
+                if (!open) toggle()
+                else if (enabled.isNotEmpty()) {
+                    val pos = enabled.indexOf(highlighted)
+                    highlighted = if (e.key == "ArrowDown") enabled.getOrElse(pos + 1) { enabled.first() } else enabled.getOrElse(pos - 1) { enabled.last() }
+                }
+            }
+            "Enter" -> if (open && highlighted in shown.indices) choose(shown[highlighted]) else toggle()
+            "Escape" -> if (open) {
+                close(true); e.stopPropagation()
+            } else return false
+            "Tab" -> {
+                if (open) close(true)
+                return false
+            }
+            else -> return false
+        }
+        e.preventDefault()
+        return true
+    }
+
     val attrs = HashMap<String, Any?>()
     attrs["tabindex"] = 0
     if (p.disabled) attrs["disabled"] = true
@@ -69,29 +128,15 @@ internal val SelectComponent = component<SelectProps>("Select") { p ->
     handlers[EventType.CLICK] = { toggle() }
     handlers[EventType.KEYDOWN] = { e ->
         e as KeyboardEvent
-        val enabled = p.options.indices.filter { !p.options[it].disabled }
-        when (e.key) {
-            "ArrowDown", "ArrowUp" -> {
-                if (!open) toggle()
-                else if (enabled.isNotEmpty()) {
-                    val pos = enabled.indexOf(highlighted)
-                    val next = if (e.key == "ArrowDown") enabled.getOrElse(pos + 1) { enabled.first() } else enabled.getOrElse(pos - 1) { enabled.last() }
-                    highlighted = next
-                }
-                e.preventDefault()
-            }
-            "Enter", " " -> {
-                if (open && highlighted in p.options.indices) choose(p.options[highlighted]) else toggle()
-                e.preventDefault()
-            }
-            "Escape" -> if (open) {
-                open = false; e.preventDefault(); e.stopPropagation()
-            }
-        }
+        if (e.key == " ") {
+            if (open && highlighted in shown.indices) choose(shown[highlighted]) else toggle()
+            e.preventDefault()
+        } else menuKey(e)
     }
-    element("select", null, p.id, p.className, p.style, ref, attrs, handlers) {
-        span(className = if (selected == null) "guilib-select-value guilib-placeholder" else "guilib-select-value") {
-            +(selected?.label ?: p.placeholder ?: "")
+    val label = p.options.filter { isSelected(it) }.joinToString(", ") { it.label }
+    element("select", null, p.id, classNames("multiple" to p.multiple, p.className), p.style, ref, attrs, handlers) {
+        span(className = if (label.isEmpty()) "guilib-select-value guilib-placeholder" else "guilib-select-value") {
+            +label.ifEmpty { p.placeholder ?: "" }
         }
         span(className = "guilib-select-arrow") { +"▾" }
     }
@@ -102,14 +147,33 @@ internal val SelectComponent = component<SelectProps>("Select") { p ->
         val up = a.bottom > doc.viewportHeight * 0.6f
         val pos = if (up) "bottom: ${doc.viewportHeight - a.y + 1}px" else "top: ${a.bottom + 1}px"
         portal {
-            div(className = "guilib-select-menu", ref = menuRef, style = "position: fixed; left: ${a.x}px; $pos; min-width: ${a.width}px") {
-                p.options.forEachIndexed { i, o ->
-                    div(
-                        key = o.value,
-                        className = classNames("guilib-option", "selected" to (o.value == p.value), "highlighted" to (i == highlighted), "disabled" to o.disabled),
-                        onMouseEnter = { highlighted = i },
-                        onClick = { choose(o) },
-                    ) { +o.label }
+            div(className = classNames("guilib-select-menu", "multiple" to p.multiple), ref = menuRef, style = "position: fixed; left: ${a.x}px; $pos; min-width: ${a.width}px") {
+                if (p.searchable) {
+                    input(
+                        className = "guilib-select-search",
+                        value = query,
+                        placeholder = p.searchPlaceholder ?: "Search…",
+                        autoFocus = true,
+                        onChange = { e ->
+                            query = e.value
+                            highlighted = -1
+                        },
+                        onKeyDown = { e -> menuKey(e) },
+                    )
+                }
+                div(className = "guilib-select-options") {
+                    if (shown.isEmpty()) div(className = "guilib-select-empty") { +"No results" }
+                    shown.forEachIndexed { i, o ->
+                        div(
+                            key = o.value,
+                            className = classNames("guilib-option", "selected" to isSelected(o), "highlighted" to (i == highlighted), "disabled" to o.disabled),
+                            onMouseEnter = { highlighted = i },
+                            onClick = { choose(o) },
+                        ) {
+                            if (p.multiple) span(className = "guilib-option-check") { +"✓" }
+                            span(className = "guilib-option-label") { +o.label }
+                        }
+                    }
                 }
             }
         }

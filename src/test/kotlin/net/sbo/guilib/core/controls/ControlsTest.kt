@@ -279,9 +279,9 @@ class ControlsTest {
         assertNotNull(menu, "menu should render in the overlay layer")
         val options = menu!!.querySelectorAll(".guilib-option")
         assertEquals(3, options.size)
-        root.click(options[2]) // disabled
+        root.click(options[2]) // disabled: nothing happens, the menu stays open
         assertEquals("b", value)
-        root.click(sel)
+        assertNotNull(root.document.overlayRoot.querySelector(".guilib-select-menu"))
         root.click(root.document.overlayRoot.querySelectorAll(".guilib-option")[0])
         assertEquals("a", value)
         assertNull(root.document.overlayRoot.querySelector(".guilib-select-menu"))
