@@ -309,6 +309,15 @@ button.primary:hover { background-color: #6f9cf2; }
 .hour { flex-shrink: 0; width: 34px; padding: 3px 0 5px; text-align: center; color: var(--muted); border-right: 1px solid var(--border); }
 
 /* ---- sortable ---- */
+.kanban { display: flex; gap: 6px; }
+.kanban-col { flex: 1; min-width: 0; padding: 4px; border-radius: 4px; background-color: #1e1f22; }
+.kanban-title { font-weight: bold; margin-bottom: 4px; }
+.kanban-scroll { height: 90px; overflow-y: auto; }
+.kanban-list { gap: 3px; min-height: 86px; }
+.kanban-list.receiving { background-color: #5b8def14; border-radius: 3px; }
+.kanban-card { padding: 4px 6px; border-radius: 3px; background-color: #2b2d31; border: 1px solid #3a3c42; }
+.kanban-list .dragging .kanban-card { border-color: var(--accent); background-color: #3a4a6b; }
+.guilib-sortable-ghost .kanban-card { box-shadow: 0 4px 10px #000a; }
 .sort-list { gap: 2px; margin-bottom: 6px; }
 .sort-row {
     display: flex;

@@ -123,6 +123,7 @@ class InteractionController(private val doc: Document, private val hitTest: (Flo
 
     /** Returns true if the press hit an element (the backend should then not pass it on). */
     fun mouseDown(x: Float, y: Float, button: Int, modifiers: Modifiers = Modifiers.NONE): Boolean {
+        doc.keyboardModality = false
         mouseMove(x, y, modifiers)
         val target = hovered ?: return false
         pressTarget = target
@@ -248,6 +249,11 @@ class InteractionController(private val doc: Document, private val hitTest: (Flo
 
     /** Returns true if the key was handled (the backend must then not run its own action, e.g. closing on Escape). */
     fun keyDown(key: String, keyCode: Int, modifiers: Modifiers = Modifiers.NONE, repeat: Boolean = false): Boolean {
+        if (key !in MODIFIER_KEYS) {
+            doc.keyboardModality = true
+            // Like browsers: using the keyboard on an element focused by a click shows its focus ring from now on.
+            doc.focusedElement?.setState(PseudoState.FOCUS_VISIBLE, true)
+        }
         val target = doc.focusedElement ?: doc.body
         val ev = KeyboardEvent(EventType.KEYDOWN, key, keyCode, modifiers, repeat)
         val allowed = EventDispatcher.dispatch(ev, target)
@@ -320,6 +326,7 @@ class InteractionController(private val doc: Document, private val hitTest: (Flo
     }
 
     private companion object {
+        val MODIFIER_KEYS = setOf("Shift", "Control", "Alt", "Meta", "CapsLock")
         val DRAG_CURSORS = setOf(
             Cursor.GRAB, Cursor.GRABBING, Cursor.MOVE, Cursor.NS_RESIZE, Cursor.EW_RESIZE, Cursor.ROW_RESIZE, Cursor.COL_RESIZE,
         )

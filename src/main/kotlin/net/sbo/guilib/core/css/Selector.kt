@@ -2,7 +2,9 @@ package net.sbo.guilib.core.css
 
 /** Interactive states that map to CSS pseudo-classes. */
 enum class PseudoState(val css: String) {
-    HOVER("hover"), ACTIVE("active"), FOCUS("focus"), FOCUS_WITHIN("focus-within"), DISABLED("disabled"), CHECKED("checked");
+    HOVER("hover"), ACTIVE("active"), FOCUS("focus"), FOCUS_WITHIN("focus-within"), DISABLED("disabled"), CHECKED("checked"),
+    /** Focus that should show a focus ring: keyboard focus, text fields, or keys pressed after a click (like browsers). */
+    FOCUS_VISIBLE("focus-visible");
 
     val bit get() = 1 shl ordinal
 }

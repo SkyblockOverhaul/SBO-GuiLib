@@ -11,6 +11,7 @@ import net.sbo.guilib.core.dsl.button
 import net.sbo.guilib.core.dsl.div
 import net.sbo.guilib.core.dsl.sortableList
 import net.sbo.guilib.core.dsl.span
+import net.sbo.guilib.core.event.Modifiers
 import net.sbo.guilib.core.layout.FakeMeasurer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -163,5 +164,82 @@ class SortableTest {
         val tops = root.items().map { it.getBoundingClientRect().y }
         assertEquals(listOf(0f, 12f, 24f, 36f), tops) // every item sits in its slot, none keeps a stale offset
         assertTrue(root.items().none { it.style.transform.isNotEmpty() })
+    }
+
+    @Test
+    fun altArrowsMoveTheFocusedItemAndKeepFocus() {
+        val root = ui()
+        val a = root.items()[0]
+        root.document.focus(a)
+        root.input.keyDown("ArrowDown", 264, Modifiers(alt = true)); root.frame(300f, 200f)
+        assertEquals(listOf("b", "a", "c", "d"), order)
+        root.input.keyDown("End", 269, Modifiers(alt = true)); root.frame(300f, 200f)
+        assertEquals(listOf("b", "c", "d", "a"), order)
+        assertTrue(root.document.focusedElement === root.items()[3]) // the same element moved, focus stayed on it
+        root.input.keyDown("ArrowDown", 264); root.frame(300f, 200f) // without Alt nothing happens
+        assertEquals(listOf("b", "c", "d", "a"), order)
+    }
+
+    @Test
+    fun draggingNearTheEdgeOfAScrollContainerScrollsIt() {
+        val root = ui(scrolled = true, animated = true)
+        val scroller = root.document.body.querySelector(".s")!!
+        root.input.mouseDown(1f, 5f, 0); root.frame(300f, 200f)
+        now += 16; root.input.mouseMove(1f, 19f); root.frame(300f, 200f) // 1px above the bottom edge of the 20px box
+        repeat(10) { now += 16; root.frame(300f, 200f) }
+        assertTrue(scroller.scrollTop > 10f, "scrollTop ${scroller.scrollTop}")
+        // The item kept following the (still) mouse: it was carried down the list.
+        root.input.mouseUp(1f, 19f, 0); root.frame(300f, 200f)
+        assertTrue(order.indexOf("a") >= 2, order.toString())
+    }
+
+    private var left = listOf("a", "b")
+    private var right = listOf("x", "y", "z")
+
+    /** Two lists in one group side by side: left at x 0..40, right at x 100..140 (items 10 high, gap 2). */
+    private fun groups(): UiRoot {
+        val app = component("G") {
+            var l by useState(left)
+            var r by useState(right)
+            div(className = "row") {
+                sortableList(l, key = { it }, onReorder = { l = it; left = it }, group = "g", className = "left") { item, _ -> span { +item } }
+                sortableList(r, key = { it }, onReorder = { r = it; right = it }, group = "g", className = "right") { item, _ -> span { +item } }
+            }
+        }
+        val css = "$ua .row { display: flex; gap: 60px } .guilib-sortable { min-height: 20px } .guilib-sortable-item.dragging.away { visibility: hidden }"
+        val root = UiRoot(FakeMeasurer, listOf(Stylesheet.parse(css, "ua", Origin.USER_AGENT)), clock = { now })
+        root.render(VComponent(app, Unit, null))
+        root.frame(300f, 200f)
+        return root
+    }
+
+    @Test
+    fun itemsMoveBetweenListsOfOneGroup() {
+        val root = groups()
+        root.input.mouseDown(5f, 5f, 0); root.frame(300f, 200f)
+        root.input.mouseMove(20f, 5f); root.frame(300f, 200f)
+        root.input.mouseMove(110f, 13f); root.frame(300f, 200f) // over the right list, between "x" (center 5) and "y" (center 17)
+        // A ghost follows the mouse; the original is hidden, the right list opens a gap at index 1.
+        val ghost = root.document.body.querySelectorAll(".guilib-sortable-ghost")
+        assertEquals(1, ghost.size)
+        val rightItems = root.document.body.querySelectorAll(".right .guilib-sortable-item")
+        assertEquals(0f, (rightItems[0].style.transform.single() as TransformFn.Translate).y.resolve(0f)!!, 0.01f)
+        assertEquals(12f, (rightItems[1].style.transform.single() as TransformFn.Translate).y.resolve(0f)!!, 0.01f)
+        assertTrue(root.document.body.querySelector(".right")!!.classList.contains("receiving"))
+        root.input.mouseUp(110f, 13f, 0); root.frame(300f, 200f)
+        assertEquals(listOf("b"), left)
+        assertEquals(listOf("x", "a", "y", "z"), right)
+        assertTrue(root.document.body.querySelectorAll(".guilib-sortable-ghost").isEmpty())
+    }
+
+    @Test
+    fun droppingOutsideEveryListCancels() {
+        val root = groups()
+        root.input.mouseDown(5f, 5f, 0); root.frame(300f, 200f)
+        root.input.mouseMove(60f, 80f); root.frame(300f, 200f)
+        assertTrue(root.document.body.querySelector(".left .dragging")!!.classList.contains("away"))
+        root.input.mouseUp(60f, 80f, 0); root.frame(300f, 200f)
+        assertEquals(listOf("a", "b"), left)
+        assertEquals(listOf("x", "y", "z"), right)
     }
 }

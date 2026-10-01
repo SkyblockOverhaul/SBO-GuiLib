@@ -394,7 +394,17 @@ fun NodeBuilder.presence(visible: Boolean, exitMs: Long, key: Any? = null, child
  * A drag starts after the mouse moved a few pixels, so clicks inside items keep working. With [handle] = true only
  * elements with the class `guilib-drag-handle` start a drag (use it when items contain inputs). [horizontal] sorts
  * along x (e.g. in a horizontally scrolling row). Escape cancels a drag. Items need a stable [key].
- * Styled with `.guilib-sortable` (`.horizontal`, `.handle`, `.sorting`), `.guilib-sortable-item` (`.dragging`).
+ * Dragging near the edge of a scroll container scrolls it. Items are focusable; Alt + ↑/↓ (←/→ when horizontal),
+ * Alt + Home/End move the focused item.
+ *
+ * Lists with the same [group] exchange items (kanban boards): dragged outside its list an item follows the mouse as a
+ * ghost (rendered in a portal; style it through [className]/[itemClassName], selectors relying on other ancestors
+ * don't reach it), the list under the mouse opens a gap, and dropping there calls the source's [onReorder] without the
+ * item and the target's [onReorder] with it. Dropping elsewhere cancels. Give empty lists a `min-height` so they can
+ * receive items.
+ *
+ * Styled with `.guilib-sortable` (`.horizontal`, `.handle`, `.sorting`, `.receiving`), `.guilib-sortable-item`
+ * (`.dragging`, `.away` while outside its list, `.guilib-sortable-ghost`).
  */
 fun <T> NodeBuilder.sortableList(
     items: List<T>,
@@ -405,12 +415,13 @@ fun <T> NodeBuilder.sortableList(
     className: String? = null,
     itemClassName: String? = null,
     listKey: Any? = null,
+    group: String? = null,
     children: NodeBuilder.(item: T, dragging: Boolean) -> Unit,
 ) {
     @Suppress("UNCHECKED_CAST")
     SortableComponent(
         SortableProps(
-            items, key as (Any?) -> Any?, onReorder as ((List<Any?>) -> Unit)?, horizontal, handle, className, itemClassName,
+            items, key as (Any?) -> Any?, onReorder as ((List<Any?>) -> Unit)?, horizontal, handle, className, itemClassName, group,
             children as NodeBuilder.(Any?, Boolean) -> Unit,
         ),
         listKey,

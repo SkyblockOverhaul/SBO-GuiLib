@@ -344,6 +344,9 @@ class Document(
         private set
 
     /** Moves keyboard focus, firing blur/focusout and focus/focusin like the DOM. `null` clears focus. */
+    /** True when the last input was a key press (focus then shows `:focus-visible`); set by the interaction layer. */
+    var keyboardModality = false
+
     fun focus(el: Element?) {
         val old = focusedElement
         if (old === el) return
@@ -351,12 +354,14 @@ class Document(
         focusedElement = el
         if (old != null) {
             old.setState(PseudoState.FOCUS, false)
+            old.setState(PseudoState.FOCUS_VISIBLE, false)
             setFocusWithin(old, false)
             EventDispatcher.dispatch(FocusEvent(EventType.BLUR, el, bubbles = false), old)
             EventDispatcher.dispatch(FocusEvent(EventType.FOCUSOUT, el, bubbles = true), old)
         }
         if (el != null) {
             el.setState(PseudoState.FOCUS, true)
+            if (keyboardModality || el.tagName == "input" || el.tagName == "textarea") el.setState(PseudoState.FOCUS_VISIBLE, true)
             setFocusWithin(el, true)
             EventDispatcher.dispatch(FocusEvent(EventType.FOCUS, old, bubbles = false), el)
             EventDispatcher.dispatch(FocusEvent(EventType.FOCUSIN, old, bubbles = true), el)

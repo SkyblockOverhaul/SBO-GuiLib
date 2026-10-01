@@ -51,7 +51,7 @@ UIs can be written quickly and correctly. Differences from the web are documente
   `stopPropagation()`, `preventDefault()`, Tab navigation, `document`-level listeners.
 - **Controls:** text/password/number inputs (caret, selection, clipboard), checkbox, switch, slider, range slider, number field, radio/segmented buttons, chips, tabs, multi-line textarea,
   select (searchable) and multi-select dropdowns, accordion (`details`), context menus, toasts, color picker, tooltip,
-  `title` tooltips, modal dialogs, drag-to-reorder lists (`sortableList`), portals — all styleable with CSS.
+  `title` tooltips, modal dialogs, drag-to-reorder lists (`sortableList`, also between lists), portals — all styleable with CSS.
 - **Dev workflow:** CSS hot reload from `src/main/resources`, `/guilib showcase`, `/guilib reload`.
 
 ## Using it in a mod

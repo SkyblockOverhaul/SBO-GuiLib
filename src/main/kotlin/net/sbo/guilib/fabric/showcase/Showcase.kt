@@ -511,7 +511,7 @@ object Showcase {
         var tasks by useState(listOf("Kill Diana", "Dig burrows", "Sell loot", "Craft a hyperion", "Touch grass"))
         var tabs by useState(listOf("Overview", "Party", "Bazaar", "Auction", "Collections", "Skills", "Garden", "Rift", "Museum", "Settings"))
         h2 { +"Sortable lists" }
-        p { +"Drag items to reorder them; Escape cancels a drag." }
+        p { +"Drag items to reorder them; Escape cancels a drag. Focus an item and press Alt + arrow keys to move it." }
         h3 { +"Vertical (drag anywhere)" }
         sortableList(tasks, key = { it }, onReorder = { tasks = it }, className = "sort-list") { task, dragging ->
             div(className = classNames("sort-row", "dragging" to dragging)) {
@@ -535,6 +535,31 @@ object Showcase {
             }
         }
         HorizontalScrollDemo()
+        KanbanDemo()
+    }
+
+    /** Lists sharing a group exchange items; the long column scrolls while dragging near its edges. */
+    private val KanbanDemo = component("KanbanDemo") {
+        var todo by useState((1..12).map { "Burrow #$it" })
+        var doing by useState(listOf("Inquisitor", "Minos Champion"))
+        var done by useState(listOf<String>())
+        h3 { +"Between lists (group = \"board\")" }
+        div(className = "kanban") {
+            for ((title, items, set) in listOf(
+                Triple("To do", todo) { l: List<String> -> todo = l },
+                Triple("Doing", doing) { l: List<String> -> doing = l },
+                Triple("Done", done) { l: List<String> -> done = l },
+            )) {
+                div(className = "kanban-col", key = title) {
+                    div(className = "kanban-title") { +"$title (${items.size})" }
+                    scroll(className = "kanban-scroll") {
+                        sortableList(items, key = { it }, onReorder = set, group = "board", className = "kanban-list") { item, _ ->
+                            div(className = "kanban-card") { +item }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private val HOTBAR = listOf(
