@@ -180,7 +180,7 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
   `transform-origin` (lengths, %, `left center right top bottom`; default `50% 50%`). Like CSS it doesn't affect layout; clicks
   and `getBoundingClientRect()` follow the transformed box (hit-testing uses the exact rotated shape). Translate/scale stay
   pixel-exact and scaled text is re-rendered at the new size (stays sharp); rotated/skewed content is drawn through a matrix
-  (text stays at its unrotated resolution). Transforms interpolate when both lists have the same functions in the same order
+  (text is rasterized at 2× and filtered, so rotated text stays smooth). Transforms interpolate when both lists have the same functions in the same order
   (`none` counts as matching anything), e.g. `@keyframes spin { to { transform: rotate(360deg) } }`.
 - Text: `color font-family font-size font-weight font-style line-height text-align white-space text-overflow text-decoration text-shadow`
 - Visual: `background background-color background-image opacity visibility object-fit`. `background-image` takes a comma list of layers

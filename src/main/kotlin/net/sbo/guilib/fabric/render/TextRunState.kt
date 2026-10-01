@@ -1,6 +1,8 @@
 package net.sbo.guilib.fabric.render
 
 import com.mojang.blaze3d.pipeline.RenderPipeline
+import com.mojang.blaze3d.systems.RenderSystem
+import com.mojang.blaze3d.textures.FilterMode
 import com.mojang.blaze3d.vertex.VertexConsumer
 import net.minecraft.client.gui.navigation.ScreenRectangle
 import net.minecraft.client.gui.render.TextureSetup
@@ -18,6 +20,8 @@ class TextRunState(
     private val color: Int,
     private val scissor: ScreenRectangle?,
     bounds: ScreenRectangle,
+    /** Sample the atlas with linear filtering (oversampled glyphs drawn through a rotation/skew). */
+    private val linear: Boolean = false,
 ) : GuiElementRenderState {
     private val bounds: ScreenRectangle? = bounds.transformMaxBounds(pose).let { if (scissor != null) scissor.intersection(it) else it }
 
@@ -36,7 +40,10 @@ class TextRunState(
 
     override fun pipeline(): RenderPipeline = RenderPipelines.GUI_TEXTURED
     override fun textureSetup(): TextureSetup =
-        TextureSetup.singleTexture(page.texture.textureView, page.texture.sampler)
+        TextureSetup.singleTexture(
+            page.texture.textureView,
+            if (linear) RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR) else page.texture.sampler,
+        )
     override fun scissorArea(): ScreenRectangle? = scissor
     override fun bounds(): ScreenRectangle? = bounds
 }

@@ -225,13 +225,20 @@ object CommandRenderer {
 
     /** Draws TTF glyphs snapped to physical pixels; returns the advance in GUI px. */
     private fun drawTtf(ctx: GuiGraphicsExtractor, text: String, font: TrueTypeFont, t: PaintCommand.Text, x: Float, y: Float, color: Int): Float {
-        val scale = FontManager.guiScale()
-        val px = FontManager.pixelSize(t.style)
-        if (Colors.alpha(color) == 0) return FontManager.ttfWidth(text, font, px) / scale
+        val gui = FontManager.guiScale()
+        val basePx = FontManager.pixelSize(t.style)
+        if (Colors.alpha(color) == 0) return FontManager.ttfWidth(text, font, basePx) / gui
+        // Rotated/skewed text (drawn through a matrix) is rasterized larger and sampled linearly, so its edges stay
+        // smooth instead of stair-stepping; axis-aligned text stays pixel-exact.
+        val xf = transform
+        val oversample = if (xf == null) 1f else (2f * maxOf(1f, xf.scaleX, xf.scaleY)).coerceAtMost(4f)
+        val px = (basePx * oversample).roundToInt().coerceAtLeast(1)
+        val scale = gui * px / basePx
         val metrics = font.metrics(px)
         var penX = (x * scale).roundToInt().toFloat()
         val startX = penX
         val baseline = (y * scale + metrics.ascent).roundToInt().toFloat()
+        val linear = xf != null
         val byPage = LinkedHashMap<GlyphAtlas.Page, FloatArrayBuilder>()
         var i = 0
         while (i < text.length) {
@@ -259,7 +266,7 @@ object CommandRenderer {
         )
         for ((page, quads) in byPage) {
             beforeQuad(ctx, page.id, x, y, x1, y1)
-            ctx.guiRenderState.addGuiElement(TextRunState(pose, page, quads.toArray(), color, scissor, bounds))
+            ctx.guiRenderState.addGuiElement(TextRunState(pose, page, quads.toArray(), color, scissor, bounds, linear))
         }
         return advance
     }
