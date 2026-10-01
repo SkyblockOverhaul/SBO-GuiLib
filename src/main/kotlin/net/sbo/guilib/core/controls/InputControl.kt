@@ -24,7 +24,7 @@ import java.text.BreakIterator
  * The input's children are generated here (like a shadow DOM) and can be styled with
  * `.guilib-input-text`, `.guilib-placeholder`, `.guilib-caret`, `.guilib-selection` and `.guilib-check`.
  */
-internal class InputControl(val el: Element) {
+internal class InputControl(val el: Element) : EditableControl {
     var text = ""
     var caret = 0
     var anchor = 0
@@ -98,7 +98,7 @@ internal class InputControl(val el: Element) {
     }
 
     /** Positions caret/selection after layout and keeps the caret scrolled into view. */
-    fun afterLayout(now: Long) {
+    override fun afterLayout(now: Long) {
         if (isCheckbox || builtFor == null) return
         val b = el.box
         val line = b.paragraphs.firstOrNull()?.lines?.firstOrNull()
@@ -220,7 +220,7 @@ internal class InputControl(val el: Element) {
     }
 
     /** Default actions; returns true if the event was consumed. */
-    fun handle(ev: UIEvent, doc: Document): Boolean {
+    override fun handle(ev: UIEvent, doc: Document): Boolean {
         if (el.disabled) return false
         if (isCheckbox) return handleCheckbox(ev)
         when (ev) {
@@ -311,7 +311,7 @@ internal class InputControl(val el: Element) {
         return true
     }
 
-    fun onBlur() {
+    override fun onBlur() {
         dragging = false
         anchor = caret
     }

@@ -21,7 +21,13 @@ import net.sbo.guilib.core.controls.SwitchProps
 import net.sbo.guilib.core.controls.TooltipComponent
 import net.sbo.guilib.core.controls.TooltipProps
 import net.sbo.guilib.core.dom.VText
+import net.sbo.guilib.core.dom.Element
+import net.sbo.guilib.core.dom.Ref
+import net.sbo.guilib.core.event.EventType
+import net.sbo.guilib.core.event.FocusEvent
 import net.sbo.guilib.core.event.InputEvent
+import net.sbo.guilib.core.event.KeyboardEvent
+import net.sbo.guilib.core.event.UIEvent
 
 /** Collects the `option(...)` entries of a [select]. */
 @GuiDsl
@@ -277,6 +283,52 @@ fun NodeBuilder.numberInput(
     NumberInputProps(value, onChange, min, max, step, decimalsOf(step), wheel, disabled, placeholder, className, id, style),
     key,
 )
+
+/**
+ * Multi-line text field (like `<textarea>`), controlled like `input`:
+ * `textarea(value = note, onChange = { note = it.value }, placeholder = "Description", rows = 4, maxLength = 256)`.
+ * Wraps words, Enter inserts a line break, arrow keys/Home/End/PageUp/PageDown move the caret, Ctrl+A/C/X/V work,
+ * and it scrolls vertically when the text is taller than [rows] lines. Styled with `textarea`,
+ * `.guilib-textarea-line`, `.guilib-placeholder`, `.guilib-caret`, `.guilib-selection`.
+ */
+fun NodeBuilder.textarea(
+    value: String? = null,
+    onChange: ((InputEvent) -> Unit)? = null,
+    placeholder: String? = null,
+    rows: Int = 3,
+    maxLength: Int? = null,
+    disabled: Boolean = false,
+    autoFocus: Boolean = false,
+    className: String? = null,
+    id: String? = null,
+    style: String? = null,
+    key: Any? = null,
+    ref: Ref<Element?>? = null,
+    onInput: ((InputEvent) -> Unit)? = null,
+    onKeyDown: ((KeyboardEvent) -> Unit)? = null,
+    onFocus: ((FocusEvent) -> Unit)? = null,
+    onBlur: ((FocusEvent) -> Unit)? = null,
+) {
+    val attrs = HashMap<String, Any?>()
+    if (value != null) attrs["value"] = value
+    if (placeholder != null) attrs["placeholder"] = placeholder
+    if (maxLength != null) attrs["maxlength"] = maxLength
+    if (disabled) attrs["disabled"] = true
+    if (autoFocus) attrs["autofocus"] = true
+    val handlers = HashMap<String, (UIEvent) -> Unit>()
+    @Suppress("UNCHECKED_CAST")
+    fun on(type: String, h: ((Nothing) -> Unit)?) {
+        if (h != null) handlers[type] = h as (UIEvent) -> Unit
+    }
+    on(EventType.CHANGE, onChange)
+    on(EventType.INPUT, onInput)
+    on(EventType.KEYDOWN, onKeyDown)
+    on(EventType.FOCUS, onFocus)
+    on(EventType.BLUR, onBlur)
+    // Height for [rows] lines (line height ≈ 1.2em) plus the default padding; `style` can override it.
+    val height = String.format(java.util.Locale.ROOT, "height: calc(%.2fem + 8px)", rows * 1.2f)
+    element("textarea", key, id, className, if (style != null) "$height; $style" else height, ref, attrs, handlers, null)
+}
 
 /**
  * Tooltip shown when hovering [children] for [delayMs]. For simple cases the `title` prop works on any element too.

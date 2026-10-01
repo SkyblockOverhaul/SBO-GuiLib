@@ -105,6 +105,24 @@ input {
 input:hover { border-color: #6d6f78; }
 input:focus { border-color: var(--guilib-accent); }
 input:disabled { opacity: 0.5; cursor: not-allowed; }
+/* ---- textarea ---- */
+textarea {
+    display: block;
+    position: relative;
+    min-width: 80px;
+    padding: 3px 4px;
+    background-color: #1e1f22;
+    border: 1px solid #4e5058;
+    border-radius: 3px;
+    color: #f2f3f5;
+    cursor: text;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+textarea:hover { border-color: #6d6f78; }
+textarea:focus { border-color: var(--guilib-accent); }
+textarea:disabled { opacity: 0.5; cursor: not-allowed; }
+.guilib-textarea-line { white-space: pre; }
 .guilib-placeholder { color: #80848e; }
 .guilib-caret { position: absolute; width: 1px; background-color: currentColor; visibility: hidden; }
 .guilib-selection { position: absolute; display: none; background-color: rgba(91, 141, 239, 0.45); }

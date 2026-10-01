@@ -11,10 +11,14 @@ import java.util.WeakHashMap
 internal object Controls {
 
     fun install(doc: Document, input: InteractionController) {
-        val inputs = WeakHashMap<Element, InputControl>()
+        val inputs = WeakHashMap<Element, EditableControl>()
         doc.controlInitializer = { el, created ->
             if (el.tagName == "input") {
                 val c = el.control as? InputControl ?: InputControl(el).also { el.control = it }
+                inputs[el] = c
+                c.sync()
+            } else if (el.tagName == "textarea") {
+                val c = el.control as? TextAreaControl ?: TextAreaControl(el).also { el.control = it }
                 inputs[el] = c
                 c.sync()
             }
@@ -22,7 +26,7 @@ internal object Controls {
             if (created && el.getAttribute("autofocus") == true) doc.post { doc.focus(el) }
         }
         input.defaultActions += { ev -> controlFor(ev.target)?.handle(ev, doc) ?: false }
-        doc.addEventListener(EventType.BLUR) { ev -> (ev.target.control as? InputControl)?.onBlur() }
+        doc.addEventListener(EventType.BLUR) { ev -> (ev.target.control as? EditableControl)?.onBlur() }
         // Position carets/selections after layout (and blink the caret) every frame.
         doc.frameHooks += { now ->
             for ((el, c) in inputs.entries.toList()) if (el.ownerDocument === doc) c.afterLayout(now)
@@ -59,10 +63,10 @@ internal object Controls {
     }
 
     /** The input control of [target] or of the input it belongs to (events may target the generated children). */
-    private fun controlFor(target: Element): InputControl? {
+    private fun controlFor(target: Element): EditableControl? {
         var e: Element? = target
         while (e != null) {
-            (e.control as? InputControl)?.let { return it }
+            (e.control as? EditableControl)?.let { return it }
             e = e.parent
         }
         return null

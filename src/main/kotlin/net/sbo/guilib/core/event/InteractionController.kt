@@ -194,8 +194,8 @@ class InteractionController(private val doc: Document, private val hitTest: (Flo
             var e: Element? = ev.target
             while (e != null && e.tagName != "label") e = e.parent
             val label = e ?: return
-            if (ev.target.tagName == "input" || ev.target.tagName == "select") return
-            val control = label.descendants().firstOrNull { it.tagName == "input" || it.tagName == "select" || it.tagName == "button" } ?: return
+            if (ev.target.tagName == "input" || ev.target.tagName == "textarea" || ev.target.tagName == "select") return
+            val control = label.descendants().firstOrNull { it.tagName == "input" || it.tagName == "textarea" || it.tagName == "select" || it.tagName == "button" } ?: return
             doc.focus(control)
             val synthetic = MouseEvent(EventType.CLICK, mouseX, mouseY)
             if (EventDispatcher.dispatch(synthetic, control)) for (a in defaultActions) if (a(synthetic)) return
@@ -256,14 +256,14 @@ class InteractionController(private val doc: Document, private val hitTest: (Flo
                 }
                 "Enter", " " -> {
                     val f = doc.focusedElement
-                    if (f != null && !f.disabled && f.tagName != "input" && (f.tagName == "button" || f.getAttribute("tabindex") != null)) {
+                    if (f != null && !f.disabled && f.tagName != "input" && f.tagName != "textarea" && (f.tagName == "button" || f.getAttribute("tabindex") != null)) {
                         click(f, mouseX, mouseY, modifiers); handled = true
                     }
                 }
                 "Escape" -> {
                     if (doc.focusedElement != null) {
                         // First Escape only blurs an input; the second one closes the screen.
-                        if (doc.focusedElement?.tagName == "input") {
+                        if (doc.focusedElement?.tagName == "input" || doc.focusedElement?.tagName == "textarea") {
                             doc.focus(null); handled = true
                         }
                     }
@@ -294,14 +294,14 @@ class InteractionController(private val doc: Document, private val hitTest: (Flo
         if (el.disabled) return false
         val tab = el.getAttribute("tabindex") as? Int
         if (tab != null) return tab >= 0
-        return el.tagName == "input" || el.tagName == "button" || el.tagName == "select"
+        return el.tagName == "input" || el.tagName == "textarea" || el.tagName == "button" || el.tagName == "select"
     }
 
     private fun focusableAncestor(el: Element): Element? {
         var e: Element? = el
         while (e != null) {
             val tab = e.getAttribute("tabindex") as? Int
-            if (!e.disabled && (tab != null || e.tagName == "input" || e.tagName == "button" || e.tagName == "select")) return e
+            if (!e.disabled && (tab != null || e.tagName == "input" || e.tagName == "textarea" || e.tagName == "button" || e.tagName == "select")) return e
             e = e.parent
         }
         return null
