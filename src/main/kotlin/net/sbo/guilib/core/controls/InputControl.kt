@@ -69,7 +69,8 @@ internal class InputControl(val el: Element) {
             el.setChildren(listOf(check))
             return
         }
-        textNode = TextNode("")
+        // What the user types is shown as is: `§` must not turn into formatting (and shift the caret).
+        textNode = TextNode("").also { it.formattingCodes = false }
         textSpan = Element("span").also { it.className = "guilib-input-text" }
         textSpan.setChildren(listOf(textNode))
         selectionEl = Element("div").also { it.className = "guilib-selection" }
@@ -117,7 +118,7 @@ internal class InputControl(val el: Element) {
         if (hasSelection && focused) {
             val x0 = b.padding.left + measure(shown.substring(0, selStart))
             val x1 = b.padding.left + measure(shown.substring(0, selEnd))
-            setStyle(selectionEl, "left: ${x0}px; top: ${top}px; width: ${x1 - x0}px; height: ${height}px")
+            setStyle(selectionEl, "display: block; left: ${x0}px; top: ${top}px; width: ${x1 - x0}px; height: ${height}px")
         } else {
             setStyle(selectionEl, "display: none")
         }

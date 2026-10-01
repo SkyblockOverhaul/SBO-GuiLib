@@ -185,7 +185,7 @@ object CommandRenderer {
         val ascent = FontManager.metrics(t.style).ascent
         pose.translate(x, t.y + ascent - 7f * scale)
         if (scale != 1f) pose.scale(scale, scale)
-        ctx.text(font, VanillaFont.component(text, t.style), 0, 0, t.color, t.style.shadow != null)
+        ctx.text(font, VanillaFont.sequence(text, t.style), 0, 0, t.color, t.style.shadow != null)
         pose.popMatrix()
         layerHasOverlay = true
         return VanillaFont.width(text, t.style)

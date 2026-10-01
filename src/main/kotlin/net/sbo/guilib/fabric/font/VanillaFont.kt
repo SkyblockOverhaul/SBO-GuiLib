@@ -1,8 +1,8 @@
 package net.sbo.guilib.fabric.font
 
 import net.minecraft.client.Minecraft
-import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.Style
+import net.minecraft.util.FormattedCharSequence
 import net.sbo.guilib.core.layout.FontMetrics
 import net.sbo.guilib.core.layout.TextStyle
 
@@ -17,10 +17,14 @@ object VanillaFont {
 
     fun scale(style: TextStyle) = style.fontSize / NATIVE_SIZE
 
-    fun component(text: String, style: TextStyle): Component =
-        Component.literal(text).setStyle(Style.EMPTY.withBold(style.bold).withItalic(style.italic))
+    /**
+     * [text] as drawn characters. Unlike `Component.literal`, this never interprets `§`: formatting codes are already
+     * resolved by the layout, so any `§` left is meant to be visible (e.g. typed into an input).
+     */
+    fun sequence(text: String, style: TextStyle): FormattedCharSequence =
+        FormattedCharSequence.forward(text, Style.EMPTY.withBold(style.bold).withItalic(style.italic))
 
-    fun width(text: String, style: TextStyle): Float = font.width(component(text, style)) * scale(style)
+    fun width(text: String, style: TextStyle): Float = font.width(sequence(text, style)) * scale(style)
 
     fun metrics(style: TextStyle): FontMetrics {
         val s = scale(style)

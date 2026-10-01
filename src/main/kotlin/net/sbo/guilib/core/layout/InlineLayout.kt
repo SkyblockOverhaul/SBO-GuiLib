@@ -55,7 +55,9 @@ internal class InlineLayout(private val engine: LayoutEngine) {
             when {
                 text != null -> {
                     if (mark) node.box.inParagraph = true
-                    for ((t, s) in FormattingCodes.parse(text, TextStyle.of(node.style))) out += Item.Text(t, s, node)
+                    val base = TextStyle.of(node.style)
+                    if (!node.formattingCodes) out += Item.Text(text, base, node)
+                    else for ((t, s) in FormattingCodes.parse(text, base)) out += Item.Text(t, s, node)
                 }
                 node.isLineBreak -> {
                     if (mark) node.box.inParagraph = true

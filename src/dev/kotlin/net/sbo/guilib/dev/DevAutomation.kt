@@ -12,6 +12,7 @@ import net.minecraft.world.level.WorldDataConfiguration
 import net.minecraft.world.level.levelgen.WorldOptions
 import net.minecraft.world.level.levelgen.presets.WorldPresets
 import net.sbo.guilib.core.Log
+import net.sbo.guilib.core.event.Modifiers
 import net.sbo.guilib.fabric.GuiLib
 import net.sbo.guilib.fabric.GuiLibScreen
 import net.sbo.guilib.fabric.showcase.Showcase
@@ -117,7 +118,13 @@ object DevAutomation : ClientModInitializer {
             }
             "hover" -> hover(arg)
             "type" -> arg.forEach { root.input.charTyped(it.toString()) }
-            "key" -> root.input.keyDown(arg, 0)
+            // "key:Enter", with modifiers "key:shift+Home" / "key:ctrl+a".
+            "key" -> {
+                val parts = arg.split('+')
+                val mods = parts.dropLast(1).map { it.lowercase() }
+                val modifiers = Modifiers(shift = "shift" in mods, ctrl = "ctrl" in mods, alt = "alt" in mods, meta = "meta" in mods)
+                root.input.keyDown(parts.last(), 0, modifiers)
+            }
             // "wheel:.content:200" scrolls the scroll container matching the selector by 200px.
             "wheel" -> {
                 val sel = arg.substringBeforeLast(':')

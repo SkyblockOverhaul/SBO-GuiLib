@@ -42,6 +42,11 @@ object Keys {
             null
         }
         if (!name.isNullOrEmpty()) return if (modifiers.shift) name.uppercase() else name
+        // No layout name (happens with some layouts/platforms): fall back to US letters so Ctrl+C/V/X/A keep working.
+        if (keyCode in GLFW.GLFW_KEY_A..GLFW.GLFW_KEY_Z) {
+            val c = 'a' + (keyCode - GLFW.GLFW_KEY_A)
+            return if (modifiers.shift) c.uppercase() else c.toString()
+        }
         return "Unidentified"
     }
 

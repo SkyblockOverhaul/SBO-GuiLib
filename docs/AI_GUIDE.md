@@ -102,7 +102,9 @@ Children go in the trailing lambda; text with `+"text"` or `text(value)`.
 (`input(value = name, onChange = { name = it.value })`). Without `value` the input manages its own text.
 `onChange` fires on **every edit** (React semantics, not DOM `change`); `onInput` is identical.
 
-Minecraft `§` color/format codes work in every text (`+"§6Gold §lbold"`).
+Minecraft `§` color/format codes work in every text (`+"§6Gold §lbold"`). Text inputs are the exception: what the user types is shown
+literally (`§` included); if you display that value elsewhere, the codes apply there.
+Inputs support mouse/Shift+arrow selection, double-click word selection and Ctrl/Cmd+A/C/X/V with the system clipboard.
 
 ## 4. Events
 

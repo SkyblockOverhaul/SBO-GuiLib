@@ -15,8 +15,10 @@ import net.sbo.guilib.core.dsl.div
 import net.sbo.guilib.core.dsl.input
 import net.sbo.guilib.core.dsl.modal
 import net.sbo.guilib.core.dsl.select
+import net.sbo.guilib.core.css.Display
 import net.sbo.guilib.core.event.Modifiers
 import net.sbo.guilib.core.layout.FakeMeasurer
+import net.sbo.guilib.core.layout.Fragment
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -35,6 +37,7 @@ class ControlsTest {
         input { display: inline-block; position: relative; overflow: hidden; white-space: pre; padding: 2px; width: 80px }
         input[type=checkbox] { width: 10px; height: 10px; padding: 0 }
         .guilib-caret, .guilib-selection { position: absolute; width: 1px }
+        .guilib-selection { display: none }
         #guilib-overlay { position: fixed; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100 }
         .guilib-portal { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none }
         .guilib-portal > * { pointer-events: auto }
@@ -123,6 +126,40 @@ class ControlsTest {
         assertEquals("", el.shownText().trim())
         root.key("v", Modifiers(ctrl = true))
         assertEquals("hello", el.shownText())
+    }
+
+    @Test
+    fun selectionIsVisibleWhileSelecting() {
+        val root = ui { input() }
+        val el = root.document.body.querySelector("input")!!
+        val selection = el.descendants().first { it.className == "guilib-selection" }
+        root.click(el)
+        root.type("hello")
+        assertEquals(Display.NONE, selection.style.display)
+        root.key("Home", Modifiers(shift = true))
+        root.frame(300f, 200f)
+        assertTrue(selection.style.display != Display.NONE)
+        assertEquals(5 * el.style.fontSize / 2f, selection.box.width, 0.01f) // FakeMeasurer: fontSize/2 per char
+        root.key("ArrowRight")
+        root.frame(300f, 200f)
+        assertEquals(Display.NONE, selection.style.display)
+    }
+
+    @Test
+    fun formattingCodesAreLiteralInInputs() {
+        val root = ui {
+            input(className = "in")
+            div(className = "label") { +"§aHi" }
+        }
+        val el = root.document.body.querySelector(".in")!!
+        root.click(el)
+        root.type("§aHi")
+        root.frame(300f, 200f)
+        fun Element.laidOut() = box.paragraphs.flatMap { p -> p.lines.flatMap { it.fragments } }
+            .filterIsInstance<Fragment.Text>().joinToString("") { it.text }
+        assertEquals("§aHi", el.laidOut())
+        // Normal text still applies the codes.
+        assertEquals("Hi", root.document.body.querySelector(".label")!!.laidOut())
     }
 
     @Test

@@ -61,6 +61,15 @@ class TextNode internal constructor(text: String) : Node() {
     override val layoutChildren: List<LayoutNode> get() = emptyList()
     override val textContent: String get() = data
 
+    /** False shows `§` literally instead of applying formatting codes (used by text inputs). */
+    override var formattingCodes: Boolean = true
+        internal set(value) {
+            if (field != value) {
+                field = value
+                document?.invalidateLayout()
+            }
+        }
+
     override fun toString() = "\"$data\""
 }
 

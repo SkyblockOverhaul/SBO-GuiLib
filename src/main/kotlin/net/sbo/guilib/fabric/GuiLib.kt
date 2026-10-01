@@ -3,6 +3,7 @@ package net.sbo.guilib.fabric
 import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.Component
 import net.sbo.guilib.core.UiRoot
+import net.sbo.guilib.core.dom.Clipboard
 import net.sbo.guilib.core.dom.ComponentType
 import net.sbo.guilib.core.dom.ReplacedContent
 import net.sbo.guilib.core.dom.VComponent
@@ -86,8 +87,17 @@ object GuiLib {
         override val height = 72f
     }
 
-    /** Wires backend services into a new UI (replaced content for `<item>`/`<entity>`/`<img>`, default actions of controls). */
+    /** The system clipboard, through Minecraft (GLFW). */
+    private object SystemClipboard : Clipboard {
+        override fun get(): String = Minecraft.getInstance().keyboardHandler.clipboard
+        override fun set(text: String) {
+            Minecraft.getInstance().keyboardHandler.clipboard = text
+        }
+    }
+
+    /** Wires backend services into a new UI (clipboard, replaced content for `<item>`/`<entity>`/`<img>`). */
     internal fun initDocument(root: UiRoot) {
+        root.document.clipboard = SystemClipboard
         root.document.elementInitializer = { el ->
             when (el.tagName) {
                 "item" -> if (el.replaced == null) el.replaced = ItemContent

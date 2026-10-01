@@ -9,6 +9,8 @@ interface LayoutNode {
     val layoutChildren: List<LayoutNode>
     /** Non-null for text nodes. May contain `§` formatting codes. */
     val textContent: String? get() = null
+    /** False when [textContent] is shown literally, `§` included (text inputs). */
+    val formattingCodes: Boolean get() = true
     /** Natural size of replaced content (images, items); `null` for normal elements. */
     val intrinsicWidth: Float? get() = null
     val intrinsicHeight: Float? get() = null
