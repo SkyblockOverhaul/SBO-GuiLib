@@ -7,6 +7,8 @@ import net.sbo.guilib.core.dom.Element
 import net.sbo.guilib.core.dom.VComponent
 import net.sbo.guilib.core.dom.component
 import net.sbo.guilib.core.dsl.ComponentScope
+import net.sbo.guilib.core.dsl.numberInput
+import net.sbo.guilib.core.dsl.rangeSlider
 import net.sbo.guilib.core.dsl.slider
 import net.sbo.guilib.core.dsl.switch
 import net.sbo.guilib.core.layout.FakeMeasurer
@@ -26,6 +28,9 @@ class SliderTest {
         .guilib-slider-fill { position: absolute; left: -5px; top: 3px; height: 4px }
         .guilib-slider-thumb { position: absolute; top: 0; width: 10px; height: 10px; margin-left: -5px }
         .guilib-switch-track { display: block; width: 20px; height: 10px }
+        input { display: inline-block; position: relative; overflow: hidden; white-space: pre; width: 40px }
+        .guilib-number { display: flex; width: 80px }
+        button { display: inline-block; width: 10px; height: 10px }
     """.trimIndent()
 
     private fun ui(content: ComponentScope.() -> Unit): UiRoot {
@@ -182,5 +187,92 @@ class SliderTest {
         root.input.mouseUp(off.x + 2f, off.y + 2f, 0)
         root.frame(300f, 200f)
         assertFalse(disabledChanged)
+    }
+
+    @Test
+    fun rangeSliderMovesTheNearerThumbAndThumbsDontCross() {
+        var range = 0 to 0
+        var ended: Pair<Int, Int>? = null
+        val root = ui {
+            var lo by useState(20)
+            var hi by useState(80)
+            range = lo to hi
+            rangeSlider(low = lo, high = hi, onChange = { a, b -> lo = a; hi = b }, onChangeEnd = { a, b -> ended = a to b }, step = 10)
+        }
+        val y = root.sliderY()
+        // Near the low thumb: drags it; it stops at the high thumb.
+        root.input.mouseDown(root.railX(0.32f), y, 0)
+        root.frame(300f, 200f)
+        assertEquals(30 to 80, range)
+        assertTrue(root.document.focusedElement?.classList?.contains("low") == true)
+        root.input.mouseMove(root.railX(0.95f), y)
+        root.frame(300f, 200f)
+        assertEquals(80 to 80, range)
+        root.input.mouseUp(root.railX(0.95f), y, 0)
+        root.frame(300f, 200f)
+        assertEquals(80 to 80, ended)
+        // Both on the same spot: pressing right of them takes the high thumb.
+        root.input.mouseDown(root.railX(0.9f), y, 0)
+        root.input.mouseUp(root.railX(0.9f), y, 0)
+        root.frame(300f, 200f)
+        assertEquals(80 to 90, range)
+        assertTrue(root.document.focusedElement?.classList?.contains("high") == true)
+        root.key("End")
+        assertEquals(80 to 100, range)
+        root.document.focus(root.el(".guilib-slider-thumb.low"))
+        root.key("Home")
+        assertEquals(0 to 100, range)
+        // The fill spans the range.
+        val fill = root.el(".guilib-slider-fill").getBoundingClientRect()
+        assertEquals(root.railX(0f), fill.x, 0.01f)
+        assertEquals(root.railX(1f), fill.right, 0.01f)
+    }
+
+    @Test
+    fun numberInputClampsStepsAndUsesTheWheel() {
+        var value = 0
+        val root = ui {
+            var v by useState(3)
+            value = v
+            numberInput(value = v, onChange = { v = it }, min = 1, max = 5)
+        }
+        val field = root.el(".guilib-number-input")
+        fun text() = (field.control as InputControl).text
+        root.click(root.el(".guilib-number-inc"))
+        assertEquals(4, value)
+        root.click(root.el(".guilib-number-inc"))
+        root.click(root.el(".guilib-number-inc"))
+        assertEquals(5, value)
+        assertTrue(root.el(".guilib-number-inc").disabled)
+        val r = field.getBoundingClientRect()
+        root.input.wheel(r.x + 2f, r.y + 2f, 0f, -1f)
+        root.frame(300f, 200f)
+        assertEquals(5, value)
+        root.input.wheel(r.x + 2f, r.y + 2f, 0f, 1f)
+        root.frame(300f, 200f)
+        assertEquals(4, value)
+        // Typing out of range is clamped on Enter; in range it's reported right away.
+        root.click(field)
+        root.key("ArrowDown")
+        assertEquals(3, value)
+        root.input.keyDown("a", 65, net.sbo.guilib.core.event.Modifiers(ctrl = true))
+        root.input.charTyped("9")
+        root.frame(300f, 200f)
+        assertEquals(3, value)
+        assertEquals("9", text())
+        root.key("Enter")
+        assertEquals(5, value)
+        assertEquals("5", text())
+        root.input.keyDown("a", 65, net.sbo.guilib.core.event.Modifiers(ctrl = true))
+        root.input.charTyped("2")
+        root.frame(300f, 200f)
+        assertEquals(2, value)
+    }
+
+    private fun UiRoot.click(el: Element) {
+        val r = el.getBoundingClientRect()
+        input.mouseDown(r.x + 2f, r.y + 2f, 0)
+        input.mouseUp(r.x + 2f, r.y + 2f, 0)
+        frame(300f, 200f)
     }
 }

@@ -176,3 +176,142 @@ internal val SwitchComponent = component<SwitchProps>("Switch") { p ->
         if (p.label != null) span(className = "guilib-switch-label") { +p.label }
     }
 }
+
+internal data class RangeSliderProps(
+    val low: Float,
+    val high: Float,
+    val onChange: ((Float, Float) -> Unit)?,
+    val onChangeEnd: ((Float, Float) -> Unit)?,
+    val min: Float,
+    val max: Float,
+    val step: Float,
+    val disabled: Boolean,
+    val showValue: Boolean,
+    val format: ((Float) -> String)?,
+    val className: String?,
+    val id: String?,
+    val style: String?,
+)
+
+/**
+ * Slider with two thumbs selecting a range (`low..high`). A press moves the nearer thumb and drags it; the thumbs can't
+ * pass each other. Each thumb is focusable and moves with the same keys as [SliderComponent].
+ * Styled like the slider plus `.guilib-range-slider` and `.guilib-slider-thumb.low` / `.high`.
+ */
+internal val RangeSliderComponent = component<RangeSliderProps>("RangeSlider") { p ->
+    var dragging by useState(false)
+    val railRef = useElementRef()
+    val lowRef = useElementRef()
+    val highRef = useElementRef()
+    val last = useRef(floatArrayOf(p.low, p.high))
+    /** Which thumb is being dragged: 0 = low, 1 = high, -1 = none. */
+    val drag = useRef(-1)
+    val doc = useDocument()
+
+    fun snap(v: Float) = snapSliderValue(v, p.min, p.max, p.step)
+    if (drag.current < 0) {
+        val lo = snap(minOf(p.low, p.high))
+        last.current = floatArrayOf(lo, snap(maxOf(p.high, lo)))
+    }
+
+    fun set(thumb: Int, v: Float): Boolean {
+        val cur = last.current
+        val next = if (thumb == 0) snap(v).coerceAtMost(cur[1]) else snap(v).coerceAtLeast(cur[0])
+        if (next == cur[thumb]) return false
+        val n = cur.copyOf().also { it[thumb] = next }
+        last.current = n
+        p.onChange?.invoke(n[0], n[1])
+        return true
+    }
+
+    fun valueAt(e: MouseEvent): Float? {
+        val r = railRef.current?.getBoundingClientRect() ?: return null
+        val f = if (r.width > 0f) ((e.clientX - r.x) / r.width).coerceIn(0f, 1f) else 0f
+        return p.min + f * (p.max - p.min)
+    }
+
+    useDocumentEvent(EventType.MOUSEMOVE) { e -> if (drag.current >= 0) valueAt(e as MouseEvent)?.let { set(drag.current, it) } }
+    useDocumentEvent(EventType.MOUSEUP) { e ->
+        if (drag.current >= 0 && (e as MouseEvent).button == 0) {
+            drag.current = -1
+            dragging = false
+            p.onChangeEnd?.invoke(last.current[0], last.current[1])
+        }
+    }
+
+    val handlers = HashMap<String, (UIEvent) -> Unit>()
+    handlers[EventType.MOUSEDOWN] = { e ->
+        e as MouseEvent
+        val v = valueAt(e)
+        if (e.button == 0 && !p.disabled && v != null) {
+            val (lo, hi) = last.current.let { it[0] to it[1] }
+            // The nearer thumb; when both sit on the same spot, the side of the press decides.
+            val thumb = when {
+                lo == hi -> if (v > hi) 1 else 0
+                kotlin.math.abs(v - lo) <= kotlin.math.abs(v - hi) -> 0
+                else -> 1
+            }
+            drag.current = thumb
+            dragging = true
+            set(thumb, v)
+            // Focus the thumb itself (the press target is the slider, which isn't focusable).
+            e.preventDefault()
+            (if (thumb == 0) lowRef else highRef).current?.let { doc.focus(it) }
+        }
+    }
+
+    fun keyHandler(thumb: Int): (UIEvent) -> Unit = { e ->
+        e as KeyboardEvent
+        val range = p.max - p.min
+        val step = if (p.step > 0f) p.step else range / 100f
+        val big = maxOf(step, range / 10f)
+        val cur = last.current[thumb]
+        val target = when (e.key) {
+            "ArrowRight", "ArrowUp" -> cur + step
+            "ArrowLeft", "ArrowDown" -> cur - step
+            "PageUp" -> cur + big
+            "PageDown" -> cur - big
+            "Home" -> p.min
+            "End" -> p.max
+            else -> null
+        }
+        if (target != null && !p.disabled) {
+            e.preventDefault()
+            if (set(thumb, target)) p.onChangeEnd?.invoke(last.current[0], last.current[1])
+        }
+    }
+
+    fun pct(v: Float) = if (p.max > p.min) (v - p.min) / (p.max - p.min) * 100f else 0f
+    fun fmt(v: Float) = String.format(Locale.ROOT, "%.3f", v)
+    val (lo, hi) = last.current.let { it[0] to it[1] }
+    val attrs = HashMap<String, Any?>()
+    if (p.disabled) attrs["disabled"] = true
+    val cls = classNames("guilib-slider", "guilib-range-slider", "dragging" to dragging, p.className)
+    val body: net.sbo.guilib.core.dsl.NodeBuilder.() -> Unit = {
+        element("div", null, p.id, cls, p.style, null, attrs, handlers) {
+            div(className = "guilib-slider-track")
+            div(className = "guilib-slider-rail", ref = railRef) {
+                div(className = "guilib-slider-fill", style = "left: ${fmt(pct(lo))}%; right: ${fmt(100f - pct(hi))}%")
+                for (thumb in 0..1) {
+                    val tAttrs = HashMap<String, Any?>()
+                    tAttrs["tabindex"] = if (p.disabled) -1 else 0
+                    val tHandlers = HashMap<String, (UIEvent) -> Unit>()
+                    tHandlers[EventType.KEYDOWN] = keyHandler(thumb)
+                    val v = if (thumb == 0) lo else hi
+                    element(
+                        "div", thumb, null,
+                        classNames("guilib-slider-thumb", if (thumb == 0) "low" else "high", "active" to (drag.current == thumb)),
+                        "left: ${fmt(pct(v))}%", if (thumb == 0) lowRef else highRef, tAttrs, tHandlers, null,
+                    )
+                }
+            }
+        }
+    }
+    if (p.showValue) {
+        div(className = classNames("guilib-slider-field", "disabled" to p.disabled)) {
+            body()
+            val f = p.format ?: { v: Float -> formatSliderValue(v, p.step) }
+            span(className = "guilib-slider-value") { +"${f(lo)} – ${f(hi)}" }
+        }
+    } else body()
+}

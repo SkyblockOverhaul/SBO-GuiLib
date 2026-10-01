@@ -7,7 +7,12 @@ import net.sbo.guilib.core.controls.PresenceProps
 import net.sbo.guilib.core.controls.SelectComponent
 import net.sbo.guilib.core.controls.SelectOption
 import net.sbo.guilib.core.controls.SelectProps
+import net.sbo.guilib.core.controls.NumberInputComponent
+import net.sbo.guilib.core.controls.NumberInputProps
+import net.sbo.guilib.core.controls.RangeSliderComponent
+import net.sbo.guilib.core.controls.RangeSliderProps
 import net.sbo.guilib.core.controls.SliderComponent
+import net.sbo.guilib.core.controls.decimalsOf
 import net.sbo.guilib.core.controls.SliderProps
 import net.sbo.guilib.core.controls.SortableComponent
 import net.sbo.guilib.core.controls.SortableProps
@@ -136,6 +141,111 @@ fun NodeBuilder.slider(
         min.toFloat(), max.toFloat(), step.toFloat(), disabled, showValue, format?.let { f -> { v: Float -> f(Math.round(v)) } },
         className, id, style,
     ),
+    key,
+)
+
+/**
+ * Slider with two thumbs for a range, e.g. a filter "kills between 5,000 and 20,000":
+ *
+ * ```kotlin
+ * var kills by useState(5000f to 20000f)
+ * rangeSlider(low = kills.first, high = kills.second, onChange = { lo, hi -> kills = lo to hi }, min = 0f, max = 50000f, step = 500f)
+ * ```
+ * A press moves the nearer thumb; the thumbs can't pass each other. Each thumb is focusable (arrow keys like [slider]).
+ * [showValue] shows "low – high" (each formatted with [format]). Styled like [slider] plus `.guilib-range-slider`.
+ */
+fun NodeBuilder.rangeSlider(
+    low: Float,
+    high: Float,
+    onChange: ((low: Float, high: Float) -> Unit)? = null,
+    min: Float = 0f,
+    max: Float = 100f,
+    step: Float = 1f,
+    onChangeEnd: ((low: Float, high: Float) -> Unit)? = null,
+    showValue: Boolean = false,
+    format: ((Float) -> String)? = null,
+    disabled: Boolean = false,
+    className: String? = null,
+    id: String? = null,
+    style: String? = null,
+    key: Any? = null,
+) = RangeSliderComponent(
+    RangeSliderProps(low, high, onChange, onChangeEnd, min, max, step, disabled, showValue, format, className, id, style),
+    key,
+)
+
+/** Integer [rangeSlider]: `rangeSlider(low = 5, high = 20, onChange = { lo, hi -> … }, min = 0, max = 50)`. */
+fun NodeBuilder.rangeSlider(
+    low: Int,
+    high: Int,
+    onChange: ((low: Int, high: Int) -> Unit)? = null,
+    min: Int = 0,
+    max: Int = 100,
+    step: Int = 1,
+    onChangeEnd: ((low: Int, high: Int) -> Unit)? = null,
+    showValue: Boolean = false,
+    format: ((Int) -> String)? = null,
+    disabled: Boolean = false,
+    className: String? = null,
+    id: String? = null,
+    style: String? = null,
+    key: Any? = null,
+) = RangeSliderComponent(
+    RangeSliderProps(
+        low.toFloat(), high.toFloat(),
+        onChange?.let { f -> { a: Float, b: Float -> f(Math.round(a), Math.round(b)) } },
+        onChangeEnd?.let { f -> { a: Float, b: Float -> f(Math.round(a), Math.round(b)) } },
+        min.toFloat(), max.toFloat(), step.toFloat(), disabled, showValue, format?.let { f -> { v: Float -> f(Math.round(v)) } },
+        className, id, style,
+    ),
+    key,
+)
+
+/**
+ * Number field with − / + buttons that keeps the value within [min]..[max]:
+ * `numberInput(value = size, onChange = { size = it }, min = 1, max = 5)`.
+ * Typed values inside the range are reported while typing; anything else is clamped when the field loses focus or on
+ * Enter. ArrowUp/ArrowDown and the mouse wheel over the field step by [step] (Shift: × 10, [wheel] = false turns the
+ * wheel off); holding a button repeats. Styled with `.guilib-number`, `.guilib-number-input`, `.guilib-number-dec`,
+ * `.guilib-number-inc`.
+ */
+fun NodeBuilder.numberInput(
+    value: Int,
+    onChange: ((Int) -> Unit)? = null,
+    min: Int = Int.MIN_VALUE,
+    max: Int = Int.MAX_VALUE,
+    step: Int = 1,
+    wheel: Boolean = true,
+    disabled: Boolean = false,
+    placeholder: String? = null,
+    className: String? = null,
+    id: String? = null,
+    style: String? = null,
+    key: Any? = null,
+) = NumberInputComponent(
+    NumberInputProps(
+        value.toDouble(), onChange?.let { f -> { v: Double -> f(Math.round(v).toInt()) } }, min.toDouble(), max.toDouble(),
+        step.toDouble(), 0, wheel, disabled, placeholder, className, id, style,
+    ),
+    key,
+)
+
+/** Decimal [numberInput]: shows as many decimals as [step] has (`step = 0.25` → `1.75`). */
+fun NodeBuilder.numberInput(
+    value: Double,
+    onChange: ((Double) -> Unit)? = null,
+    min: Double = -Double.MAX_VALUE,
+    max: Double = Double.MAX_VALUE,
+    step: Double = 1.0,
+    wheel: Boolean = true,
+    disabled: Boolean = false,
+    placeholder: String? = null,
+    className: String? = null,
+    id: String? = null,
+    style: String? = null,
+    key: Any? = null,
+) = NumberInputComponent(
+    NumberInputProps(value, onChange, min, max, step, decimalsOf(step), wheel, disabled, placeholder, className, id, style),
     key,
 )
 
