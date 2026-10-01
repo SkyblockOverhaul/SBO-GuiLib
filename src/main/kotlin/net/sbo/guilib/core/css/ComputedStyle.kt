@@ -145,6 +145,19 @@ class ComputedStyle internal constructor(
         return ComputedStyle(copy, customProperties)
     }
 
+    val gridTemplateColumns get() = values[Prop.GRID_TEMPLATE_COLUMNS.ordinal] as TrackList
+    val gridTemplateRows get() = values[Prop.GRID_TEMPLATE_ROWS.ordinal] as TrackList
+    val gridTemplateAreas get() = values[Prop.GRID_TEMPLATE_AREAS.ordinal] as GridAreas
+    val gridAutoColumns get() = values[Prop.GRID_AUTO_COLUMNS.ordinal] as TrackList
+    val gridAutoRows get() = values[Prop.GRID_AUTO_ROWS.ordinal] as TrackList
+    val gridAutoFlow get() = values[Prop.GRID_AUTO_FLOW.ordinal] as GridAutoFlow
+    val gridRowStart get() = values[Prop.GRID_ROW_START.ordinal] as GridLine
+    val gridRowEnd get() = values[Prop.GRID_ROW_END.ordinal] as GridLine
+    val gridColumnStart get() = values[Prop.GRID_COLUMN_START.ordinal] as GridLine
+    val gridColumnEnd get() = values[Prop.GRID_COLUMN_END.ordinal] as GridLine
+    val justifyItems get() = values[Prop.JUSTIFY_ITEMS.ordinal] as AlignItems
+    val justifySelf get() = values[Prop.JUSTIFY_SELF.ordinal] as AlignSelf
+
     val isBold get() = fontWeight >= 600
     val isItalic get() = fontStyle == FontStyle.ITALIC
 

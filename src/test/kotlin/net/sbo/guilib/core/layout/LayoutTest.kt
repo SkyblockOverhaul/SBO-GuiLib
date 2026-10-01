@@ -272,6 +272,103 @@ class LayoutTest {
         assertEquals(20f, item.box.width, 0.01f)
     }
 
+    // ---- grid ----
+
+    @Test
+    fun gridFrColumnsAndAutoRows() {
+        val items = Array(4) { div("height: 10px") }
+        val g = div("display: grid; grid-template-columns: 1fr 2fr; gap: 4px", *items)
+        layout(div("", g))
+        assertBox(items[0], 0f, 0f, 32f, 10f)
+        assertBox(items[1], 36f, 0f, 64f, 10f)
+        assertBox(items[2], 0f, 14f, 32f, 10f)
+        assertEquals(24f, g.box.height, 0.01f)
+    }
+
+    @Test
+    fun gridFixedAndContentSizedTracks() {
+        val a = div("", text("abcd"))   // max-content 16px
+        val b = div("")
+        val c = div("height: 5px")
+        layout(div("", div("display: grid; grid-template-columns: auto 1fr 20px", a, b, c)))
+        assertEquals(16f, a.box.width, 0.01f)
+        assertEquals(64f, b.box.width, 0.01f)
+        assertBox(c, 80f, 0f, 20f, 5f) // explicit height: not stretched (row is 10px from the text)
+        assertEquals(10f, b.box.height, 0.01f) // auto height: stretched to the row
+    }
+
+    @Test
+    fun gridSpansAndExplicitLines() {
+        val wide = div("grid-column: span 2; height: 10px")
+        val placed = div("grid-column: 2 / 4; grid-row: 2; height: 10px")
+        val tall = div("grid-column: 1; grid-row: 2 / span 2; height: 4px")
+        val last = div("grid-column: -2 / -1; grid-row: 1; height: 10px")
+        layout(div("", div("display: grid; grid-template-columns: repeat(3, 30px); grid-auto-rows: 10px", wide, placed, tall, last)))
+        assertBox(wide, 0f, 0f, 60f, 10f)
+        assertBox(last, 60f, 0f, 30f, 10f)
+        assertBox(placed, 30f, 10f, 60f, 10f)
+        assertBox(tall, 0f, 10f, 30f, 4f)
+    }
+
+    @Test
+    fun gridTemplateAreas() {
+        val header = div("grid-area: header; height: 5px")
+        val side = div("grid-area: side")
+        val main = div("grid-area: main; height: 40px")
+        layout(
+            div(
+                "", div(
+                    "display: grid; grid-template-columns: 20px 1fr; grid-template-areas: \"header header\" \"side main\"",
+                    header, side, main,
+                ),
+            ),
+        )
+        assertBox(header, 0f, 0f, 100f, 5f)
+        assertBox(side, 0f, 5f, 20f, 40f)
+        assertBox(main, 20f, 5f, 80f, 40f)
+    }
+
+    @Test
+    fun gridAutoFillMinmax() {
+        val items = Array(4) { div("height: 10px") }
+        layout(div("", div("display: grid; grid-template-columns: repeat(auto-fill, minmax(30px, 1fr))", *items)))
+        assertEquals(33.33f, items[0].box.width, 0.01f) // 3 columns fit into 100px
+        assertBox(items[3], 0f, 10f, 33.33f, 10f)
+    }
+
+    @Test
+    fun gridAlignmentAndColumnFlow() {
+        val a = div("width: 10px; height: 10px")
+        val b = div("width: 10px; height: 10px; justify-self: end; align-self: end")
+        layout(div("", div("display: grid; grid-template-columns: 40px 40px; grid-template-rows: 30px; justify-items: center; align-items: center", a, b)))
+        assertBox(a, 15f, 10f, 10f, 10f)
+        assertBox(b, 70f, 20f, 10f, 10f)
+
+        val c = div("height: 10px")
+        val d = div("height: 10px")
+        val e = div("height: 10px")
+        layout(div("", div("display: grid; grid-auto-flow: column; grid-template-rows: 10px 10px; grid-auto-columns: 25px", c, d, e)))
+        assertBox(c, 0f, 0f, 25f, 10f)
+        assertBox(d, 0f, 10f, 25f, 10f)
+        assertBox(e, 25f, 0f, 25f, 10f)
+    }
+
+    @Test
+    fun gridFrRowsWithDefiniteHeight() {
+        val top = div("")
+        val bottom = div("")
+        layout(div("", div("display: grid; height: 90px; grid-template-rows: 1fr 2fr; row-gap: 0", top, bottom)))
+        assertEquals(30f, top.box.height, 0.01f)
+        assertEquals(60f, bottom.box.height, 0.01f)
+    }
+
+    @Test
+    fun gridIntrinsicSizeInsideFlex() {
+        val g = div("display: grid; grid-template-columns: repeat(2, 20px); column-gap: 5px", div("height: 1px"), div("height: 1px"))
+        layout(div("", div("display: flex", g)))
+        assertEquals(45f, g.box.width, 0.01f)
+    }
+
     // ---- text ----
 
     @Test

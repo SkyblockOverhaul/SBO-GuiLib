@@ -195,3 +195,21 @@ button.primary:hover { background-color: #6f9cf2; }
 }
 .drawer.open { height: 30px; padding: 8px; background-color: #2f3a52; }
 .fade-in { margin-top: 6px; animation: fade-in 600ms ease-out; }
+
+.grid-areas {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    grid-template-rows: auto 40px auto;
+    grid-template-areas: "header header" "side main" "footer footer";
+    gap: 3px;
+    margin-bottom: 6px;
+}
+.grid-areas > div { padding: 3px 6px; background-color: var(--panel-2); border-radius: 3px; }
+.g-header { grid-area: header; background-color: #3a4a6b !important; }
+.g-side { grid-area: side; }
+.g-main { grid-area: main; display: grid; place-items: center; }
+.g-footer { grid-area: footer; text-align: center; }
+
+.grid-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 3px; }
+.tile { padding: 6px 0; text-align: center; background-color: var(--panel); border: 1px solid var(--border); border-radius: 3px; }
+.tile.wide { grid-column: span 2; background: linear-gradient(to right, #5b8def, #b16cea); }

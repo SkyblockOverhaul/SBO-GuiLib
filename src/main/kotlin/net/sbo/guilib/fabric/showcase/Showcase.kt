@@ -24,7 +24,7 @@ import net.sbo.guilib.fabric.GuiLib
 
 /** Demo UI showing every feature; open with `/guilib showcase`. */
 object Showcase {
-    val SECTIONS = listOf("Buttons", "Forms", "Boxes", "Animation", "Layout", "Text", "Scroll", "Images", "Items", "State")
+    val SECTIONS = listOf("Buttons", "Forms", "Boxes", "Animation", "Layout", "Grid", "Text", "Scroll", "Images", "Items", "State")
 
     private val App = component<String>("Showcase") { initialSection ->
         var section by useState(initialSection)
@@ -45,6 +45,7 @@ object Showcase {
                         "Forms" -> FormsDemo()
                         "Boxes" -> BoxesDemo()
                         "Animation" -> AnimationDemo()
+                        "Grid" -> GridDemo()
                         "Images" -> ImagesDemo()
                         "Layout" -> LayoutDemo()
                         "Text" -> TextDemo()
@@ -168,6 +169,22 @@ object Showcase {
         }
         div(className = classNames("drawer", "open" to open)) { +"This panel animates its height and background." }
         div(className = "fade-in") { +"I faded in when this section opened." }
+    }
+
+    private val GridDemo = component("GridDemo") {
+        h2 { +"Grid" }
+        p(className = "muted") { +"grid-template-areas" }
+        div(className = "grid-areas") {
+            div(className = "g-header") { +"header" }
+            div(className = "g-side") { +"side" }
+            div(className = "g-main") { +"main (1fr)" }
+            div(className = "g-footer") { +"footer" }
+        }
+        p(className = "muted") { +"repeat(auto-fill, minmax(50px, 1fr))" }
+        div(className = "grid-tiles") {
+            for (i in 1..7) div(key = i, className = "tile") { +"#$i" }
+            div(key = "wide", className = "tile wide") { +"span 2" }
+        }
     }
 
     private val LayoutDemo = component("LayoutDemo") {

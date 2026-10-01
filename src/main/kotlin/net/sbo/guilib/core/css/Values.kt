@@ -52,9 +52,10 @@ sealed interface LineHeight {
 /** Marker used while parsing; replaced by the element's `color` during computation. */
 data object CurrentColor
 
-enum class Display { BLOCK, INLINE, INLINE_BLOCK, FLEX, INLINE_FLEX, NONE;
+enum class Display { BLOCK, INLINE, INLINE_BLOCK, FLEX, INLINE_FLEX, GRID, INLINE_GRID, NONE;
     val isFlex get() = this == FLEX || this == INLINE_FLEX
-    val isInlineLevel get() = this == INLINE || this == INLINE_BLOCK || this == INLINE_FLEX
+    val isGrid get() = this == GRID || this == INLINE_GRID
+    val isInlineLevel get() = this == INLINE || this == INLINE_BLOCK || this == INLINE_FLEX || this == INLINE_GRID
 }
 enum class Position { STATIC, RELATIVE, ABSOLUTE, FIXED }
 enum class BoxSizing { BORDER_BOX, CONTENT_BOX }

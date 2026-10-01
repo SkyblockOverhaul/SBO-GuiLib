@@ -91,6 +91,19 @@ enum class Prop(val css: String, val inherited: Boolean, val initial: Any?) {
     USER_SELECT("user-select", false, UserSelect.AUTO),
     OBJECT_FIT("object-fit", false, ObjectFit.FILL),
 
+    GRID_TEMPLATE_COLUMNS("grid-template-columns", false, TrackList.NONE),
+    GRID_TEMPLATE_ROWS("grid-template-rows", false, TrackList.NONE),
+    GRID_TEMPLATE_AREAS("grid-template-areas", false, GridAreas(emptyList())),
+    GRID_AUTO_COLUMNS("grid-auto-columns", false, TrackList(listOf(TrackSize.Auto))),
+    GRID_AUTO_ROWS("grid-auto-rows", false, TrackList(listOf(TrackSize.Auto))),
+    GRID_AUTO_FLOW("grid-auto-flow", false, GridAutoFlow.ROW),
+    GRID_ROW_START("grid-row-start", false, GridLine.AUTO),
+    GRID_ROW_END("grid-row-end", false, GridLine.AUTO),
+    GRID_COLUMN_START("grid-column-start", false, GridLine.AUTO),
+    GRID_COLUMN_END("grid-column-end", false, GridLine.AUTO),
+    JUSTIFY_ITEMS("justify-items", false, AlignItems.STRETCH),
+    JUSTIFY_SELF("justify-self", false, AlignSelf.AUTO),
+
     TRANSITION_PROPERTY("transition-property", false, listOf("all")),
     TRANSITION_DURATION("transition-duration", false, listOf(0f)),
     TRANSITION_TIMING_FUNCTION("transition-timing-function", false, listOf(TimingFunction.EASE)),
@@ -172,6 +185,13 @@ object Properties {
         enumParser(Prop.POINTER_EVENTS) { single(it)?.let { v -> keyword<PointerEvents>(v) } }
         enumParser(Prop.USER_SELECT) { single(it)?.let { v -> keyword<UserSelect>(v) } }
         enumParser(Prop.OBJECT_FIT) { single(it)?.let { v -> keyword<ObjectFit>(v) } }
+        enumParser(Prop.GRID_TEMPLATE_COLUMNS, Prop.GRID_TEMPLATE_ROWS) { GridParser.trackList(it) }
+        enumParser(Prop.GRID_AUTO_COLUMNS, Prop.GRID_AUTO_ROWS) { GridParser.trackList(it, allowAutoRepeat = false)?.takeIf { l -> l.tracks.isNotEmpty() } }
+        enumParser(Prop.GRID_TEMPLATE_AREAS) { GridParser.areas(it) }
+        enumParser(Prop.GRID_AUTO_FLOW) { GridParser.autoFlow(it) }
+        enumParser(Prop.GRID_ROW_START, Prop.GRID_ROW_END, Prop.GRID_COLUMN_START, Prop.GRID_COLUMN_END) { GridParser.line(it) }
+        enumParser(Prop.JUSTIFY_ITEMS) { single(it)?.let { v -> if (isIdent(v, "left")) AlignItems.FLEX_START else if (isIdent(v, "right")) AlignItems.FLEX_END else alignItems(v) } }
+        enumParser(Prop.JUSTIFY_SELF) { single(it)?.let { v -> if (isIdent(v, "auto")) AlignSelf.AUTO else alignItems(v)?.let { a -> AlignSelf.valueOf(a.name) } } }
         enumParser(Prop.TRANSITION_PROPERTY) { AnimationParser.propertyList(it) }
         enumParser(Prop.TRANSITION_DURATION, Prop.TRANSITION_DELAY, Prop.ANIMATION_DURATION, Prop.ANIMATION_DELAY) { AnimationParser.timeList(it) }
         enumParser(Prop.TRANSITION_TIMING_FUNCTION, Prop.ANIMATION_TIMING_FUNCTION) { AnimationParser.timingList(it) }
@@ -247,7 +267,25 @@ object Properties {
             }
             listOf(Prop.BACKGROUND_COLOR to (col ?: Colors.TRANSPARENT), Prop.BACKGROUND_IMAGE to (if (layers.isEmpty()) NoImage else layers))
         }
-        put("place-items") { v -> words(v).singleOrNull()?.let(::alignItems)?.let { listOf(Prop.ALIGN_ITEMS to it) } }
+        put("place-items") { v ->
+            // place-items: <align-items> [<justify-items>]
+            val w = words(v)
+            val a = w.getOrNull(0)?.let(::alignItems) ?: return@put null
+            val j = (if (w.size == 2) alignItems(w[1]) else a) ?: return@put null
+            if (w.size > 2) null else listOf(Prop.ALIGN_ITEMS to a, Prop.JUSTIFY_ITEMS to j)
+        }
+        put("grid-row") { v -> GridParser.lineShorthand(v, Prop.GRID_ROW_START, Prop.GRID_ROW_END) }
+        put("grid-column") { v -> GridParser.lineShorthand(v, Prop.GRID_COLUMN_START, Prop.GRID_COLUMN_END) }
+        put("grid-area") { v -> GridParser.areaShorthand(v) }
+        put("grid-gap") { v -> shorthands.getValue("gap")(v) }
+        put("grid-row-gap") { v -> longhandParsers.getValue(Prop.ROW_GAP)(v)?.let { listOf(Prop.ROW_GAP to it) } }
+        put("grid-column-gap") { v -> longhandParsers.getValue(Prop.COLUMN_GAP)(v)?.let { listOf(Prop.COLUMN_GAP to it) } }
+        put("place-self") { v ->
+            val w = words(v)
+            val a = w.getOrNull(0)?.let(::alignItems) ?: return@put null
+            val j = (if (w.size == 2) alignItems(w[1]) else a) ?: return@put null
+            listOf(Prop.ALIGN_SELF to AlignSelf.valueOf(a.name), Prop.JUSTIFY_SELF to AlignSelf.valueOf(j.name))
+        }
         put("transition") { v -> AnimationParser.transitionShorthand(v) }
         put("animation") { v -> AnimationParser.animationShorthand(v) }
     }
@@ -261,7 +299,11 @@ object Properties {
         sides.forEach { s -> put("border-$s", listOf("width", "style", "color").map { Prop.byName.getValue("border-$s-$it") }) }
         put("overflow", listOf(Prop.OVERFLOW_X, Prop.OVERFLOW_Y)); put("gap", listOf(Prop.ROW_GAP, Prop.COLUMN_GAP))
         put("flex", listOf(Prop.FLEX_GROW, Prop.FLEX_SHRINK, Prop.FLEX_BASIS)); put("flex-flow", listOf(Prop.FLEX_DIRECTION, Prop.FLEX_WRAP))
-        put("background", listOf(Prop.BACKGROUND_COLOR, Prop.BACKGROUND_IMAGE)); put("place-items", listOf(Prop.ALIGN_ITEMS))
+        put("background", listOf(Prop.BACKGROUND_COLOR, Prop.BACKGROUND_IMAGE)); put("place-items", listOf(Prop.ALIGN_ITEMS, Prop.JUSTIFY_ITEMS))
+        put("grid-row", listOf(Prop.GRID_ROW_START, Prop.GRID_ROW_END)); put("grid-column", listOf(Prop.GRID_COLUMN_START, Prop.GRID_COLUMN_END))
+        put("grid-area", listOf(Prop.GRID_ROW_START, Prop.GRID_COLUMN_START, Prop.GRID_ROW_END, Prop.GRID_COLUMN_END))
+        put("grid-gap", listOf(Prop.ROW_GAP, Prop.COLUMN_GAP)); put("grid-row-gap", listOf(Prop.ROW_GAP)); put("grid-column-gap", listOf(Prop.COLUMN_GAP))
+        put("place-self", listOf(Prop.ALIGN_SELF, Prop.JUSTIFY_SELF))
         put("transition", listOf(Prop.TRANSITION_PROPERTY, Prop.TRANSITION_DURATION, Prop.TRANSITION_TIMING_FUNCTION, Prop.TRANSITION_DELAY))
         put("animation", listOf(Prop.ANIMATION_NAME, Prop.ANIMATION_DURATION, Prop.ANIMATION_TIMING_FUNCTION, Prop.ANIMATION_DELAY,
             Prop.ANIMATION_ITERATION_COUNT, Prop.ANIMATION_DIRECTION, Prop.ANIMATION_FILL_MODE, Prop.ANIMATION_PLAY_STATE))

@@ -230,9 +230,16 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
             Properties.NoImage -> null
             is Properties.LineHeightLength -> LineHeight.Px(toPx(v.length, fontSize, ctx))
             is Properties.TextShadowValue -> TextShadow(toPx(v.x, fontSize, ctx), toPx(v.y, fontSize, ctx), if (v.color == CurrentColor) color else v.color)
+            is TrackList -> v.map { resolveTrack(it, fontSize, ctx) }
             is List<*> -> if (p == Prop.BACKGROUND_IMAGE) v.map { resolveLayer(it as BackgroundLayer, fontSize, color, ctx) } else v
             is Properties.ScrollbarColor -> Pair(if (v.thumb == CurrentColor) color else v.thumb as Int, if (v.track == CurrentColor) color else v.track as Int)
             else -> v
+        }
+
+        private fun resolveTrack(t: TrackSize, fontSize: Float, ctx: StyleContext): TrackSize = when (t) {
+            is TrackSize.Fixed -> TrackSize.Fixed(resolve(Prop.WIDTH, t.size, fontSize, 0, ctx) ?: Dim.Auto)
+            is TrackSize.MinMax -> TrackSize.MinMax(resolveTrack(t.min, fontSize, ctx), resolveTrack(t.max, fontSize, ctx))
+            else -> t
         }
 
         /** Resolves currentColor and font/viewport-relative units inside a background layer. */

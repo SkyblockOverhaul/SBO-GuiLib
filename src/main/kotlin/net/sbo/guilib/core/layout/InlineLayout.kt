@@ -37,7 +37,8 @@ internal class InlineLayout(private val engine: LayoutEngine) {
 
         fun isAtomic(node: LayoutNode): Boolean =
             node.textContent == null && !node.isLineBreak &&
-                (node.intrinsicWidth != null || node.style.display == Display.INLINE_BLOCK || node.style.display == Display.INLINE_FLEX)
+                (node.intrinsicWidth != null || node.style.display == Display.INLINE_BLOCK || node.style.display == Display.INLINE_FLEX ||
+                    node.style.display == Display.INLINE_GRID)
 
         private val WORD = Regex("[^ ]+ *| +")
         private const val ELLIPSIS = "…"

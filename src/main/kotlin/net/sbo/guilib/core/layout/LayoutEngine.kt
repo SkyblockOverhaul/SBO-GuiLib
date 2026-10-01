@@ -20,8 +20,9 @@ import net.sbo.guilib.core.css.WhiteSpace
 class LayoutEngine(val measurer: TextMeasurer) {
 
     private val inline = InlineLayout(this)
+    private val grid = GridLayout(this)
     private val intrinsicCache = HashMap<LayoutNode, FloatArray>()
-    private val parentOf = HashMap<LayoutNode, LayoutNode>()
+    internal val parentOf = HashMap<LayoutNode, LayoutNode>()
 
     private class Pending(val node: LayoutNode, val parent: LayoutNode, val staticX: Float, val staticY: Float)
     private val cbStack = ArrayDeque<LinkedHashMap<LayoutNode, Pending>>()
@@ -49,7 +50,7 @@ class LayoutEngine(val measurer: TextMeasurer) {
 
     private fun Dim.px(base: Float?): Float = resolve(base) ?: 0f
 
-    private fun computeEdges(node: LayoutNode, cbWidth: Float) {
+    internal fun computeEdges(node: LayoutNode, cbWidth: Float) {
         val s = node.style
         val b = node.box
         // Percent margins and paddings resolve against the containing block *width* on every side, like the web.
@@ -64,7 +65,7 @@ class LayoutEngine(val measurer: TextMeasurer) {
     }
 
     /** Converts a specified width/height to a border-box size, honouring `box-sizing`. */
-    private fun toBorderBox(value: Float, s: ComputedStyle, pb: Float) = if (s.boxSizing == BoxSizing.CONTENT_BOX) value + pb else value
+    internal fun toBorderBox(value: Float, s: ComputedStyle, pb: Float) = if (s.boxSizing == BoxSizing.CONTENT_BOX) value + pb else value
 
     private fun specifiedWidth(node: LayoutNode, cbWidth: Float?): Float? {
         if (node.textContent != null) return null
@@ -80,7 +81,7 @@ class LayoutEngine(val measurer: TextMeasurer) {
         return s.height.resolve(cbHeight)?.let { toBorderBox(it, s, pb) }
     }
 
-    private fun clampWidth(node: LayoutNode, w: Float, cbWidth: Float?): Float {
+    internal fun clampWidth(node: LayoutNode, w: Float, cbWidth: Float?): Float {
         if (node.textContent != null) return w
         val s = node.style
         val pb = node.box.padding.horizontal + node.box.border.horizontal
@@ -90,7 +91,7 @@ class LayoutEngine(val measurer: TextMeasurer) {
         return maxOf(r, pb)
     }
 
-    private fun clampHeight(node: LayoutNode, h: Float, cbHeight: Float?): Float {
+    internal fun clampHeight(node: LayoutNode, h: Float, cbHeight: Float?): Float {
         if (node.textContent != null) return h
         val s = node.style
         val pb = node.box.padding.vertical + node.box.border.vertical
@@ -100,12 +101,12 @@ class LayoutEngine(val measurer: TextMeasurer) {
         return maxOf(r, pb)
     }
 
-    private fun isOutOfFlow(node: LayoutNode) =
+    internal fun isOutOfFlow(node: LayoutNode) =
         node.textContent == null && (node.style.position == Position.ABSOLUTE || node.style.position == Position.FIXED)
 
-    private fun isHidden(node: LayoutNode) = node.textContent == null && node.style.display == Display.NONE
+    internal fun isHidden(node: LayoutNode) = node.textContent == null && node.style.display == Display.NONE
 
-    private fun isWhitespaceText(node: LayoutNode) =
+    internal fun isWhitespaceText(node: LayoutNode) =
         node.textContent?.let { it.isBlank() && (node.style.whiteSpace == WhiteSpace.NORMAL || node.style.whiteSpace == WhiteSpace.NOWRAP) } == true
 
     // ---- main entry --------------------------------------------------------------------------------------------
@@ -161,6 +162,7 @@ class LayoutEngine(val measurer: TextMeasurer) {
             node.textContent != null -> layoutText(node, contentWidth)
             iw != null -> if (ih != null && iw > 0f) contentWidth * ih / iw else 0f
             s.display.isFlex -> layoutFlex(node, contentWidth, contentHeightDef)
+            s.display.isGrid -> grid.layout(node, contentWidth, contentHeightDef)
             else -> layoutBlockChildren(node, contentWidth, contentHeightDef)
         }
 
@@ -189,7 +191,7 @@ class LayoutEngine(val measurer: TextMeasurer) {
         return p.height
     }
 
-    private fun applyRelative(child: LayoutNode, cbWidth: Float, cbHeight: Float?) {
+    internal fun applyRelative(child: LayoutNode, cbWidth: Float, cbHeight: Float?) {
         if (child.textContent != null || child.style.position != Position.RELATIVE) return
         val s = child.style
         val dx = s.left.resolve(cbWidth) ?: s.right.resolve(cbWidth)?.let { -it } ?: 0f
@@ -198,7 +200,7 @@ class LayoutEngine(val measurer: TextMeasurer) {
         child.box.y += dy
     }
 
-    private fun registerAbsolute(child: LayoutNode, parent: LayoutNode, staticX: Float, staticY: Float) {
+    internal fun registerAbsolute(child: LayoutNode, parent: LayoutNode, staticX: Float, staticY: Float) {
         val p = Pending(child, parent, staticX, staticY)
         if (child.style.position == Position.FIXED) cbStack.first()[child] = p else cbStack.last()[child] = p
     }
@@ -484,7 +486,7 @@ class LayoutEngine(val measurer: TextMeasurer) {
         return (if (a == Dim.Auto) 1 else 0) + (if (b == Dim.Auto) 1 else 0)
     }
 
-    private fun alignOf(node: LayoutNode, container: ComputedStyle): AlignItems {
+    internal fun alignOf(node: LayoutNode, container: ComputedStyle): AlignItems {
         if (node.textContent != null) return container.alignItems
         return when (node.style.alignSelf) {
             AlignSelf.AUTO -> container.alignItems
@@ -702,6 +704,9 @@ class LayoutEngine(val measurer: TextMeasurer) {
         val iw = node.intrinsicWidth
         if (iw != null) {
             min = iw; max = iw
+        } else if (s.display.isGrid) {
+            val (a, b) = grid.intrinsic(node)
+            min = a; max = b
         } else if (s.display.isFlex) {
             val children = node.layoutChildren.filter { !isHidden(it) && !isOutOfFlow(it) && !isWhitespaceText(it) }
             val outer = children.map { intrinsicOuter(it) }
