@@ -44,3 +44,4 @@ replay_*.log
 graphify-out/
 run-client.log
 versions/*/run/
+/.claude/
