@@ -9,6 +9,7 @@ import net.sbo.guilib.core.dsl.button
 import net.sbo.guilib.core.dsl.div
 import net.sbo.guilib.core.dsl.scroll
 import net.sbo.guilib.core.dsl.span
+import net.sbo.guilib.core.event.Modifiers
 import net.sbo.guilib.core.layout.FakeMeasurer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -142,6 +143,31 @@ class PainterTest {
         assertEquals(12f, root.document.body.querySelector(".s")!!.scrollTop)
         root.input.wheel(5f, 5f, 0f, 100f)
         assertEquals(30f, root.document.body.querySelector(".s")!!.scrollTop) // clamped
+    }
+
+    @Test
+    fun plainWheelScrollsHorizontalOnlyContainersSideways() {
+        val root = ui(
+            ".page { height: 30px; overflow: auto } .h { display: flex; width: 50px; overflow-x: auto; overflow-y: hidden }" +
+                " .cell { width: 20px; height: 10px; flex-shrink: 0 } .row { height: 10px }",
+        ) {
+            div(className = "page") {
+                div(className = "h") { repeat(5) { div(className = "cell", key = it) } }
+                repeat(5) { div(className = "row", key = "r$it") }
+            }
+        }
+        val h = root.document.body.querySelector(".h")!!
+        val page = root.document.body.querySelector(".page")!!
+        root.input.wheel(5f, 5f, 0f, 12f)
+        assertEquals(12f, h.scrollLeft)
+        assertEquals(0f, page.scrollTop)
+        root.input.wheel(5f, 5f, 0f, 8f, Modifiers(shift = true)) // Shift + wheel scrolls sideways too
+        assertEquals(20f, h.scrollLeft)
+        root.input.wheel(5f, 5f, 0f, 100f)
+        assertEquals(50f, h.scrollLeft) // clamped at the end ...
+        assertEquals(0f, page.scrollTop)
+        root.input.wheel(5f, 5f, 0f, 10f)
+        assertEquals(10f, page.scrollTop) // ... after which the page scrolls on
     }
 
     @Test

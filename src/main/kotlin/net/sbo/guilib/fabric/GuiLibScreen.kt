@@ -86,7 +86,10 @@ open class GuiLibScreen(
     }
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, horizontal: Double, vertical: Double): Boolean =
-        root.input.wheel(mouseX.toFloat(), mouseY.toFloat(), (-horizontal * SCROLL_STEP).toFloat(), (-vertical * SCROLL_STEP).toFloat())
+        root.input.wheel(
+            mouseX.toFloat(), mouseY.toFloat(), (-horizontal * SCROLL_STEP).toFloat(), (-vertical * SCROLL_STEP).toFloat(),
+            Keys.currentModifiers(), // Minecraft passes no modifiers with the wheel; Shift + wheel scrolls sideways
+        )
 
     override fun keyPressed(keyInput: KeyEvent): Boolean {
         val mods = Keys.modifiers(keyInput.modifiers())

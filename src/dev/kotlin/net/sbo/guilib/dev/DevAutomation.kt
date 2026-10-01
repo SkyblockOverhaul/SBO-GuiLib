@@ -142,6 +142,17 @@ object DevAutomation : ClientModInitializer {
                 val dx = arg.substringAfterLast(':').toFloat()
                 find(sel)?.getBoundingClientRect()?.let { r -> root.input.wheel(r.x + r.width / 2f, r.y + r.height / 2f, dx, 0f) }
             }
+            // "notch:.h-scroll:3" turns the mouse wheel 3 notches down over the element, through Minecraft's own
+            // scroll callback (unlike "wheel", which talks to GuiLib directly).
+            "notch" -> {
+                val sel = arg.substringBeforeLast(':')
+                val notches = arg.substringAfterLast(':').toDouble()
+                find(sel)?.getBoundingClientRect()?.let { r ->
+                    repeat(kotlin.math.abs(notches).toInt()) {
+                        screen.mouseScrolled((r.x + r.width / 2f).toDouble(), (r.y + r.height / 2f).toDouble(), 0.0, -kotlin.math.sign(notches))
+                    }
+                }
+            }
             // Dragging: "press:.item" holds the left button at the element's center, "move:0,30" moves the mouse
             // relative to the last position (button still held), "release" lets go.
             "press" -> find(arg)?.getBoundingClientRect()?.let { r ->

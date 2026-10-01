@@ -190,11 +190,18 @@ class InteractionController(private val doc: Document, private val hitTest: (Flo
             var e: Element? = target
             while (e != null) {
                 if (scrollBy(e, dx, dy)) break
+                // Unlike the web, a container that can only scroll sideways also takes the plain wheel.
+                if (dx == 0f && scrollsOnlyHorizontally(e) && scrollBy(e, dy, 0f)) break
                 e = e.parent
             }
         }
         doc.flush()
         return true
+    }
+
+    private fun scrollsOnlyHorizontally(el: Element): Boolean {
+        val s = el.style
+        return s.overflowX.scrolls && el.maxScrollLeft > 0f && !(s.overflowY.scrolls && el.maxScrollTop > 0f)
     }
 
     private fun scrollBy(el: Element, dx: Float, dy: Float): Boolean {

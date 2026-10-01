@@ -1,6 +1,8 @@
 package net.sbo.guilib.fabric.input
 
 import net.sbo.guilib.core.event.Modifiers
+import com.mojang.blaze3d.platform.InputConstants
+import net.minecraft.client.Minecraft
 import org.lwjgl.glfw.GLFW
 
 /** Maps GLFW key codes to DOM `KeyboardEvent.key` names. */
@@ -56,4 +58,16 @@ object Keys {
         alt = glfwMods and GLFW.GLFW_MOD_ALT != 0,
         meta = glfwMods and GLFW.GLFW_MOD_SUPER != 0,
     )
+
+    /** Modifier keys held right now, for events Minecraft delivers without modifiers (the mouse wheel). */
+    fun currentModifiers(): Modifiers {
+        val window = Minecraft.getInstance().window
+        fun down(vararg keys: Int) = keys.any { InputConstants.isKeyDown(window, it) }
+        var mods = 0
+        if (down(GLFW.GLFW_KEY_LEFT_SHIFT, GLFW.GLFW_KEY_RIGHT_SHIFT)) mods = mods or GLFW.GLFW_MOD_SHIFT
+        if (down(GLFW.GLFW_KEY_LEFT_CONTROL, GLFW.GLFW_KEY_RIGHT_CONTROL)) mods = mods or GLFW.GLFW_MOD_CONTROL
+        if (down(GLFW.GLFW_KEY_LEFT_ALT, GLFW.GLFW_KEY_RIGHT_ALT)) mods = mods or GLFW.GLFW_MOD_ALT
+        if (down(GLFW.GLFW_KEY_LEFT_SUPER, GLFW.GLFW_KEY_RIGHT_SUPER)) mods = mods or GLFW.GLFW_MOD_SUPER
+        return modifiers(mods)
+    }
 }

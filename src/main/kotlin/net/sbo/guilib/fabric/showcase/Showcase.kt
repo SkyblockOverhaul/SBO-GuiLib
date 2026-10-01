@@ -297,7 +297,7 @@ object Showcase {
     private val HorizontalScrollDemo = component("HorizontalScrollDemo") {
         var picked by useState<String?>(null)
         h3 { +"Horizontal scroll" }
-        p(className = "muted") { +"Shift + mouse wheel (or a trackpad) scrolls sideways; the wheel alone still scrolls the page." }
+        p(className = "muted") { +"The mouse wheel scrolls these rows sideways (Shift + wheel too); at the end it scrolls the page again." }
         scroll(className = "h-scroll") {
             for (stackItem in HOTBAR) {
                 val name = stackItem.descriptionId.substringAfterLast('.')

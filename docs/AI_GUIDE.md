@@ -113,7 +113,9 @@ Inputs support mouse/Shift+arrow selection, double-click word selection and Ctrl
 `e.target`, `e.currentTarget`, `e.stopPropagation()`, `e.preventDefault()` work like the DOM; events bubble from the
 deepest element to `body`. `mouseenter/mouseleave`, `focus/blur`, `scroll` don't bubble.
 - `MouseEvent`: `clientX/clientY` (GUI px), `offsetX/offsetY`, `button` (0 left, 1 middle, 2 right), `shiftKey/ctrlKey/altKey`.
-- `WheelEvent`: `deltaX/deltaY` (px; positive = down). Default action scrolls the nearest scroll container.
+- `WheelEvent`: `deltaX/deltaY` (px; positive = down). Default action scrolls the nearest scroll container. Shift + wheel
+  scrolls sideways. Unlike the web, a container that can only scroll horizontally (`overflow-x: auto; overflow-y: hidden`)
+  also scrolls sideways with the plain wheel; once it reaches its end, the wheel scrolls the next container up.
 - `KeyboardEvent`: `key` uses DOM names (`"a"`, `"Enter"`, `"Escape"`, `"ArrowUp"`, `"Tab"`, `"Backspace"`, `" "`), `keyCode` = GLFW code.
 - `preventDefault()` on `mousedown` stops focusing, on `wheel` stops scrolling, on `keydown` `Escape` keeps the screen open.
 - Focus: inputs/buttons/selects and elements with `tabIndex` are focusable; Tab / Shift+Tab move focus.
@@ -218,7 +220,7 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
 - **Spinner:** `@keyframes spin { to { transform: rotate(360deg) } }` + `.spinner { animation: spin 1s linear infinite }`.
 - **Zebra rows:** `.row:nth-child(even) { background-color: #2b2d31 }`.
 - **Horizontal scroll row:** `display: flex; overflow-x: auto; overflow-y: hidden` with `flex-shrink: 0` on the children.
-  Shift + wheel (or a trackpad) scrolls it; the plain wheel keeps scrolling the page.
+  The plain wheel scrolls it sideways (as does Shift + wheel or a trackpad).
 - **Reorderable list:** `sortableList(tasks, key = { it.id }, onReorder = { tasks = it }) { task, _ -> div { +task.name } }`.
 - **Responsive tiles:** `display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 4px`.
 - **Sidebar + content:** `display: grid; grid-template-columns: 80px 1fr` (or `grid-template-areas`).
