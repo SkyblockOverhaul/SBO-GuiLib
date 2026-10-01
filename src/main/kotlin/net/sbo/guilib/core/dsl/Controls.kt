@@ -290,8 +290,8 @@ fun NodeBuilder.numberInput(
 /**
  * [numberInput] that may be empty: `numberInput(value = level, onChange = { level = it }, allowEmpty = true, placeholder = "any")`
  * with `var level by useState<Int?>(null)`. `null` shows an empty field (with the [placeholder]); clearing the field
- * reports `null` right away. − / +, the arrow keys and the wheel start at 0 (or the nearest bound when 0 is outside
- * [min]..[max]). [allowEmpty] selects this overload; with `false` a cleared field restores the last value instead.
+ * reports `null` right away. + (arrow up, wheel up) on an empty field starts at [step] (at least [min]); − does nothing
+ * on an empty field and empties the field at [min]. [allowEmpty] selects this overload; with `false` a cleared field restores the last value instead.
  */
 @JvmName("numberInputNullable")
 fun NodeBuilder.numberInput(

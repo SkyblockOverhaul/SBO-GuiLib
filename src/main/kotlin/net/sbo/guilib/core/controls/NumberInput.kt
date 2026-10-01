@@ -48,7 +48,8 @@ private const val REPEAT_MS = 60L
  * Number field with − and + buttons. The value always stays within min..max: typed values are clamped when the field
  * loses focus or Enter is pressed; values inside the range are reported while typing. ArrowUp/ArrowDown and the mouse
  * wheel (while hovered) step by `step`, Shift × 10; holding a button repeats. With `nullable`, the field may be empty
- * (reported as `null`); stepping an empty field starts at 0, or at the nearest bound when 0 is outside min..max.
+ * (reported as `null`): + on an empty field starts at `step` (at least min), − on an empty field does nothing and − at
+ * min empties the field again.
  * Styled with `.guilib-number` (`.disabled`), `.guilib-number-input`, `.guilib-number-dec`, `.guilib-number-inc`.
  */
 internal val NumberInputComponent = component<NumberInputProps>("NumberInput") { p ->
@@ -69,7 +70,14 @@ internal val NumberInputComponent = component<NumberInputProps>("NumberInput") {
     }
 
     fun stepBy(times: Int) {
-        if (!p.disabled) emit(latest.current?.let { it + times * p.step } ?: 0.0)
+        val cur = latest.current
+        if (!p.disabled) when {
+            // Empty: + starts one step up from empty (at least min), − does nothing.
+            cur == null -> if (times > 0) emit(maxOf(p.min, times * p.step))
+            // At min, − empties the field again (nullable only; otherwise clamp keeps it at min).
+            p.nullable && times < 0 && cur <= p.min -> emit(null)
+            else -> emit(cur + times * p.step)
+        }
         draft = null
     }
 
@@ -99,7 +107,8 @@ internal val NumberInputComponent = component<NumberInputProps>("NumberInput") {
         }
     }
 
-    val atMin = p.value != null && p.value <= p.min
+    // Nullable: − stays usable at min (it empties the field) and is disabled only when the field is already empty.
+    val atMin = if (p.nullable) p.value == null else p.value != null && p.value <= p.min
     val atMax = p.value != null && p.value >= p.max
     div(
         className = classNames("guilib-number", "disabled" to p.disabled, p.className),

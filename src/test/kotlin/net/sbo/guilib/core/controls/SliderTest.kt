@@ -287,13 +287,42 @@ class SliderTest {
         root.key("Enter")
         assertNull(value)
         assertEquals("", text())
-        assertFalse(root.el(".guilib-number-dec").disabled)
-        // Stepping an empty field starts at the nearest bound (0 is below min = 1).
+        assertTrue(root.el(".guilib-number-dec").disabled)
+        // + on an empty field starts at 1 (here also min).
         root.click(root.el(".guilib-number-inc"))
         assertEquals(1, value)
         root.click(root.el(".guilib-number-inc"))
         assertEquals(2, value)
         assertEquals("2", text())
+    }
+
+    @Test
+    fun nullableNumberInputStepsFromAndBackToEmpty() {
+        for (min in listOf(0, 1)) {
+            var value: Int? = null
+            val changes = ArrayList<Int?>()
+            val root = ui {
+                var v by useState<Int?>(null)
+                value = v
+                numberInput(value = v, onChange = { v = it; changes += it }, allowEmpty = true, min = min, max = 9)
+            }
+            val dec = root.el(".guilib-number-dec")
+            val inc = root.el(".guilib-number-inc")
+            // − on an empty field does nothing (the button is disabled).
+            assertTrue(dec.disabled, "min=$min")
+            root.click(dec)
+            assertEquals(emptyList<Int?>(), changes, "min=$min")
+            // + on an empty field starts at 1 (one step up from empty), never below min.
+            root.click(inc)
+            assertEquals(1, value, "min=$min")
+            // − at min clears the field instead of being disabled.
+            if (min == 0) root.click(dec)
+            assertEquals(0.coerceAtLeast(min), value ?: -1, "min=$min")
+            assertFalse(dec.disabled, "min=$min")
+            root.click(dec)
+            assertNull(value, "min=$min")
+            assertTrue(dec.disabled, "min=$min")
+        }
     }
 
     @Test
