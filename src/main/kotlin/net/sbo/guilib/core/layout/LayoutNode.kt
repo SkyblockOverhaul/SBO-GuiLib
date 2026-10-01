@@ -94,4 +94,9 @@ sealed interface Fragment {
 
     class Text(override val x: Float, override val width: Float, val text: String, val style: TextStyle, override val owner: LayoutNode) : Fragment
     class Box(override val x: Float, override val width: Float, val y: Float, override val owner: LayoutNode) : Fragment
+    /**
+     * Horizontal margin + border + padding at the [start] (or end) of the `display: inline` element [owner]; only
+     * present on the line where that element starts (ends).
+     */
+    class Edge(override val x: Float, override val width: Float, override val owner: LayoutNode, val start: Boolean) : Fragment
 }

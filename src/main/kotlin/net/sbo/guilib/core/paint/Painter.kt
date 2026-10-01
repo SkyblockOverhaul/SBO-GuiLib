@@ -9,11 +9,14 @@ import net.sbo.guilib.core.css.PointerEvents
 import net.sbo.guilib.core.css.Position
 import net.sbo.guilib.core.css.Visibility
 import net.sbo.guilib.core.dom.Element
+import net.sbo.guilib.core.dom.Node
 import net.sbo.guilib.core.dom.Rect
 import net.sbo.guilib.core.dom.TextNode
 import net.sbo.guilib.core.dom.Transform2D
 import net.sbo.guilib.core.layout.Fragment
 import net.sbo.guilib.core.layout.LayoutBox
+import net.sbo.guilib.core.layout.Paragraph
+import net.sbo.guilib.core.layout.TextStyle
 import net.sbo.guilib.core.layout.TextMeasurer
 
 /**
@@ -142,7 +145,7 @@ class Painter(private val measurer: TextMeasurer) {
         val sx = x - el.scrollLeft
         val sy = y - el.scrollTop
 
-        if (visible) paintParagraphs(el.box, sx, sy, alpha, local)
+        if (visible) paintParagraphs(el.box, sx, sy, alpha, local, el)
 
         for (child in el.children) {
             pose = elPose // a previous child may have painted with its own transform
@@ -207,13 +210,24 @@ class Painter(private val measurer: TextMeasurer) {
     private fun paintBox(el: Element, s: ComputedStyle, layout: Rect, alpha: Float, xf: Transform2D) {
         val b = el.box
         val r = xf.map(layout)
-        val bg = Colors.withOpacity(s.backgroundColor, alpha)
         val bx = kotlin.math.abs(xf.sx)
         val by = kotlin.math.abs(xf.sy)
         val borders = floatArrayOf(b.border.top * by, b.border.right * bx, b.border.bottom * by, b.border.left * bx)
-        val hasBorder = borders.any { it > 0f }
         val radii = radii(s, layout, xf)
         followRoundClip(r, radii)
+        decorate(s, r, borders, radii, alpha, xf)
+        if (el.replaced != null) {
+            val c = xf.map(Rect(layout.x + b.contentX, layout.y + b.contentY, b.contentWidth, b.contentHeight))
+            val src = el.getAttribute("src") as? String
+            if (src != null) emit(PaintCommand.Image(c.x, c.y, c.width, c.height, src, s.objectFit, alpha, radii))
+            else emit(PaintCommand.Replaced(el, c.x, c.y, c.width, c.height, alpha))
+        }
+    }
+
+    /** Shadows, background and border of the border box [r] (already mapped through [xf]). */
+    private fun decorate(s: ComputedStyle, r: Rect, borders: FloatArray, radii: FloatArray, alpha: Float, xf: Transform2D) {
+        val bg = Colors.withOpacity(s.backgroundColor, alpha)
+        val hasBorder = borders.any { it > 0f }
         val borderColors = intArrayOf(
             Colors.withOpacity(s.borderTopColor, alpha), Colors.withOpacity(s.borderRightColor, alpha),
             Colors.withOpacity(s.borderBottomColor, alpha), Colors.withOpacity(s.borderLeftColor, alpha),
@@ -243,12 +257,6 @@ class Painter(private val measurer: TextMeasurer) {
                 (radii[2] - maxOf(borders[2], borders[1])).coerceAtLeast(0f), (radii[3] - maxOf(borders[2], borders[3])).coerceAtLeast(0f),
             )
             if (pad.width > 0f && pad.height > 0f) for (sh in shadows.asReversed()) if (sh.inset) emitShadow(sh, pad, inner, alpha, xf)
-        }
-        if (el.replaced != null) {
-            val c = xf.map(Rect(layout.x + b.contentX, layout.y + b.contentY, b.contentWidth, b.contentHeight))
-            val src = el.getAttribute("src") as? String
-            if (src != null) emit(PaintCommand.Image(c.x, c.y, c.width, c.height, src, s.objectFit, alpha, radii))
-            else emit(PaintCommand.Replaced(el, c.x, c.y, c.width, c.height, alpha))
         }
     }
 
@@ -291,9 +299,10 @@ class Painter(private val measurer: TextMeasurer) {
         return out
     }
 
-    private fun paintParagraphs(box: LayoutBox, x: Float, y: Float, alpha: Float, xf: Transform2D) {
+    private fun paintParagraphs(box: LayoutBox, x: Float, y: Float, alpha: Float, xf: Transform2D, container: Element? = null) {
         val fontScale = kotlin.math.abs(xf.sy)
         for (p in box.paragraphs) {
+            if (container != null) paintInlineBoxes(container, p, x, y, alpha, xf)
             for (line in p.lines) {
                 for (f in line.fragments) {
                     if (f !is Fragment.Text) continue
@@ -317,6 +326,69 @@ class Painter(private val measurer: TextMeasurer) {
                 }
             }
         }
+    }
+
+    /**
+     * Background, border and shadows of `display: inline` elements inside [container]: one box per line the element
+     * is on, spanning its fragments; the start/end border, padding and rounded corners only where the element
+     * starts/ends (like `box-decoration-break: slice`). Vertical padding and borders extend around the font's
+     * ascent/descent without affecting the line height.
+     */
+    private fun paintInlineBoxes(container: Element, p: Paragraph, x: Float, y: Float, alpha: Float, xf: Transform2D) {
+        for (line in p.lines) {
+            var spans: LinkedHashMap<Element, FloatArray>? = null // minX, maxX, starts here, ends here
+            for (f in line.fragments) {
+                var n: Element? = if (f is Fragment.Edge) f.owner as? Element else (f.owner as? Node)?.parent
+                while (n != null && n !== container && n.box.inParagraph) {
+                    val st = n.style
+                    if (Colors.alpha(st.backgroundColor) > 0 || st.backgroundLayers.isNotEmpty() || st.boxShadow.isNotEmpty() ||
+                        st.borderTopWidth > 0f || st.borderRightWidth > 0f || st.borderBottomWidth > 0f || st.borderLeftWidth > 0f
+                    ) {
+                        val map = spans ?: LinkedHashMap<Element, FloatArray>().also { spans = it }
+                        val m = map.getOrPut(n) { floatArrayOf(Float.MAX_VALUE, -Float.MAX_VALUE, 0f, 0f) }
+                        m[0] = minOf(m[0], f.x)
+                        m[1] = maxOf(m[1], f.x + f.width)
+                        if (f is Fragment.Edge && f.owner === n) m[if (f.start) 2 else 3] = 1f
+                    }
+                    n = n.parent
+                }
+            }
+            val found = spans ?: continue
+            val baseline = y + p.y + line.y + line.baseline
+            // Outer elements first, so nested inline boxes paint on top.
+            for ((e, m) in found.entries.sortedBy { depth(it.key) }) {
+                val st = e.style
+                fun px(d: net.sbo.guilib.core.css.Dim) = d.resolve(0f) ?: 0f
+                val starts = m[2] == 1f
+                val ends = m[3] == 1f
+                val metrics = measurer.metrics(TextStyle.of(st))
+                val bt = st.borderTopWidth
+                val bb = st.borderBottomWidth
+                val bl = if (starts) st.borderLeftWidth else 0f
+                val br = if (ends) st.borderRightWidth else 0f
+                val left = x + p.x + m[0] + (if (starts) px(st.marginLeft) else 0f)
+                val right = x + p.x + m[1] - (if (ends) px(st.marginRight) else 0f)
+                val top = baseline - metrics.ascent - px(st.paddingTop) - bt
+                val bottom = baseline + metrics.descent + px(st.paddingBottom) + bb
+                if (right <= left || bottom <= top) continue
+                val layout = Rect(left, top, right - left, bottom - top)
+                val radii = radii(st, layout, xf)
+                if (!starts) { radii[0] = 0f; radii[3] = 0f }
+                if (!ends) { radii[1] = 0f; radii[2] = 0f }
+                val sx = kotlin.math.abs(xf.sx)
+                val sy = kotlin.math.abs(xf.sy)
+                decorate(st, xf.map(layout), floatArrayOf(bt * sy, br * sx, bb * sy, bl * sx), radii, alpha * st.opacity, xf)
+            }
+        }
+    }
+
+    private fun depth(e: Element): Int {
+        var d = 0
+        var n = e.parent
+        while (n != null) {
+            d++; n = n.parent
+        }
+        return d
     }
 
     private fun registerInlineHits(inlineEl: Element, container: Element, x: Float, y: Float, clip: Rect?, xf: Transform2D) {

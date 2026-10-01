@@ -207,7 +207,9 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
    children that only partly overlap a corner) is not cut to the curve.
 10. Per-side borders on a box with `border-radius` are drawn as straight strips that stop at rounded corners
     (the border doesn't bend around the curve); uniform borders and sides between square corners are exact.
-11. Inline elements (`span`, …) ignore padding/border/background; use `display: inline-block` for boxes inside text.
+11. Inline elements (`span`, `code`, …) paint background, border, `border-radius` and `box-shadow` per line like the web
+    (`box-decoration-break: slice`); horizontal margin/padding/border take space, vertical ones don't change the line height.
+    Use `display: inline-block` when the box must not wrap or needs a width/height.
 12. `border-width` default (`medium`) is 1px; like the web, a border without `border-style` draws nothing.
 13. Every positioned element (`relative/absolute/fixed`) is its own paint layer; `z-index` orders layers among siblings in the same layer. Use `portal { }` for things that must be on top of everything. `position: fixed` elements ignore their ancestors' `transform`.
 14. Not supported (yet): 3D transforms (a `transform` containing them is ignored), `repeating-*-gradient`, `conic-gradient`, `@media`,

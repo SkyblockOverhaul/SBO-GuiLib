@@ -8,8 +8,8 @@ import net.sbo.guilib.core.css.WhiteSpace
 
 /**
  * Inline formatting: turns text nodes, `display: inline` elements and atomic inline boxes (inline-block, images)
- * into wrapped lines. Simplifications vs. the web: padding/border/background of `display: inline` elements are
- * ignored, and `vertical-align` is always `baseline`.
+ * into wrapped lines. Horizontal margin/border/padding of `display: inline` elements take space at their start and
+ * end ([Fragment.Edge]); vertical ones don't affect the line height (like the web). `vertical-align` is always `baseline`.
  */
 internal class InlineLayout(private val engine: LayoutEngine) {
 
@@ -17,9 +17,14 @@ internal class InlineLayout(private val engine: LayoutEngine) {
         class Text(val text: String, val style: TextStyle, val owner: LayoutNode) : Item
         class Atomic(val node: LayoutNode) : Item
         data object Break : Item
+        /** Start or end of a `display: inline` element with horizontal margin/border/padding. */
+        class Edge(val node: LayoutNode, val width: Float, val start: Boolean) : Item
     }
 
-    private class Piece(val text: String, val style: TextStyle, val owner: LayoutNode, val width: Float, val trailingSpace: Float)
+    /** [edge]: 0 = text, 1 = start edge of [owner], 2 = end edge. */
+    private class Piece(
+        val text: String, val style: TextStyle, val owner: LayoutNode, val width: Float, val trailingSpace: Float, val edge: Int = 0,
+    )
 
     private sealed interface Chunk {
         class Words(val pieces: List<Piece>) : Chunk {
@@ -68,7 +73,13 @@ internal class InlineLayout(private val engine: LayoutEngine) {
                     if (mark) {
                         node.box.reset(); node.box.inParagraph = true
                     }
+                    val s = node.style
+                    fun px(d: net.sbo.guilib.core.css.Dim) = d.resolve(0f) ?: 0f
+                    val start = px(s.marginLeft) + s.borderLeftWidth + px(s.paddingLeft)
+                    val end = px(s.paddingRight) + s.borderRightWidth + px(s.marginRight)
+                    if (start != 0f) out += Item.Edge(node, start, true)
                     collect(node.layoutChildren, out, mark)
+                    if (end != 0f) out += Item.Edge(node, end, false)
                 }
             }
         }
@@ -93,6 +104,8 @@ internal class InlineLayout(private val engine: LayoutEngine) {
                 is Item.Atomic -> {
                     close(); out += Chunk.Atomic(item.node); lastWasSpace = false
                 }
+                // Edges stick to the neighbouring word (no line break between them).
+                is Item.Edge -> current += Piece("", TextStyle.of(item.node.style), item.node, item.width, 0f, if (item.start) 1 else 2)
                 is Item.Text -> {
                     val segments: List<String> = if (collapse) {
                         var t = item.text.replace(Regex("\\s+"), " ")
@@ -217,10 +230,14 @@ internal class InlineLayout(private val engine: LayoutEngine) {
                     i++; continue
                 }
                 val piece = p.piece!!
+                if (piece.edge != 0) {
+                    frags += Fragment.Edge(p.x, piece.width, piece.owner, piece.edge == 1)
+                    i++; continue
+                }
                 val sb = StringBuilder(piece.text)
                 var w = piece.width
                 var j = i + 1
-                while (j < raw.size && raw[j].piece != null && raw[j].piece!!.style == piece.style && raw[j].piece!!.owner === piece.owner) {
+                while (j < raw.size && raw[j].piece != null && raw[j].piece!!.edge == 0 && raw[j].piece!!.style == piece.style && raw[j].piece!!.owner === piece.owner) {
                     sb.append(raw[j].piece!!.text); w += raw[j].piece!!.width; j++
                 }
                 val isLastFrag = j == raw.size
@@ -258,6 +275,7 @@ internal class InlineLayout(private val engine: LayoutEngine) {
                         above = maxOf(above, base)
                         below = maxOf(below, b.marginBoxHeight - base)
                     }
+                    is Fragment.Edge -> {}
                 }
             }
             val lineHeight = above + below
@@ -276,6 +294,7 @@ internal class InlineLayout(private val engine: LayoutEngine) {
                         b.y = y + lineY + top + b.margin.top
                         Fragment.Box(f.x + shift, f.width, top, f.owner)
                     }
+                    is Fragment.Edge -> Fragment.Edge(f.x + shift, f.width, f.owner, f.start)
                 }
             }
             lines += Line(lineY, width, lineHeight, above, placed)

@@ -171,6 +171,10 @@ button.primary:hover { background-color: #6f9cf2; }
 .form-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
 .form-label { width: 50px; color: var(--muted); }
 .form-row input { flex-grow: 1; max-width: 160px; }
+.kbd { padding: 1px 3px; border: 1px solid #4e5058; border-radius: 3px; background-color: #2b2d31; box-shadow: 0 1px #4e5058; }
+.inline-code { padding: 1px 3px; border-radius: 3px; background-color: #ffffff14; color: #ffd166; }
+.highlight { padding: 0 2px; background-color: #ffd16640; border-radius: 2px; }
+.tag-pill { padding: 1px 5px; margin: 0 1px; border-radius: 999px; background-color: #5b8def; color: #fff; }
 .shadow-grid { gap: 10px; padding: 6px 4px 10px; }
 .demo-box.shadow { border-radius: 6px; }
 .demo-box.glass { background-color: #ffffff22; border: 1px solid #ffffff44; }

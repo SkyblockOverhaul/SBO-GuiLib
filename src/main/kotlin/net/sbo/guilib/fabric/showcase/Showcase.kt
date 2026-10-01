@@ -27,6 +27,7 @@ import net.sbo.guilib.core.dsl.slider
 import net.sbo.guilib.core.dsl.switch
 import net.sbo.guilib.core.dsl.colorInput
 import net.sbo.guilib.core.dsl.colorPicker
+import net.sbo.guilib.core.dsl.code
 import net.sbo.guilib.core.dsl.img
 import net.sbo.guilib.core.dsl.input
 import net.sbo.guilib.core.dsl.label
@@ -436,6 +437,19 @@ object Showcase {
             span(style = "font-weight: bold") { +"bold " }
             span(style = "font-style: italic; text-decoration: underline") { +"italic underlined " }
             +"and §6Minecraft §lcolor §r§bcodes§r work in any text."
+        }
+        p {
+            +"Inline boxes: press "
+            span(className = "kbd") { +"Ctrl" }
+            +" + "
+            span(className = "kbd") { +"K" }
+            +", call "
+            code(className = "inline-code") { +"useState()" }
+            +", or "
+            span(className = "highlight") { +"highlight a long phrase that wraps onto the next line" }
+            +" with "
+            span(className = "tag-pill") { +"pills" }
+            +"."
         }
         p {
             +"Long text wraps at word boundaries inside its container. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
