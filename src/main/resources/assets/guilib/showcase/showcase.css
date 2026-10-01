@@ -213,3 +213,5 @@ button.primary:hover { background-color: #6f9cf2; }
 .grid-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 3px; }
 .tile { padding: 6px 0; text-align: center; background-color: var(--panel); border: 1px solid var(--border); border-radius: 3px; }
 .tile.wide { grid-column: span 2; background: linear-gradient(to right, #5b8def, #b16cea); }
+
+.color-preview { width: 120px; height: 60px; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-weight: bold; text-shadow: 1px 1px #0008; }

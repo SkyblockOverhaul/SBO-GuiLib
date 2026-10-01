@@ -96,3 +96,25 @@ fun NodeBuilder.modal(
     key: Any? = null,
     children: NodeBuilder.() -> Unit,
 ) = ModalComponent(ModalProps(open, onClose, className, closeOnBackdropClick, children), key)
+
+/**
+ * Inline color picker (saturation/value area, hue slider, optional alpha, hex input), controlled like React:
+ * `colorPicker(value = color, onChange = { color = it })`. Colors are ARGB ints (`0xFF5B8DEF.toInt()`).
+ */
+fun NodeBuilder.colorPicker(
+    value: Int,
+    onChange: ((Int) -> Unit)? = null,
+    alpha: Boolean = false,
+    className: String? = null,
+    key: Any? = null,
+) = net.sbo.guilib.core.controls.ColorPickerComponent(net.sbo.guilib.core.controls.ColorPickerProps(value, onChange, alpha, className), key)
+
+/** A swatch button that opens a color picker popover: `colorInput(value = color, onChange = { color = it })`. */
+fun NodeBuilder.colorInput(
+    value: Int,
+    onChange: ((Int) -> Unit)? = null,
+    alpha: Boolean = false,
+    className: String? = null,
+    disabled: Boolean = false,
+    key: Any? = null,
+) = net.sbo.guilib.core.controls.ColorInputComponent(net.sbo.guilib.core.controls.ColorInputProps(value, onChange, alpha, className, disabled), key)

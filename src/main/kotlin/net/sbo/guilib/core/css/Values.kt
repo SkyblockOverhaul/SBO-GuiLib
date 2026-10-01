@@ -134,6 +134,46 @@ object Colors {
         return argb((a * 255).roundToInt(), (f(0f) * 255).roundToInt(), (f(8f) * 255).roundToInt(), (f(4f) * 255).roundToInt())
     }
 
+    /** HSV (h 0..360, s/v/a 0..1) to ARGB. */
+    fun hsvToArgb(h: Float, s: Float, v: Float, a: Float = 1f): Int {
+        val hh = ((h % 360f) + 360f) % 360f / 60f
+        val c = v * s
+        val x = c * (1f - kotlin.math.abs(hh % 2f - 1f))
+        val (r, g, b) = when (hh.toInt()) {
+            0 -> Triple(c, x, 0f)
+            1 -> Triple(x, c, 0f)
+            2 -> Triple(0f, c, x)
+            3 -> Triple(0f, x, c)
+            4 -> Triple(x, 0f, c)
+            else -> Triple(c, 0f, x)
+        }
+        val m = v - c
+        return argb((a * 255).roundToInt(), ((r + m) * 255).roundToInt(), ((g + m) * 255).roundToInt(), ((b + m) * 255).roundToInt())
+    }
+
+    /** ARGB to HSV: `floatArrayOf(h 0..360, s, v, a)`. Hue is 0 for greys. */
+    fun argbToHsv(c: Int): FloatArray {
+        val r = red(c) / 255f
+        val g = green(c) / 255f
+        val b = blue(c) / 255f
+        val max = maxOf(r, g, b)
+        val min = minOf(r, g, b)
+        val d = max - min
+        val h = when {
+            d == 0f -> 0f
+            max == r -> 60f * (((g - b) / d) % 6f)
+            max == g -> 60f * ((b - r) / d + 2f)
+            else -> 60f * ((r - g) / d + 4f)
+        }.let { if (it < 0f) it + 360f else it }
+        return floatArrayOf(h, if (max == 0f) 0f else d / max, max, alpha(c) / 255f)
+    }
+
+    /** `#rrggbb`, or `#rrggbbaa` when [withAlpha] (or the color isn't opaque). */
+    fun toHex(c: Int, withAlpha: Boolean = false): String {
+        val rgb = "#%02x%02x%02x".format(red(c), green(c), blue(c))
+        return if (withAlpha || alpha(c) != 255) rgb + "%02x".format(alpha(c)) else rgb
+    }
+
     /** CSS named colors (CSS Color Level 4). */
     val NAMED: Map<String, Int> = """
         aliceblue f0f8ff antiquewhite faebd7 aqua 00ffff aquamarine 7fffd4 azure f0ffff beige f5f5dc bisque ffe4c4 black 000000

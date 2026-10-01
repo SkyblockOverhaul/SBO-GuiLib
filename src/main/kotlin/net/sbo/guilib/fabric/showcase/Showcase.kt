@@ -8,7 +8,10 @@ import net.sbo.guilib.core.dsl.classNames
 import net.sbo.guilib.core.dsl.div
 import net.sbo.guilib.core.dsl.h2
 import net.sbo.guilib.core.dsl.h3
+import net.sbo.guilib.core.css.Colors
 import net.sbo.guilib.core.dsl.checkbox
+import net.sbo.guilib.core.dsl.colorInput
+import net.sbo.guilib.core.dsl.colorPicker
 import net.sbo.guilib.core.dsl.img
 import net.sbo.guilib.core.dsl.input
 import net.sbo.guilib.core.dsl.label
@@ -24,7 +27,7 @@ import net.sbo.guilib.fabric.GuiLib
 
 /** Demo UI showing every feature; open with `/guilib showcase`. */
 object Showcase {
-    val SECTIONS = listOf("Buttons", "Forms", "Boxes", "Animation", "Layout", "Grid", "Text", "Scroll", "Images", "Items", "State")
+    val SECTIONS = listOf("Buttons", "Forms", "Colors", "Boxes", "Animation", "Layout", "Grid", "Text", "Scroll", "Images", "Items", "State")
 
     private val App = component<String>("Showcase") { initialSection ->
         var section by useState(initialSection)
@@ -43,6 +46,7 @@ object Showcase {
                     when (section) {
                         "Buttons" -> ButtonsDemo()
                         "Forms" -> FormsDemo()
+                        "Colors" -> ColorsDemo()
                         "Boxes" -> BoxesDemo()
                         "Animation" -> AnimationDemo()
                         "Grid" -> GridDemo()
@@ -112,6 +116,25 @@ object Showcase {
             div(className = "row", style = "justify-content: flex-end") {
                 button(onClick = { dialog = false }) { +"Cancel" }
                 button(className = "primary", onClick = { dialog = false }) { +"OK" }
+            }
+        }
+    }
+
+    private val ColorsDemo = component("ColorsDemo") {
+        var accent by useState(0xFF5B8DEF.toInt())
+        var glow by useState(0x80FFD166.toInt())
+        h2 { +"Color picker" }
+        div(className = "row", style = "align-items: flex-start; gap: 10px") {
+            colorPicker(value = accent, onChange = { accent = it })
+            div(style = "display: flex; flex-direction: column; gap: 6px") {
+                div(className = "form-row") {
+                    span(className = "form-label") { +"Popover" }
+                    colorInput(value = glow, onChange = { glow = it }, alpha = true)
+                }
+                div(
+                    className = "color-preview",
+                    style = "background: linear-gradient(135deg, ${Colors.toHex(accent)}, ${Colors.toHex(glow, true)})",
+                ) { +"Preview" }
             }
         }
     }

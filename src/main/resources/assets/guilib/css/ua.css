@@ -194,3 +194,46 @@ select:disabled { opacity: 0.5; cursor: not-allowed; }
     border: 1px solid #4e5058;
     border-radius: 6px;
 }
+
+/* ---- color picker ---- */
+.guilib-color-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 130px;
+    padding: 6px;
+    background-color: #2b2d31;
+    border: 1px solid #4e5058;
+    border-radius: 4px;
+}
+.guilib-cp-sv { position: relative; height: 80px; border-radius: 3px; cursor: crosshair; }
+.guilib-cp-hue, .guilib-cp-alpha { position: relative; height: 8px; border-radius: 4px; cursor: pointer; }
+.guilib-cp-alpha { background-color: #1e1f22; }
+.guilib-cp-handle {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    margin-left: -4px;
+    margin-top: -4px;
+    border: 1px solid #ffffff;
+    border-radius: 50%;
+    pointer-events: none;
+}
+.guilib-cp-thumb {
+    position: absolute;
+    top: -1px;
+    width: 6px;
+    height: 10px;
+    margin-left: -3px;
+    border: 1px solid #ffffff;
+    border-radius: 2px;
+    pointer-events: none;
+}
+.guilib-cp-row { display: flex; align-items: center; gap: 5px; }
+.guilib-cp-preview { width: 16px; height: 16px; border: 1px solid #4e5058; border-radius: 3px; flex-shrink: 0; }
+.guilib-cp-hex { flex-grow: 1; min-width: 0; font-family: minecraft; }
+
+.guilib-color-input { gap: 5px; padding: 2px 6px 2px 3px; }
+.guilib-color-swatch { display: inline-block; width: 12px; height: 12px; border: 1px solid #ffffff55; border-radius: 2px; }
+.guilib-color-hex { font-family: minecraft; }
+.guilib-color-popover { pointer-events: auto; }
