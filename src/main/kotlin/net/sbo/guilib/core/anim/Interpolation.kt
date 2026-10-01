@@ -90,7 +90,13 @@ object Interpolation {
      * of the other list (like CSS). Other combinations switch discretely.
      */
     private fun transforms(a: List<*>, b: List<*>, t: Float): List<TransformFn>? {
-        fun identity(f: Any?): TransformFn = if (f is TransformFn.Scale) TransformFn.Scale(1f, 1f) else TransformFn.Translate(Dim.ZERO, Dim.ZERO)
+        fun identity(f: Any?): TransformFn = when (f) {
+            is TransformFn.Scale -> TransformFn.Scale(1f, 1f)
+            is TransformFn.Rotate -> TransformFn.Rotate(0f)
+            is TransformFn.Skew -> TransformFn.Skew(0f, 0f)
+            is TransformFn.Matrix -> TransformFn.Matrix(1f, 0f, 0f, 1f, 0f, 0f)
+            else -> TransformFn.Translate(Dim.ZERO, Dim.ZERO)
+        }
         val la = if (a.isEmpty()) b.map(::identity) else a
         val lb = if (b.isEmpty()) a.map(::identity) else b
         if (la.size != lb.size) return null
@@ -101,6 +107,12 @@ object Interpolation {
                 fa is TransformFn.Translate && fb is TransformFn.Translate ->
                     TransformFn.Translate(dim(fa.x, fb.x, t) ?: return null, dim(fa.y, fb.y, t) ?: return null)
                 fa is TransformFn.Scale && fb is TransformFn.Scale -> TransformFn.Scale(lerp(fa.x, fb.x, t), lerp(fa.y, fb.y, t))
+                fa is TransformFn.Rotate && fb is TransformFn.Rotate -> TransformFn.Rotate(lerp(fa.deg, fb.deg, t))
+                fa is TransformFn.Skew && fb is TransformFn.Skew -> TransformFn.Skew(lerp(fa.x, fb.x, t), lerp(fa.y, fb.y, t))
+                fa is TransformFn.Matrix && fb is TransformFn.Matrix -> TransformFn.Matrix(
+                    lerp(fa.a, fb.a, t), lerp(fa.b, fb.b, t), lerp(fa.c, fb.c, t),
+                    lerp(fa.d, fb.d, t), lerp(fa.tx, fb.tx, t), lerp(fa.ty, fb.ty, t),
+                )
                 else -> return null
             }
         }

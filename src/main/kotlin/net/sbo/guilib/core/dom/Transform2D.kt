@@ -2,40 +2,84 @@ package net.sbo.guilib.core.dom
 
 import net.sbo.guilib.core.css.ComputedStyle
 import net.sbo.guilib.core.css.TransformFn
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.sqrt
+import kotlin.math.tan
 
 /**
- * Axis-aligned 2D transform `p' = (sx·x + tx, sy·y + ty)`: what CSS `transform` lists of translate/scale reduce to.
- * Used by the painter (drawing and hit regions) and by [Element.getBoundingClientRect].
+ * 2D affine transform `x' = a·x + c·y + tx`, `y' = b·x + d·y + ty` (the CSS `matrix(a, b, c, d, tx, ty)`):
+ * what CSS `transform` lists reduce to. Used by the painter (drawing and hit regions) and by
+ * [Element.getBoundingClientRect].
+ *
+ * The painter treats [isAxisAligned] transforms (translate and positive scale) specially: they are applied to the
+ * coordinates directly, so boxes stay pixel-exact and text is re-rasterized sharp. Everything else (rotate, skew,
+ * mirroring) is handed to the backend as a matrix.
  */
-data class Transform2D(val sx: Float, val sy: Float, val tx: Float, val ty: Float) {
-    val isIdentity get() = sx == 1f && sy == 1f && tx == 0f && ty == 0f
+data class Transform2D(
+    val a: Float, val b: Float, val c: Float, val d: Float, val tx: Float, val ty: Float,
+) {
+    /** Axis-aligned constructor `(sx·x + tx, sy·y + ty)`. */
+    constructor(sx: Float, sy: Float, tx: Float, ty: Float) : this(sx, 0f, 0f, sy, tx, ty)
 
-    /** True if the scale collapses everything to nothing (e.g. `scale(0)`). */
-    val isDegenerate get() = abs(sx) < 1e-4f || abs(sy) < 1e-4f
+    val sx get() = a
+    val sy get() = d
 
-    /** Factor for sizes that must stay round (corner radii): the smaller absolute scale. */
-    val scale get() = minOf(abs(sx), abs(sy))
+    val isIdentity get() = a == 1f && b == 0f && c == 0f && d == 1f && tx == 0f && ty == 0f
 
-    fun x(v: Float) = sx * v + tx
-    fun y(v: Float) = sy * v + ty
+    /** Only translation and positive scaling: rectangles map to rectangles with the same orientation. */
+    val isAxisAligned get() = abs(b) < EPS && abs(c) < EPS && a > 0f && d > 0f
 
-    /** Maps [r]; negative scales flip, so the result is normalized to a positive size. */
+    /** True if the transform collapses everything to (almost) nothing, e.g. `scale(0)`. */
+    val isDegenerate get() = abs(a * d - b * c) < 1e-8f || scaleX < 1e-4f || scaleY < 1e-4f
+
+    /** Length of a unit step along x / y after transforming. */
+    val scaleX get() = sqrt(a * a + b * b)
+    val scaleY get() = sqrt(c * c + d * d)
+
+    /** Factor for sizes that must stay round (corner radii): the smaller axis scale. */
+    val scale get() = minOf(scaleX, scaleY)
+
+    /** Mapped x / y of the point ([px], [py]). */
+    fun x(px: Float, py: Float = 0f) = a * px + c * py + tx
+    fun y(py: Float, px: Float = 0f) = b * px + d * py + ty
+
+    /** Axis-aligned bounding box of [r] after mapping (exact for axis-aligned transforms). */
     fun map(r: Rect): Rect {
         if (isIdentity) return r
-        val x0 = x(r.x)
-        val x1 = x(r.right)
-        val y0 = y(r.y)
-        val y1 = y(r.bottom)
-        return Rect(minOf(x0, x1), minOf(y0, y1), abs(x1 - x0), abs(y1 - y0))
+        val xs = floatArrayOf(x(r.x, r.y), x(r.right, r.y), x(r.right, r.bottom), x(r.x, r.bottom))
+        val ys = floatArrayOf(y(r.y, r.x), y(r.y, r.right), y(r.bottom, r.right), y(r.bottom, r.x))
+        val x0 = xs.min()
+        val y0 = ys.min()
+        return Rect(x0, y0, xs.max() - x0, ys.max() - y0)
     }
 
-    /** `this ∘ other`: applies [other] first, then this. */
+    /** The inverse transform, or `null` if it collapses the plane. */
+    fun inverse(): Transform2D? {
+        val det = a * d - b * c
+        if (abs(det) < 1e-12f) return null
+        val ia = d / det
+        val ib = -b / det
+        val ic = -c / det
+        val id = a / det
+        return Transform2D(ia, ib, ic, id, -(ia * tx + ic * ty), -(ib * tx + id * ty))
+    }
+
+    /** `this ∘ other`: applies [o] first, then this. */
     operator fun times(o: Transform2D): Transform2D =
-        if (o.isIdentity) this else if (isIdentity) o else Transform2D(sx * o.sx, sy * o.sy, sx * o.tx + tx, sy * o.ty + ty)
+        if (o.isIdentity) this else if (isIdentity) o else Transform2D(
+            a * o.a + c * o.b, b * o.a + d * o.b,
+            a * o.c + c * o.d, b * o.c + d * o.d,
+            a * o.tx + c * o.ty + tx, b * o.tx + d * o.ty + ty,
+        )
 
     companion object {
-        val IDENTITY = Transform2D(1f, 1f, 0f, 0f)
+        val IDENTITY = Transform2D(1f, 0f, 0f, 1f, 0f, 0f)
+        private const val EPS = 1e-5f
+
+        private fun rad(deg: Float) = deg * PI.toFloat() / 180f
 
         /**
          * The element's own `transform` for a border box at ([x], [y]) with size [w]×[h] (all before transforming),
@@ -49,6 +93,16 @@ data class Transform2D(val sx: Float, val sy: Float, val tx: Float, val ty: Floa
                 m *= when (f) {
                     is TransformFn.Translate -> Transform2D(1f, 1f, f.x.resolve(w) ?: 0f, f.y.resolve(h) ?: 0f)
                     is TransformFn.Scale -> Transform2D(f.x, f.y, 0f, 0f)
+                    is TransformFn.Rotate -> {
+                        val r = rad(f.deg)
+                        val cs = cos(r)
+                        val sn = sin(r)
+                        // Snap the exact multiples of 90° so e.g. rotate(180deg) has no -8e-8 noise.
+                        fun clean(v: Float) = if (abs(v) < 1e-6f) 0f else v
+                        Transform2D(clean(cs), clean(sn), clean(-sn), clean(cs), 0f, 0f)
+                    }
+                    is TransformFn.Skew -> Transform2D(1f, tan(rad(f.y)), tan(rad(f.x)), 1f, 0f, 0f)
+                    is TransformFn.Matrix -> Transform2D(f.a, f.b, f.c, f.d, f.tx, f.ty)
                 }
             }
             if (m.isIdentity) return IDENTITY

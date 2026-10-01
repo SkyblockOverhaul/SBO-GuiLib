@@ -3,6 +3,7 @@ package net.sbo.guilib.core.paint
 import net.sbo.guilib.core.css.ObjectFit
 import net.sbo.guilib.core.dom.Element
 import net.sbo.guilib.core.dom.Rect
+import net.sbo.guilib.core.dom.Transform2D
 import net.sbo.guilib.core.layout.TextStyle
 
 /** Backend-independent drawing commands in absolute GUI coordinates. Colors are ARGB with opacity already applied. */
@@ -44,9 +45,28 @@ sealed interface PaintCommand {
     /** Replaced element the backend draws itself (e.g. `<item>`). */
     class Replaced(val element: Element, val x: Float, val y: Float, val width: Float, val height: Float, val alpha: Float) : PaintCommand
 
+    /** Clip to [rect], always in screen coordinates (rotated clips use their bounding box). */
     class PushClip(val rect: Rect) : PaintCommand
     data object PopClip : PaintCommand
+
+    /**
+     * The following drawing commands are in local coordinates that [transform] maps to the screen
+     * (`null` = screen coordinates). Emitted for rotated, skewed and mirrored elements.
+     */
+    class SetTransform(val transform: Transform2D?) : PaintCommand
 }
 
-/** A clickable area, in paint order. [element] is the event target. */
-class HitRegion(val element: Element, val rect: Rect, val clip: Rect?)
+/**
+ * A clickable area, in paint order. [element] is the event target. [local] is mapped to the screen by [transform];
+ * [rect] is its screen bounding box.
+ */
+class HitRegion(val element: Element, val local: Rect, val clip: Rect?, val transform: Transform2D = Transform2D.IDENTITY) {
+    private val inverse = if (transform.isAxisAligned) null else transform.inverse()
+    val rect: Rect = transform.map(local)
+
+    fun contains(x: Float, y: Float): Boolean {
+        if (clip != null && !clip.contains(x, y)) return false
+        if (inverse == null) return rect.contains(x, y)
+        return local.contains(inverse.x(x, y), inverse.y(y, x))
+    }
+}

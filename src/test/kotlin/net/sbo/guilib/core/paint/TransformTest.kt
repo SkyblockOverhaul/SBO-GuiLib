@@ -39,12 +39,72 @@ class TransformTest {
 
     @Test
     fun parsesTranslateAndScale() {
-        val root = ui("$box .a { transform: translate(10px, 50%) scaleX(2) } .b { transform: rotate(10deg) }") {
-            div(className = "a"); div(className = "b")
+        val root = ui(
+            "$box .a { transform: translate(10px, 50%) scaleX(2) } .b { transform: rotate3d(1, 0, 0, 10deg) }" +
+                " .c { transform: rotate(0.25turn) skewX(10deg) matrix(1, 0, 0, 1, 5, 6) }",
+        ) {
+            div(className = "a"); div(className = "b"); div(className = "c")
         }
         assertEquals(listOf(TransformFn.Translate(Dim.Px(10f), Dim.Pct(50f)), TransformFn.Scale(2f, 1f)), root.el(".a").style.transform)
         // Unsupported functions invalidate the declaration (like invalid CSS), so it stays `none`.
         assertEquals(emptyList<TransformFn>(), root.el(".b").style.transform)
+        assertEquals(
+            listOf(TransformFn.Rotate(90f), TransformFn.Skew(10f, 0f), TransformFn.Matrix(1f, 0f, 0f, 1f, 5f, 6f)),
+            root.el(".c").style.transform,
+        )
+    }
+
+    @Test
+    fun rotatedElementsPaintThroughATransformAndHitTestTheRotatedBox() {
+        // 20x10 box at (10, 10) rotated 90deg around its center (20, 15): it now covers x 15..25, y 5..25.
+        val root = ui("$box .a { transform: rotate(90deg) }") { div(className = "a") }
+        val set = root.painter.commands.filterIsInstance<PaintCommand.SetTransform>().first()
+        val t = set.transform!!
+        assertEquals(20f, t.x(10f, 15f), 0.01f); assertEquals(5f, t.y(15f, 10f), 0.01f) // left center -> top center
+        val b = root.boxes().single()
+        assertRect(Rect(10f, 10f, 20f, 10f), b.x, b.y, b.width, b.height) // drawn in layout coordinates
+        val r = root.el(".a").getBoundingClientRect()
+        assertRect(Rect(15f, 5f, 10f, 20f), r.x, r.y, r.width, r.height)
+        assertEquals(root.el(".a"), root.painter.hitTest(20f, 7f)) // above the layout box, inside the rotated one
+        assertTrue(root.painter.hitTest(12f, 15f) != root.el(".a")) // inside the layout box only
+    }
+
+    @Test
+    fun rotatedBoxesAt45DegreesHitTestTheDiamondNotItsBoundingBox() {
+        val root = ui(".a { position: absolute; left: 10px; top: 10px; width: 20px; height: 20px; transform: rotate(45deg) }") {
+            div(className = "a")
+        }
+        assertEquals(root.el(".a"), root.painter.hitTest(20f, 20f))
+        assertEquals(root.el(".a"), root.painter.hitTest(20f, 7f)) // the top corner pokes above the layout box
+        assertTrue(root.painter.hitTest(7f, 7f) != root.el(".a")) // in the bounding box, outside the diamond
+    }
+
+    @Test
+    fun childrenOfRotatedElementsComposeTransformsAndAxisAlignedOnesStayExact() {
+        val root = ui(
+            "$box .a { transform: rotate(180deg) } .b { position: absolute; left: 100px; top: 10px; width: 10px; height: 10px;" +
+                " background-color: blue; transform: scale(2) }",
+        ) {
+            div(className = "a") { div(className = "c") }; div(className = "b")
+        }
+        // The axis-aligned sibling still maps its own coordinates and resets the backend transform first.
+        val cmds = root.painter.commands
+        val blue = cmds.filterIsInstance<PaintCommand.Box>().single { it.background == 0xFF0000FF.toInt() }
+        assertRect(Rect(95f, 5f, 20f, 20f), blue.x, blue.y, blue.width, blue.height)
+        val lastSet = cmds.subList(0, cmds.indexOf(blue)).filterIsInstance<PaintCommand.SetTransform>().last()
+        assertEquals(null, lastSet.transform)
+    }
+
+    @Test
+    fun rotationAnimates() {
+        val root = ui(
+            """
+            $box
+            @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+            .a { animation: spin 100ms linear }
+            """.trimIndent(),
+        ) { div(className = "a") }
+        assertEquals(listOf(TransformFn.Rotate(90f)), root.at(25).el(".a").style.transform)
     }
 
     @Test

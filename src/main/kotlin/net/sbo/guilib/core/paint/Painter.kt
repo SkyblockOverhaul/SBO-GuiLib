@@ -22,9 +22,11 @@ import net.sbo.guilib.core.layout.TextMeasurer
  * then its positioned descendants sorted by `z-index` (every positioned element acts as its own layer).
  * `opacity` multiplies into the colors of the whole subtree.
  *
- * `transform` (translate/scale) is applied here: layout positions stay untransformed, and every emitted rectangle,
- * clip and hit region is mapped through the element's accumulated [Transform2D]. Commands and hit regions are
- * therefore always in screen (GUI) coordinates.
+ * `transform` is applied here; layout positions stay untransformed. Axis-aligned transforms (translate, positive
+ * scale) are folded into the coordinates: every emitted rectangle is mapped through the element's accumulated
+ * [Transform2D], so boxes stay pixel-exact and scaled text is re-rasterized sharp. Other transforms (rotate, skew,
+ * mirroring) emit [PaintCommand.SetTransform] and the element's commands stay in layout coordinates.
+ * Clips and hit regions are always in screen (GUI) coordinates.
  */
 class Painter(private val measurer: TextMeasurer) {
     val commands = ArrayList<PaintCommand>()
@@ -35,8 +37,11 @@ class Painter(private val measurer: TextMeasurer) {
         val z: Int, val order: Int,
     )
 
-    /** Padding box (screen coordinates) and inner corner radii of the nearest clipping ancestor with `border-radius`. */
-    private class RoundClip(val rect: Rect, val radii: FloatArray)
+    /**
+     * Padding box and inner corner radii of the nearest clipping ancestor with `border-radius`, in the coordinates
+     * of [pose] (`null` = screen).
+     */
+    private class RoundClip(val rect: Rect, val radii: FloatArray, val pose: Transform2D?)
 
     /**
      * The rounded clip that applies to what is being painted right now. Clipping itself is rectangular (scissor);
@@ -47,11 +52,25 @@ class Painter(private val measurer: TextMeasurer) {
 
     private var layerOrder = 0
 
+    /** Transform of the commands emitted next (`null` = screen coordinates) and the one last sent to the backend. */
+    private var pose: Transform2D? = null
+    private var emittedPose: Transform2D? = null
+
+    private fun emit(cmd: PaintCommand) {
+        if (cmd !is PaintCommand.PushClip && cmd != PaintCommand.PopClip && pose != emittedPose) {
+            commands += PaintCommand.SetTransform(pose)
+            emittedPose = pose
+        }
+        commands += cmd
+    }
+
     fun paint(root: Element) {
         commands.clear()
         hitRegions.clear()
         layerOrder = 0
         roundClip = null
+        pose = null
+        emittedPose = null
         paintLayer(root, 0f, 0f, null, 1f, Transform2D.IDENTITY)
     }
 
@@ -79,12 +98,17 @@ class Painter(private val measurer: TextMeasurer) {
         if (alpha <= 0.001f) return
         val xf = parentXf * Transform2D.of(s, x, y, b.width, b.height)
         if (xf.isDegenerate) return
+        // Axis-aligned: map coordinates ourselves. Otherwise draw in layout coordinates through a backend matrix.
+        val aligned = xf.isAxisAligned
+        val local = if (aligned) xf else Transform2D.IDENTITY
+        val elPose = if (aligned) null else xf
+        pose = elPose
         val rect = Rect(x, y, b.width, b.height)
         val visible = s.visibility == Visibility.VISIBLE
 
         if (visible) {
-            paintBox(el, s, rect, alpha, xf)
-            if (s.pointerEvents != PointerEvents.NONE) hitRegions += HitRegion(el, xf.map(rect), clip)
+            paintBox(el, s, rect, alpha, local)
+            if (s.pointerEvents != PointerEvents.NONE) hitRegions += HitRegion(el, rect, clip, xf)
         }
 
         // Clip children to the padding box if overflow isn't visible.
@@ -92,33 +116,36 @@ class Painter(private val measurer: TextMeasurer) {
         var childClip = clip
         val outerRound = roundClip
         if (clips) {
-            val pad = xf.map(Rect(x + b.border.left, y + b.border.top, b.paddingBoxWidth, b.paddingBoxHeight))
+            val padLayout = Rect(x + b.border.left, y + b.border.top, b.paddingBoxWidth, b.paddingBoxHeight)
+            val pad = xf.map(padLayout)
             childClip = clip?.intersect(pad) ?: pad
-            commands += PaintCommand.PushClip(childClip)
-            val outer = radii(s, rect, xf)
+            emit(PaintCommand.PushClip(childClip))
+            val outer = radii(s, rect, local)
             roundClip = if (outer.any { it > 0f }) {
                 // Inner radius = outer radius minus the adjacent borders (like CSS padding-box corners).
                 RoundClip(
-                    pad,
+                    local.map(padLayout),
                     floatArrayOf(
-                        (outer[0] - maxOf(b.border.top, b.border.left) * xf.scale).coerceAtLeast(0f),
-                        (outer[1] - maxOf(b.border.top, b.border.right) * xf.scale).coerceAtLeast(0f),
-                        (outer[2] - maxOf(b.border.bottom, b.border.right) * xf.scale).coerceAtLeast(0f),
-                        (outer[3] - maxOf(b.border.bottom, b.border.left) * xf.scale).coerceAtLeast(0f),
+                        (outer[0] - maxOf(b.border.top, b.border.left) * local.scale).coerceAtLeast(0f),
+                        (outer[1] - maxOf(b.border.top, b.border.right) * local.scale).coerceAtLeast(0f),
+                        (outer[2] - maxOf(b.border.bottom, b.border.right) * local.scale).coerceAtLeast(0f),
+                        (outer[3] - maxOf(b.border.bottom, b.border.left) * local.scale).coerceAtLeast(0f),
                     ),
+                    elPose,
                 )
             } else null
         }
         val sx = x - el.scrollLeft
         val sy = y - el.scrollTop
 
-        if (visible) paintParagraphs(el.box, sx, sy, alpha, xf)
+        if (visible) paintParagraphs(el.box, sx, sy, alpha, local)
 
         for (child in el.children) {
+            pose = elPose // a previous child may have painted with its own transform
             if (child is TextNode) {
                 // Text that became its own box (e.g. a flex item) carries its own paragraph.
                 val tb = child.box
-                if (visible && tb.visible && !tb.inParagraph) paintParagraphs(tb, sx + tb.x, sy + tb.y, alpha, xf)
+                if (visible && tb.visible && !tb.inParagraph) paintParagraphs(tb, sx + tb.x, sy + tb.y, alpha, local)
                 continue
             }
             if (child !is Element) continue
@@ -141,10 +168,11 @@ class Painter(private val measurer: TextMeasurer) {
                 paintElement(child, sx + cb.x, sy + cb.y, childClip, alpha, layers, xf)
             }
         }
+        pose = elPose
 
         if (clips) {
-            paintScrollbars(el, s, rect, alpha, xf)
-            commands += PaintCommand.PopClip
+            paintScrollbars(el, s, rect, alpha, local)
+            emit(PaintCommand.PopClip)
             roundClip = outerRound
         }
     }
@@ -188,29 +216,29 @@ class Painter(private val measurer: TextMeasurer) {
         )
         val layers = s.backgroundLayers
         if (layers.isEmpty()) {
-            if (Colors.alpha(bg) > 0 || hasBorder) commands += PaintCommand.Box(r.x, r.y, r.width, r.height, bg, radii, borders, borderColors)
+            if (Colors.alpha(bg) > 0 || hasBorder) emit(PaintCommand.Box(r.x, r.y, r.width, r.height, bg, radii, borders, borderColors))
         } else {
             // CSS order: background-color, then the image layers from last to first, then the border on top.
-            if (Colors.alpha(bg) > 0) commands += PaintCommand.Box(r.x, r.y, r.width, r.height, bg, radii, FloatArray(4), IntArray(4))
+            if (Colors.alpha(bg) > 0) emit(PaintCommand.Box(r.x, r.y, r.width, r.height, bg, radii, FloatArray(4), IntArray(4)))
             for (layer in layers.asReversed()) when (layer) {
                 is BackgroundLayer.Url ->
-                    commands += PaintCommand.Image(r.x, r.y, r.width, r.height, layer.src, net.sbo.guilib.core.css.ObjectFit.FILL, alpha, radii)
+                    emit(PaintCommand.Image(r.x, r.y, r.width, r.height, layer.src, net.sbo.guilib.core.css.ObjectFit.FILL, alpha, radii))
                 is BackgroundLayer.Gradient ->
-                    commands += PaintCommand.Gradient(r.x, r.y, r.width, r.height, GradientMesh.build(layer, r.x, r.y, r.width, r.height, alpha), radii)
+                    emit(PaintCommand.Gradient(r.x, r.y, r.width, r.height, GradientMesh.build(layer, r.x, r.y, r.width, r.height, alpha), radii))
             }
-            if (hasBorder) commands += PaintCommand.Box(r.x, r.y, r.width, r.height, Colors.TRANSPARENT, radii, borders, borderColors)
+            if (hasBorder) emit(PaintCommand.Box(r.x, r.y, r.width, r.height, Colors.TRANSPARENT, radii, borders, borderColors))
         }
         if (el.replaced != null) {
             val c = xf.map(Rect(layout.x + b.contentX, layout.y + b.contentY, b.contentWidth, b.contentHeight))
             val src = el.getAttribute("src") as? String
-            if (src != null) commands += PaintCommand.Image(c.x, c.y, c.width, c.height, src, s.objectFit, alpha, radii)
-            else commands += PaintCommand.Replaced(el, c.x, c.y, c.width, c.height, alpha)
+            if (src != null) emit(PaintCommand.Image(c.x, c.y, c.width, c.height, src, s.objectFit, alpha, radii))
+            else emit(PaintCommand.Replaced(el, c.x, c.y, c.width, c.height, alpha))
         }
     }
 
     /** Rounds the corners of [r] that sit exactly in a rounded corner of the current clip. */
     private fun followRoundClip(r: Rect, radii: FloatArray) {
-        val rc = roundClip ?: return
+        val rc = roundClip?.takeIf { it.pose == pose } ?: return
         val c = rc.rect
         fun near(a: Float, b: Float) = kotlin.math.abs(a - b) <= 0.5f
         val max = minOf(r.width, r.height) / 2f
@@ -255,13 +283,13 @@ class Painter(private val measurer: TextMeasurer) {
                     // Scaled text is drawn at the scaled font size, so it stays sharp (re-rasterized, not stretched).
                     val style = if (fontScale == 1f) f.style else f.style.copy(fontSize = f.style.fontSize * fontScale)
                     if (style.fontSize < 0.5f) continue
-                    commands += PaintCommand.Text(xf.x(tx), xf.y(baseline - m.ascent), f.text, style, color, alpha)
+                    emit(PaintCommand.Text(xf.x(tx), xf.y(baseline - m.ascent), f.text, style, color, alpha))
                     val thickness = maxOf(1f, f.style.fontSize / 12f)
                     if (f.style.decoration.underline) {
-                        commands += solid(xf.map(Rect(tx, baseline + thickness, f.width, thickness)), color)
+                        emit(solid(xf.map(Rect(tx, baseline + thickness, f.width, thickness)), color))
                     }
                     if (f.style.decoration.lineThrough) {
-                        commands += solid(xf.map(Rect(tx, baseline - m.ascent * 0.35f - thickness / 2f, f.width, thickness)), color)
+                        emit(solid(xf.map(Rect(tx, baseline - m.ascent * 0.35f - thickness / 2f, f.width, thickness)), color))
                     }
                 }
             }
@@ -273,7 +301,7 @@ class Painter(private val measurer: TextMeasurer) {
         for (p in container.box.paragraphs) for (line in p.lines) for (f in line.fragments) {
             val owner = (f.owner as? TextNode)?.parent ?: continue
             if (!inlineEl.contains(owner)) continue
-            hitRegions += HitRegion(owner, xf.map(Rect(x + p.x + f.x, y + p.y + line.y, f.width, line.height)), clip)
+            hitRegions += HitRegion(owner, Rect(x + p.x + f.x, y + p.y + line.y, f.width, line.height), clip, xf)
         }
     }
 
@@ -288,8 +316,8 @@ class Painter(private val measurer: TextMeasurer) {
             val trackH = b.paddingBoxHeight
             val thumbH = maxOf(8f, trackH * trackH / b.scrollHeight)
             val thumbY = trackY + (trackH - thumbH) * (el.scrollTop / el.maxScrollTop.coerceAtLeast(0.0001f))
-            commands += solid(xf.map(Rect(trackX, trackY, thickness, trackH)), Colors.withOpacity(trackColor, alpha))
-            commands += rounded(xf.map(Rect(trackX, thumbY, thickness, thumbH)), Colors.withOpacity(thumbColor, alpha), thickness / 2f * xf.scale)
+            emit(solid(xf.map(Rect(trackX, trackY, thickness, trackH)), Colors.withOpacity(trackColor, alpha)))
+            emit(rounded(xf.map(Rect(trackX, thumbY, thickness, thumbH)), Colors.withOpacity(thumbColor, alpha), thickness / 2f * xf.scale))
         }
         if (s.overflowX.scrolls && b.scrollWidth > b.paddingBoxWidth + 0.5f) {
             val trackX = r.x + b.border.left
@@ -297,8 +325,8 @@ class Painter(private val measurer: TextMeasurer) {
             val trackW = b.paddingBoxWidth
             val thumbW = maxOf(8f, trackW * trackW / b.scrollWidth)
             val thumbX = trackX + (trackW - thumbW) * (el.scrollLeft / el.maxScrollLeft.coerceAtLeast(0.0001f))
-            commands += solid(xf.map(Rect(trackX, trackY, trackW, thickness)), Colors.withOpacity(trackColor, alpha))
-            commands += rounded(xf.map(Rect(thumbX, trackY, thumbW, thickness)), Colors.withOpacity(thumbColor, alpha), thickness / 2f * xf.scale)
+            emit(solid(xf.map(Rect(trackX, trackY, trackW, thickness)), Colors.withOpacity(trackColor, alpha)))
+            emit(rounded(xf.map(Rect(thumbX, trackY, thumbW, thickness)), Colors.withOpacity(thumbColor, alpha), thickness / 2f * xf.scale))
         }
     }
 
@@ -312,8 +340,7 @@ class Painter(private val measurer: TextMeasurer) {
     fun hitTest(x: Float, y: Float): Element? {
         for (i in hitRegions.indices.reversed()) {
             val h = hitRegions[i]
-            if (!h.rect.contains(x, y)) continue
-            if (h.clip != null && !h.clip.contains(x, y)) continue
+            if (!h.contains(x, y)) continue
             return h.element
         }
         return null

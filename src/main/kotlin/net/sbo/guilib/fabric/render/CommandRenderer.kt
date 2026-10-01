@@ -10,6 +10,8 @@ import net.minecraft.world.item.ItemStack
 import net.sbo.guilib.core.Log
 import net.sbo.guilib.core.css.Colors
 import net.sbo.guilib.core.css.ObjectFit
+import net.sbo.guilib.core.dom.Rect
+import net.sbo.guilib.core.dom.Transform2D
 import net.sbo.guilib.core.paint.PaintCommand
 import net.sbo.guilib.fabric.font.FontManager
 import net.sbo.guilib.fabric.font.GlyphAtlas
@@ -35,7 +37,14 @@ object CommandRenderer {
 
     private class Quad(val key: Any, val x0: Float, val y0: Float, val x1: Float, val y1: Float)
 
-    private fun beforeQuad(ctx: GuiGraphicsExtractor, kind: Any, x0: Float, y0: Float, x1: Float, y1: Float) {
+    private fun beforeQuad(ctx: GuiGraphicsExtractor, kind: Any, lx0: Float, ly0: Float, lx1: Float, ly1: Float) {
+        // Overlap is tested in screen space, so quads drawn under different transforms compare correctly.
+        val t = transform
+        val sr = if (t == null) null else t.map(Rect(lx0, ly0, lx1 - lx0, ly1 - ly0))
+        val x0 = sr?.x ?: lx0
+        val y0 = sr?.y ?: ly0
+        val x1 = sr?.right ?: lx1
+        val y1 = sr?.bottom ?: ly1
         val key = kind to ctx.scissorStack.peek()
         val conflict = layerHasOverlay || layerQuads.any { it.key != key && it.x0 < x1 && x0 < it.x1 && it.y0 < y1 && y0 < it.y1 }
         if (conflict) {
@@ -50,11 +59,17 @@ object CommandRenderer {
     private var mouseX = 0
     private var mouseY = 0
 
+    /** Transform set by the last [PaintCommand.SetTransform] (`null` = screen coordinates). */
+    private var transform: Transform2D? = null
+
     fun draw(ctx: GuiGraphicsExtractor, commands: List<PaintCommand>, mouseX: Int = 0, mouseY: Int = 0) {
         this.mouseX = mouseX
         this.mouseY = mouseY
         layerHasOverlay = false
         layerQuads.clear()
+        transform = null
+        val pose = ctx.pose()
+        val base = Matrix3x2f(pose)
         var clipDepth = 0
         for (cmd in commands) {
             when (cmd) {
@@ -71,9 +86,19 @@ object CommandRenderer {
                     drawReplaced(ctx, cmd); layerHasOverlay = true
                 }
                 is PaintCommand.PushClip -> {
+                    // Clip rects are in screen coordinates, whatever transform is active.
                     val r = cmd.rect
+                    pose.pushMatrix()
+                    pose.set(base)
                     ctx.enableScissor(floor(r.x).toInt(), floor(r.y).toInt(), ceil(r.right).toInt(), ceil(r.bottom).toInt())
+                    pose.popMatrix()
                     clipDepth++
+                }
+                is PaintCommand.SetTransform -> {
+                    val t = cmd.transform
+                    transform = t
+                    pose.set(base)
+                    if (t != null) pose.mul(Matrix3x2f(t.a, t.b, t.c, t.d, t.tx, t.ty))
                 }
                 PaintCommand.PopClip -> if (clipDepth > 0) {
                     ctx.disableScissor(); clipDepth--
@@ -81,6 +106,8 @@ object CommandRenderer {
             }
         }
         repeat(clipDepth) { ctx.disableScissor() }
+        pose.set(base)
+        transform = null
         GlyphAtlas.flush()
     }
 
