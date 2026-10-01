@@ -2,9 +2,13 @@ package net.sbo.guilib.core.css
 
 import kotlin.math.roundToInt
 
-/** A length as written in CSS, before context-dependent units (em, vw, …) are resolved. */
-data class Length(val value: Float, val unit: String) {
+/**
+ * A length as written in CSS, before context-dependent units (em, vw, …) are resolved.
+ * `calc()`/`min()`/`max()`/`clamp()` are represented with unit `"calc"` and the expression in [calc].
+ */
+data class Length(val value: Float, val unit: String, val calc: CalcNode? = null) {
     val isPercent get() = unit == "%"
+    val isCalc get() = calc != null
 }
 
 /**
@@ -17,11 +21,14 @@ sealed interface Dim {
     data object None : Dim
     data class Px(val px: Float) : Dim
     data class Pct(val pct: Float) : Dim
+    /** `calc()` & co. containing percentages; evaluated against the containing block during layout. */
+    data class Calc(val node: CalcNode) : Dim
 
     /** Resolves against [base] (the containing block size); `null` for auto/none or percentages of an indefinite size. */
     fun resolve(base: Float?): Float? = when (this) {
         is Px -> px
         is Pct -> base?.let { it * pct / 100f }
+        is Calc -> node.eval(base)
         Auto, None -> null
     }
 

@@ -137,6 +137,31 @@ class CascadeTest {
     }
 
     @Test
+    fun calcMinMaxClamp() {
+        val e = engine(
+            """
+            .p { font-size: 10px }
+            .c { width: calc(100% - 2em); height: calc(10px + 1rem * 2); margin-left: min(5px, 1em);
+                 padding-top: max(3px, 2px); max-width: clamp(10px, 50vw, 300px); min-width: calc((100% - 10px) / 2);
+                 --gap: 4px; margin-top: calc(var(--gap) * 3); font-size: calc(1em + 2px) }
+            .bad { width: calc(10px +); }
+            """.trimIndent(),
+        )
+        val parent = e.style(FakeElement("div", classes = "p"))
+        val c = e.style(FakeElement("div", classes = "c"), parent)
+        assertEquals(12f, c.fontSize)
+        assertEquals(76f, c.width.resolve(100f)!!, 0.001f)       // 100% - 2em (em = own font-size 12px)
+        assertEquals(Dim.Px(26f), c.height)                         // no percentage → plain px
+        assertEquals(Dim.Px(5f), c.marginLeft)
+        assertEquals(Dim.Px(3f), c.paddingTop)
+        assertEquals(Dim.Px(200f), c.maxWidth)                      // 50vw of 400px
+        assertEquals(45f, c.minWidth.resolve(100f)!!, 0.001f)
+        assertEquals(Dim.Px(12f), c.marginTop)                      // var() inside calc
+        assertEquals(null, c.width.resolve(null))                   // % of an indefinite size
+        assertEquals(Dim.Auto, e.style(FakeElement("div", classes = "bad")).width) // invalid calc is dropped
+    }
+
+    @Test
     fun cyclicVariablesDoNotLoop() {
         val e = engine(".a { --x: var(--y); --y: var(--x); color: var(--x, red) }")
         assertEquals(0xFFFF0000.toInt(), e.style(FakeElement("div", classes = "a")).color)

@@ -132,6 +132,15 @@ class LayoutTest {
     }
 
     @Test
+    fun calcInLayout() {
+        val side = div("width: 30px; height: 10px")
+        val main = div("width: calc(100% - 30px - 10px); margin-left: 10px; height: 10px")
+        layout(div("", div("display: flex", side, main)))
+        assertEquals(60f, main.box.width, 0.01f)
+        assertEquals(40f, main.absX, 0.01f)
+    }
+
+    @Test
     fun minAndMaxWidth() {
         val a = div("width: 10px; min-width: 30px; height: 1px")
         val b = div("max-width: 60px; height: 1px")

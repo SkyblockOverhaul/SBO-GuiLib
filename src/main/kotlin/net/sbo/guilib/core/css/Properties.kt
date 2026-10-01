@@ -285,6 +285,7 @@ object Properties {
     private val LENGTH_UNITS = setOf("px", "em", "rem", "vw", "vh", "vmin", "vmax")
 
     fun length(v: ComponentValue): Length? {
+        if (v is FunctionValue && v.name in CalcNode.FUNCTIONS) return CalcNode.parse(v)?.let { Length(0f, "calc", it) }
         val t = tok(v) ?: return null
         return when (t.type) {
             TokenType.DIMENSION -> if (t.unit in LENGTH_UNITS) Length(t.number.toFloat(), t.unit) else null
@@ -296,7 +297,7 @@ object Properties {
 
     private fun lengthOrAuto(v: ComponentValue): Any? = if (isIdent(v, "auto")) Dim.Auto else length(v)
 
-    private fun nonNegativeLength(v: ComponentValue): Length? = length(v)?.takeIf { it.value >= 0f }
+    private fun nonNegativeLength(v: ComponentValue): Length? = length(v)?.takeIf { it.isCalc || it.value >= 0f }
 
     private fun borderWidth(v: ComponentValue): Any? = when {
         isIdent(v, "thin") -> 1f

@@ -182,6 +182,7 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
             val fontSize = when (val v = specified(Prop.FONT_SIZE)) {
                 is InheritedMarker -> v.value as Float
                 is Length -> when (v.unit) {
+                    "calc" -> v.calc!!.resolveUnits(parentFontSize, ctx).eval(parentFontSize) ?: parentFontSize
                     "em" -> v.value * parentFontSize
                     "%" -> v.value / 100f * parentFontSize
                     else -> toPx(v, parentFontSize, ctx)
@@ -209,9 +210,15 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
         private class InheritedMarker(val value: Any?)
 
         private fun resolve(p: Prop, v: Any?, fontSize: Float, color: Int, ctx: StyleContext): Any? = when (v) {
-            is Length -> when (p) {
-                Prop.BORDER_TOP_WIDTH, Prop.BORDER_RIGHT_WIDTH, Prop.BORDER_BOTTOM_WIDTH, Prop.BORDER_LEFT_WIDTH -> toPx(v, fontSize, ctx)
-                else -> if (v.isPercent) Dim.Pct(v.value) else Dim.Px(toPx(v, fontSize, ctx))
+            is Length -> when {
+                p == Prop.BORDER_TOP_WIDTH || p == Prop.BORDER_RIGHT_WIDTH || p == Prop.BORDER_BOTTOM_WIDTH || p == Prop.BORDER_LEFT_WIDTH -> toPx(v, fontSize, ctx)
+                v.isCalc -> {
+                    val node = v.calc!!.resolveUnits(fontSize, ctx)
+                    // Without percentages the result is a plain length.
+                    if (node.hasPercent) Dim.Calc(node) else Dim.Px(node.eval(null) ?: 0f)
+                }
+                v.isPercent -> Dim.Pct(v.value)
+                else -> Dim.Px(toPx(v, fontSize, ctx))
             }
             CurrentColor -> color
             Properties.NoImage -> null
@@ -223,6 +230,7 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
 
         fun toPx(l: Length, fontSize: Float, ctx: StyleContext): Float = when (l.unit) {
             "px" -> l.value
+            "calc" -> l.calc!!.resolveUnits(fontSize, ctx).eval(null) ?: 0f
             "em" -> l.value * fontSize
             "rem" -> l.value * ctx.rootFontSize
             "vw" -> l.value * ctx.viewportWidth / 100f
