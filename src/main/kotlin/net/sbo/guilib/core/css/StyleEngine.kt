@@ -230,6 +230,12 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
             CurrentColor -> color
             Properties.NoImage -> null
             is Properties.LineHeightLength -> LineHeight.Px(toPx(v.length, fontSize, ctx))
+            is Properties.BoxShadowList -> v.shadows.map { s ->
+                BoxShadow(
+                    toPx(s.x, fontSize, ctx), toPx(s.y, fontSize, ctx), s.blur?.let { toPx(it, fontSize, ctx) } ?: 0f,
+                    s.spread?.let { toPx(it, fontSize, ctx) } ?: 0f, if (s.color == CurrentColor) color else s.color as Int, s.inset,
+                )
+            }
             is Properties.TextShadowValue -> TextShadow(toPx(v.x, fontSize, ctx), toPx(v.y, fontSize, ctx), if (v.color == CurrentColor) color else v.color)
             is TrackList -> v.map { resolveTrack(it, fontSize, ctx) }
             is List<*> -> if (p == Prop.BACKGROUND_IMAGE) v.map { resolveLayer(it as BackgroundLayer, fontSize, color, ctx) } else v

@@ -23,6 +23,25 @@ sealed interface PaintCommand {
         val hasBorder get() = borders.any { it > 0f }
     }
 
+    /**
+     * A `box-shadow` layer. The box [x], [y], [width], [height] with corner [radii] is the element's border box for
+     * outer shadows (the shadow is never drawn inside it) and its padding box for [inset] shadows (drawn only inside).
+     * The shadow shape is that box moved by [offsetX]/[offsetY] and grown by [spread] (shrunk for inset shadows),
+     * blurred with a Gaussian of standard deviation [blur] / 2.
+     */
+    class Shadow(
+        val x: Float, val y: Float, val width: Float, val height: Float, val radii: FloatArray,
+        val offsetX: Float, val offsetY: Float, val blur: Float, val spread: Float, val color: Int, val inset: Boolean,
+    ) : PaintCommand {
+        /** Area the shadow can paint (for outer shadows: the shifted, grown and blurred shape). */
+        val bounds: Rect
+            get() {
+                if (inset) return Rect(x, y, width, height)
+                val e = spread + blur * 1.5f + 1f
+                return Rect(x + offsetX - e, y + offsetY - e, width + 2 * e, height + 2 * e)
+            }
+    }
+
     /** A run of text; [y] is the top of the glyph box (baseline − ascent). */
     class Text(val x: Float, val y: Float, val text: String, val style: TextStyle, val color: Int, val alpha: Float) : PaintCommand
 

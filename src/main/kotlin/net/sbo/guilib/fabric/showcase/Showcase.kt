@@ -322,6 +322,16 @@ object Showcase {
             div(className = "demo-box grad", style = "background: linear-gradient(to bottom, transparent, black), linear-gradient(to right, white, red)") { +"layers" }
             div(className = "demo-box grad", style = "background: linear-gradient(to right, red, yellow, lime, cyan, blue, magenta, red); border: 1px solid #fff") { +"hue" }
         }
+        h3 { +"Shadows" }
+        div(className = "box-grid shadow-grid") {
+            div(className = "demo-box shadow", style = "box-shadow: 0 2px 6px #000000aa") { +"soft" }
+            div(className = "demo-box shadow", style = "box-shadow: 3px 3px #000") { +"hard" }
+            div(className = "demo-box shadow", style = "box-shadow: 0 0 10px 2px #5b8defcc") { +"glow" }
+            div(className = "demo-box shadow glass", style = "box-shadow: 0 4px 12px #000c") { +"glass" }
+            div(className = "demo-box shadow", style = "box-shadow: inset 0 2px 5px #000c") { +"inset" }
+            div(className = "demo-box shadow", style = "box-shadow: inset 0 0 0 2px #ffd166, 0 0 0 2px #e5484d") { +"rings" }
+            div(className = "demo-box shadow lift") { +"hover me" }
+        }
     }
 
     private val ImagesDemo = component("ImagesDemo") {

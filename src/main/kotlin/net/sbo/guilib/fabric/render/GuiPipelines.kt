@@ -52,6 +52,16 @@ object GuiPipelines {
             .build(),
     )
 
+    /** `box-shadow`: the rounded-rect format with the shadow parameters packed in (see [ShadowState]). */
+    val BOX_SHADOW: RenderPipeline = RenderPipelines.register(
+        RenderPipeline.builder(RenderPipelines.GUI_SNIPPET)
+            .withLocation(id("pipeline/box_shadow"))
+            .withVertexShader(id("core/box_shadow"))
+            .withFragmentShader(id("core/box_shadow"))
+            .quads(ROUNDED_FORMAT)
+            .build(),
+    )
+
     private fun RenderPipeline.Builder.quads(format: VertexFormat): RenderPipeline.Builder =
         //#if MC >= 26.2
         //$$ withVertexBinding(0, format).withPrimitiveTopology(PrimitiveTopology.QUADS)

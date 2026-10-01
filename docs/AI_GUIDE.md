@@ -168,7 +168,7 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
 - Animation: `transition` (+ `-property -duration -timing-function -delay`), `animation` (+ `-name -duration -timing-function -delay
   -iteration-count -direction -fill-mode -play-state`) with `@keyframes`; easing `linear ease ease-in ease-out ease-in-out cubic-bezier() steps()`.
   Animatable: colors, lengths (also px ↔ % via calc), numbers (`opacity`, `flex-grow`, `font-size` …), radii, `line-height`,
-  `text-shadow`, scrollbar colors, gradient stop colors, `visibility`, `transform`, `transform-origin`; other values switch at 50%
+  `text-shadow`, `box-shadow`, scrollbar colors, gradient stop colors, `visibility`, `transform`, `transform-origin`; other values switch at 50%
   in keyframes and don't transition.
 - Transform: `transform` with `translate() translateX() translateY() scale() scaleX() scaleY() rotate() skew() skewX() skewY()
   matrix(a, b, c, d, tx, ty)` (`none` to reset; angles in `deg rad grad turn`) and
@@ -181,6 +181,9 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
 - Visual: `background background-color background-image opacity visibility object-fit`. `background-image` takes a comma list of layers
   (first = top): `url("modid:path.png")` (stretched to the box), `linear-gradient(…)` (angles, `to right`, `to top left`, stops with
   positions, hard stops) and `radial-gradient(…)` (`circle`/`ellipse`, size keywords, `at <position>`). Gradients respect `border-radius`.
+  `box-shadow`: `none` or a comma list of `[inset] <x> <y> [<blur> [<spread>]] [<color>]` (first = top; color defaults to `currentColor`).
+  Real Gaussian blur, follows `border-radius`; outer shadows are never drawn under the box (fine with translucent backgrounds),
+  inset shadows sit inside the padding box. Transitions between shadow lists work (`inset` must match per position).
 - Interaction: `cursor` (`auto default pointer text not-allowed crosshair move ns-resize ew-resize row-resize col-resize grab grabbing`;
   while the left button is held on an element with `grab`/`grabbing`/`move`/a resize cursor, that cursor stays even when the mouse leaves it), `pointer-events`, `user-select` (parsed only)
 - Scrollbars: `scrollbar-width` (`auto thin none`), `scrollbar-color: <thumb> <track>`
@@ -207,7 +210,7 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
 11. Inline elements (`span`, …) ignore padding/border/background; use `display: inline-block` for boxes inside text.
 12. `border-width` default (`medium`) is 1px; like the web, a border without `border-style` draws nothing.
 13. Every positioned element (`relative/absolute/fixed`) is its own paint layer; `z-index` orders layers among siblings in the same layer. Use `portal { }` for things that must be on top of everything. `position: fixed` elements ignore their ancestors' `transform`.
-14. Not supported (yet): 3D transforms (a `transform` containing them is ignored), box-shadow, `repeating-*-gradient`, `conic-gradient`, `@media`,
+14. Not supported (yet): 3D transforms (a `transform` containing them is ignored), `repeating-*-gradient`, `conic-gradient`, `@media`,
     `:nth-child(… of S)`, pseudo-elements, float, `align-content`, `vertical-align`, letter-spacing, subgrid, named grid lines (`[name]` is ignored).
     Grid: `auto-fit` behaves like `auto-fill` (empty tracks aren't collapsed); items can't be placed before line 1.
 15. Images: `src` is a resource location (`"modid:textures/x.png"`), PNG, SVG or GIF only; no URLs yet. Animated GIFs loop like in a browser (all images with the same `src` play in sync); very long GIFs are cut off after ~32M pixels of frames.

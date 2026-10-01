@@ -95,6 +95,12 @@ data class TextShadow(val offsetX: Float, val offsetY: Float, val color: Any /* 
     }
 }
 
+/**
+ * One `box-shadow` layer in px. [inset] shadows are drawn inside the padding box; outer shadows outside the border box
+ * (never underneath it). [blur] is the CSS blur radius (Gaussian standard deviation = blur / 2).
+ */
+data class BoxShadow(val offsetX: Float, val offsetY: Float, val blur: Float, val spread: Float, val color: Int, val inset: Boolean)
+
 /** Colors are stored as packed ARGB ints, like Minecraft uses them. */
 object Colors {
     fun argb(a: Int, r: Int, g: Int, b: Int): Int =

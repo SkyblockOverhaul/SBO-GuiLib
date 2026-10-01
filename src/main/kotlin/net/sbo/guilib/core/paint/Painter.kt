@@ -1,6 +1,7 @@
 package net.sbo.guilib.core.paint
 
 import net.sbo.guilib.core.css.BackgroundLayer
+import net.sbo.guilib.core.css.BoxShadow
 import net.sbo.guilib.core.css.Colors
 import net.sbo.guilib.core.css.ComputedStyle
 import net.sbo.guilib.core.css.Display
@@ -217,6 +218,9 @@ class Painter(private val measurer: TextMeasurer) {
             Colors.withOpacity(s.borderTopColor, alpha), Colors.withOpacity(s.borderRightColor, alpha),
             Colors.withOpacity(s.borderBottomColor, alpha), Colors.withOpacity(s.borderLeftColor, alpha),
         )
+        val shadows = s.boxShadow
+        // Outer shadows go under the box; the first shadow in the list is on top, so paint the list backwards.
+        if (shadows.isNotEmpty()) for (sh in shadows.asReversed()) if (!sh.inset) emitShadow(sh, r, radii, alpha, xf)
         val layers = s.backgroundLayers
         if (layers.isEmpty()) {
             if (Colors.alpha(bg) > 0 || hasBorder) emit(PaintCommand.Box(r.x, r.y, r.width, r.height, bg, radii, borders, borderColors))
@@ -231,12 +235,28 @@ class Painter(private val measurer: TextMeasurer) {
             }
             if (hasBorder) emit(PaintCommand.Box(r.x, r.y, r.width, r.height, Colors.TRANSPARENT, radii, borders, borderColors))
         }
+        // Inset shadows sit inside the padding box, above the background (the border doesn't overlap them).
+        if (shadows.any { it.inset }) {
+            val pad = Rect(r.x + borders[3], r.y + borders[0], r.width - borders[1] - borders[3], r.height - borders[0] - borders[2])
+            val inner = floatArrayOf(
+                (radii[0] - maxOf(borders[0], borders[3])).coerceAtLeast(0f), (radii[1] - maxOf(borders[0], borders[1])).coerceAtLeast(0f),
+                (radii[2] - maxOf(borders[2], borders[1])).coerceAtLeast(0f), (radii[3] - maxOf(borders[2], borders[3])).coerceAtLeast(0f),
+            )
+            if (pad.width > 0f && pad.height > 0f) for (sh in shadows.asReversed()) if (sh.inset) emitShadow(sh, pad, inner, alpha, xf)
+        }
         if (el.replaced != null) {
             val c = xf.map(Rect(layout.x + b.contentX, layout.y + b.contentY, b.contentWidth, b.contentHeight))
             val src = el.getAttribute("src") as? String
             if (src != null) emit(PaintCommand.Image(c.x, c.y, c.width, c.height, src, s.objectFit, alpha, radii))
             else emit(PaintCommand.Replaced(el, c.x, c.y, c.width, c.height, alpha))
         }
+    }
+
+    private fun emitShadow(sh: BoxShadow, r: Rect, radii: FloatArray, alpha: Float, xf: Transform2D) {
+        val color = Colors.withOpacity(sh.color, alpha)
+        if (Colors.alpha(color) == 0) return
+        val k = xf.scale
+        emit(PaintCommand.Shadow(r.x, r.y, r.width, r.height, radii, sh.offsetX * xf.sx, sh.offsetY * xf.sy, sh.blur * k, sh.spread * k, color, sh.inset))
     }
 
     /** Rounds the corners of [r] that sit exactly in a rounded corner of the current clip. */

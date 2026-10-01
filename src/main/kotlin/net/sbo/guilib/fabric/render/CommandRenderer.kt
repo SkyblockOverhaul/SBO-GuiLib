@@ -81,6 +81,11 @@ object CommandRenderer {
                         GradientMeshState(Matrix3x2f(ctx.pose()), cmd.mesh, cmd.x, cmd.y, cmd.width, cmd.height, cmd.radii, ctx.scissorStack.peek()),
                     )
                 }
+                is PaintCommand.Shadow -> if (cmd.width > 0f && cmd.height > 0f) {
+                    val a = cmd.bounds
+                    beforeQuad(ctx, "shadow", a.x, a.y, a.right, a.bottom)
+                    ctx.guiRenderState.addGuiElement(ShadowState(Matrix3x2f(ctx.pose()), cmd, ctx.scissorStack.peek()))
+                }
                 is PaintCommand.Text -> drawText(ctx, cmd)
                 is PaintCommand.Replaced -> {
                     drawReplaced(ctx, cmd); layerHasOverlay = true

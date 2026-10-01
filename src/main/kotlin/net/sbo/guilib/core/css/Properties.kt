@@ -85,6 +85,7 @@ enum class Prop(val css: String, val inherited: Boolean, val initial: Any?) {
     TEXT_OVERFLOW("text-overflow", false, TextOverflow.CLIP),
     TEXT_DECORATION("text-decoration", true, TextDecoration.NONE),
     TEXT_SHADOW("text-shadow", true, null),
+    BOX_SHADOW("box-shadow", false, emptyList<BoxShadow>()),
 
     CURSOR("cursor", true, Cursor.AUTO),
     POINTER_EVENTS("pointer-events", true, PointerEvents.AUTO),
@@ -183,6 +184,7 @@ object Properties {
         enumParser(Prop.TEXT_OVERFLOW) { single(it)?.let { v -> keyword<TextOverflow>(v) } }
         enumParser(Prop.TEXT_DECORATION) { textDecoration(it) }
         enumParser(Prop.TEXT_SHADOW) { textShadow(it) }
+        enumParser(Prop.BOX_SHADOW) { boxShadow(it) }
         enumParser(Prop.CURSOR) { single(it)?.let { v -> keyword<Cursor>(v) } }
         enumParser(Prop.POINTER_EVENTS) { single(it)?.let { v -> keyword<PointerEvents>(v) } }
         enumParser(Prop.USER_SELECT) { single(it)?.let { v -> keyword<UserSelect>(v) } }
@@ -565,6 +567,33 @@ object Properties {
     }
 
     data class TextShadowValue(val x: Length, val y: Length, val color: Any)
+
+    /** `box-shadow`: `none` or a comma-separated list of `[inset] <x> <y> [<blur> [<spread>]] [<color>]`. */
+    private fun boxShadow(values: Values): Any? {
+        val w = words(values)
+        if (w.size == 1 && isIdent(w[0], "none")) return emptyList<BoxShadow>()
+        val out = ArrayList<BoxShadowValue>()
+        for (part in BackgroundParser.splitCommas(values)) {
+            var col: Any = CurrentColor
+            var colorSeen = false
+            var inset = false
+            val lengths = ArrayList<Length>()
+            for (v in words(part)) {
+                when {
+                    isIdent(v, "inset") && !inset -> inset = true
+                    !colorSeen && color(v) != null -> { col = color(v)!!; colorSeen = true }
+                    else -> lengths += length(v)?.takeIf { !it.isPercent } ?: return null
+                }
+            }
+            if (lengths.size !in 2..4) return null
+            if (lengths.size >= 3 && lengths[2].value < 0f) return null // blur can't be negative
+            out += BoxShadowValue(lengths[0], lengths[1], lengths.getOrNull(2), lengths.getOrNull(3), col, inset)
+        }
+        return BoxShadowList(out)
+    }
+
+    data class BoxShadowValue(val x: Length, val y: Length, val blur: Length?, val spread: Length?, val color: Any, val inset: Boolean)
+    data class BoxShadowList(val shadows: List<BoxShadowValue>)
 
     private fun fourSides(values: Values, props: List<Prop>, parse: (ComponentValue) -> Any?): List<Pair<Prop, Any>>? {
         val parsed = words(values).map { parse(it) ?: return null }

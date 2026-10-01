@@ -1,6 +1,7 @@
 package net.sbo.guilib.core.anim
 
 import net.sbo.guilib.core.css.BackgroundLayer
+import net.sbo.guilib.core.css.BoxShadow
 import net.sbo.guilib.core.css.CalcNode
 import net.sbo.guilib.core.css.Colors
 import net.sbo.guilib.core.css.Dim
@@ -119,6 +120,25 @@ object Interpolation {
     }
 
     /**
+     * Shadow lists interpolate pairwise; the shorter list is padded with transparent zero shadows (like CSS).
+     * Pairs where one is `inset` and the other isn't can't be interpolated.
+     */
+    private fun boxShadows(a: List<*>, b: List<*>, t: Float): List<BoxShadow>? {
+        val n = maxOf(a.size, b.size)
+        return (0 until n).map { i ->
+            val sa = a.getOrNull(i) as BoxShadow?
+            val sb = b.getOrNull(i) as BoxShadow?
+            val x = sa ?: BoxShadow(0f, 0f, 0f, 0f, Colors.TRANSPARENT, sb!!.inset)
+            val y = sb ?: BoxShadow(0f, 0f, 0f, 0f, Colors.TRANSPARENT, sa!!.inset)
+            if (x.inset != y.inset) return null
+            BoxShadow(
+                lerp(x.offsetX, y.offsetX, t), lerp(x.offsetY, y.offsetY, t), lerp(x.blur, y.blur, t).coerceAtLeast(0f),
+                lerp(x.spread, y.spread, t), color(x.color, y.color, t), x.inset,
+            )
+        }
+    }
+
+    /**
      * Value of [p] at [t] (0..1) between [a] and [b], or `null` if the values can't be interpolated
      * (callers then switch discretely).
      */
@@ -138,6 +158,7 @@ object Interpolation {
                 val sb = b as TextShadow? ?: sa.copy(color = Colors.TRANSPARENT)
                 TextShadow(lerp(sa.offsetX, sb.offsetX, t), lerp(sa.offsetY, sb.offsetY, t), color(sa.color as Int, sb.color as Int, t))
             }
+            p == Prop.BOX_SHADOW && a is List<*> && b is List<*> -> boxShadows(a, b, t)
             p == Prop.SCROLLBAR_COLOR && a is Pair<*, *> && b is Pair<*, *> ->
                 Pair(color(a.first as Int, b.first as Int, t), color(a.second as Int, b.second as Int, t))
             p == Prop.BACKGROUND_IMAGE && a is List<*> && b is List<*> -> backgrounds(a, b, t)
