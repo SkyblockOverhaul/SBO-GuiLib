@@ -7,8 +7,12 @@ import net.sbo.guilib.core.controls.PresenceProps
 import net.sbo.guilib.core.controls.SelectComponent
 import net.sbo.guilib.core.controls.SelectOption
 import net.sbo.guilib.core.controls.SelectProps
+import net.sbo.guilib.core.controls.SliderComponent
+import net.sbo.guilib.core.controls.SliderProps
 import net.sbo.guilib.core.controls.SortableComponent
 import net.sbo.guilib.core.controls.SortableProps
+import net.sbo.guilib.core.controls.SwitchComponent
+import net.sbo.guilib.core.controls.SwitchProps
 import net.sbo.guilib.core.controls.TooltipComponent
 import net.sbo.guilib.core.controls.TooltipProps
 import net.sbo.guilib.core.dom.VText
@@ -64,6 +68,76 @@ fun NodeBuilder.checkbox(
         if (label != null) span { +label }
     }
 }
+
+/**
+ * Toggle switch (on/off pill), controlled like [checkbox]: `switch(checked = on, onChange = { on = it.checked }, label = "Sounds")`.
+ * Click, Space or Enter toggles it. Styled with `.guilib-switch` (`.checked`), `.guilib-switch-track`, `.guilib-switch-thumb`,
+ * `.guilib-switch-label`; recolor it with `--guilib-accent`.
+ */
+fun NodeBuilder.switch(
+    checked: Boolean,
+    onChange: ((InputEvent) -> Unit)? = null,
+    label: String? = null,
+    disabled: Boolean = false,
+    className: String? = null,
+    id: String? = null,
+    key: Any? = null,
+) = SwitchComponent(SwitchProps(checked, onChange, label, disabled, className, id), key)
+
+/**
+ * Range slider (like `<input type="range">`), controlled like React:
+ *
+ * ```kotlin
+ * var volume by useState(50f)
+ * slider(value = volume, onChange = { volume = it }, min = 0f, max = 100f, step = 5f, showValue = true)
+ * ```
+ * [onChange] fires for every new value while dragging; [onChangeEnd] once with the final value when the mouse is
+ * released or after a key press (use it to save settings). Values snap to [step] (`0f` = continuous).
+ * Focusable: arrow keys move one step, PageUp/PageDown a tenth of the range, Home/End jump to [min]/[max].
+ * [showValue] adds a label after the slider, [format] customizes it (`format = { "${it.toInt()}%" }`).
+ * Styled with `.guilib-slider` (`.dragging`), `.guilib-slider-track`, `.guilib-slider-rail`, `.guilib-slider-fill`,
+ * `.guilib-slider-thumb`, `.guilib-slider-field` and `.guilib-slider-value`; set the width on `.guilib-slider`
+ * (default 100px) and recolor it with `--guilib-accent`.
+ */
+fun NodeBuilder.slider(
+    value: Float,
+    onChange: ((Float) -> Unit)? = null,
+    min: Float = 0f,
+    max: Float = 100f,
+    step: Float = 1f,
+    onChangeEnd: ((Float) -> Unit)? = null,
+    showValue: Boolean = false,
+    format: ((Float) -> String)? = null,
+    disabled: Boolean = false,
+    className: String? = null,
+    id: String? = null,
+    style: String? = null,
+    key: Any? = null,
+) = SliderComponent(SliderProps(value, onChange, onChangeEnd, min, max, step, disabled, showValue, format, className, id, style), key)
+
+/** Integer slider: like the Float [slider], but with `Int` values (step 1 by default). */
+fun NodeBuilder.slider(
+    value: Int,
+    onChange: ((Int) -> Unit)? = null,
+    min: Int = 0,
+    max: Int = 100,
+    step: Int = 1,
+    onChangeEnd: ((Int) -> Unit)? = null,
+    showValue: Boolean = false,
+    format: ((Int) -> String)? = null,
+    disabled: Boolean = false,
+    className: String? = null,
+    id: String? = null,
+    style: String? = null,
+    key: Any? = null,
+) = SliderComponent(
+    SliderProps(
+        value.toFloat(), onChange?.let { f -> { v: Float -> f(Math.round(v)) } }, onChangeEnd?.let { f -> { v: Float -> f(Math.round(v)) } },
+        min.toFloat(), max.toFloat(), step.toFloat(), disabled, showValue, format?.let { f -> { v: Float -> f(Math.round(v)) } },
+        className, id, style,
+    ),
+    key,
+)
 
 /**
  * Tooltip shown when hovering [children] for [delayMs]. For simple cases the `title` prop works on any element too.

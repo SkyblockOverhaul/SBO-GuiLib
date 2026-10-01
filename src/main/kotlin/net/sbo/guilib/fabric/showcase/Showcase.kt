@@ -11,6 +11,8 @@ import net.sbo.guilib.core.dsl.h2
 import net.sbo.guilib.core.dsl.h3
 import net.sbo.guilib.core.css.Colors
 import net.sbo.guilib.core.dsl.checkbox
+import net.sbo.guilib.core.dsl.slider
+import net.sbo.guilib.core.dsl.switch
 import net.sbo.guilib.core.dsl.colorInput
 import net.sbo.guilib.core.dsl.colorPicker
 import net.sbo.guilib.core.dsl.img
@@ -93,6 +95,11 @@ object Showcase {
         var agree by useState(false)
         var mode by useState("normal")
         var dialog by useState(false)
+        var sounds by useState(true)
+        var compact by useState(false)
+        var volume by useState(70f)
+        var range by useState(12)
+        var scale by useState(1.25f)
         h2 { +"Forms" }
         label(className = "form-row") {
             span(className = "form-label") { +"Name" }
@@ -112,10 +119,27 @@ object Showcase {
         }
         div(className = "form-row") { checkbox(checked = agree, onChange = { agree = it.checked }, label = "Show me in the party finder") }
         div(className = "row") {
+            switch(checked = sounds, onChange = { sounds = it.checked }, label = "Sounds")
+            switch(checked = compact, onChange = { compact = it.checked }, label = "Compact mode")
+            switch(checked = true, label = "Locked", disabled = true)
+        }
+        div(className = "form-row") {
+            span(className = "form-label") { +"Volume" }
+            slider(value = volume, onChange = { volume = it }, step = 5f, showValue = true, format = { "${it.toInt()}%" }, disabled = !sounds)
+        }
+        div(className = "form-row") {
+            span(className = "form-label") { +"Range" }
+            slider(value = range, onChange = { range = it }, min = 1, max = 32, showValue = true, format = { "$it chunks" })
+        }
+        div(className = "form-row") {
+            span(className = "form-label") { +"Scale" }
+            slider(value = scale, onChange = { scale = it }, min = 0.5f, max = 2f, step = 0.05f, showValue = true, style = "width: 140px")
+        }
+        div(className = "row") {
             tooltip("Opens a modal dialog") { button(className = "primary", onClick = { dialog = true }) { +"Open dialog" } }
             button(title = "This is a native title tooltip") { +"Hover me" }
         }
-        p(className = "muted") { +"name=$name · password=${"*".repeat(password.length)} · mode=$mode · agree=$agree" }
+        p(className = "muted") { +"name=$name · password=${"*".repeat(password.length)} · mode=$mode · agree=$agree · sounds=$sounds · volume=$volume" }
         modal(open = dialog, onClose = { dialog = false }) {
             h3 { +"Hello ${name.ifEmpty { "there" }}!" }
             p { +"Press Escape or click outside to close." }

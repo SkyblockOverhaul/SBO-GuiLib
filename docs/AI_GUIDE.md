@@ -90,6 +90,8 @@ Children go in the trailing lambda; text with `+"text"` or `text(value)`.
 | `br` | – | Line break inside text. |
 | `select(value, onChange) { option("v") { +"Label" }; option("v2", "Label 2", disabled = true) }` | inline-flex | Component; menu opens in a portal (never clipped). `placeholder`, `disabled`. |
 | `checkbox(checked, onChange, label = "…")` | inline-flex | Convenience: `label` + `input(type = "checkbox")`. |
+| `switch(checked, onChange, label = "…", disabled = false)` | inline-flex | Toggle switch (sliding pill), same `onChange` as `checkbox` (`it.checked`). Focusable; click, Space or Enter toggles. Classes: `.guilib-switch` (`.checked`), `.guilib-switch-track`, `.guilib-switch-thumb`, `.guilib-switch-label`. |
+| `slider(value, onChange, min = 0f, max = 100f, step = 1f, onChangeEnd, showValue = false, format, disabled)` | inline-block (100px wide) | Range slider like `<input type="range">`. `Float` and `Int` overloads (pick by the type of `value`). `onChange` fires for every new value while dragging, `onChangeEnd` once on release / after a key press (save settings there). Snaps to `step` (`0f` = continuous). Focusable: arrows ±1 step, PageUp/PageDown ±10 %, Home/End. `showValue = true` adds a label, `format = { "${it.toInt()}%" }` customizes it. Set the width with `style`/CSS on `.guilib-slider`. Classes: `.guilib-slider` (`.dragging`), `-track`, `-rail`, `-fill`, `-thumb`, `.guilib-slider-field`, `.guilib-slider-value`. |
 | `tooltip("text", placement = "top|bottom|left|right") { anchor }` / `tooltip(content = { … }) { anchor }` | – | Hover tooltip (300 ms delay). For simple cases use the `title` prop. |
 | `modal(open, onClose) { … }` | – | Dialog in a portal with backdrop; Escape and backdrop click call `onClose`. |
 | `presence(visible, exitMs) { leaving -> … }` | – | Exit animations (like Framer Motion's `AnimatePresence`): when `visible` turns false, the children render with `leaving = true` and are removed after `exitMs`. Use `leaving` to switch to an exit `animation`/`transition`. |
@@ -183,7 +185,7 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
 5. Default text color is light (`#f2f3f5`), default font Inter.
 6. `style` is a CSS **string**, not an object. Event handlers are Kotlin lambdas (`onClick = { e -> … }`).
 7. `useEffect { }` without deps runs **once** (like `[]`); there is no "run after every render" variant.
-8. `onChange` on inputs/selects/checkboxes fires on every change (React behaviour).
+8. `onChange` on inputs/selects/checkboxes/switches/sliders fires on every change (React behaviour); sliders also have `onChangeEnd`.
 9. `overflow: hidden` clips **rectangularly**. With `border-radius` on the clipping element, child backgrounds that sit
    exactly in one of its corners (headers, footers, sidebars) are rounded to match; other content (text, images,
    children that only partly overlap a corner) is not cut to the curve.

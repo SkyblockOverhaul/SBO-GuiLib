@@ -49,7 +49,7 @@ UIs can be written quickly and correctly. Differences from the web are documente
   `font-family: minecraft`, PNG and **SVG** images, item icons, opacity.
 - **Events like the DOM:** click/dblclick/contextmenu, mouse enter/leave/move, wheel, keys, focus/blur, bubbling,
   `stopPropagation()`, `preventDefault()`, Tab navigation, `document`-level listeners.
-- **Controls:** text/password/number inputs (caret, selection, clipboard), checkbox, select dropdown, color picker, tooltip,
+- **Controls:** text/password/number inputs (caret, selection, clipboard), checkbox, switch, slider, select dropdown, color picker, tooltip,
   `title` tooltips, modal dialogs, drag-to-reorder lists (`sortableList`), portals — all styleable with CSS.
 - **Dev workflow:** CSS hot reload from `src/main/resources`, `/guilib showcase`, `/guilib reload`.
 
