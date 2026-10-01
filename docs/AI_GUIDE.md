@@ -76,6 +76,10 @@ Every tag accepts: `className`, `id`, `style` (a **CSS string**, e.g. `style = "
 `onClick, onDoubleClick, onContextMenu, onMouseDown, onMouseUp, onMouseMove, onMouseEnter, onMouseLeave` (MouseEvent),
 `onWheel` (WheelEvent), `onKeyDown, onKeyUp` (KeyboardEvent), `onFocus, onBlur` (FocusEvent), `onScroll` (ScrollEvent).
 Children go in the trailing lambda; text with `+"text"` or `text(value)`.
+Minecraft text: `text(component)` renders a `net.minecraft.network.chat.Component` (colors incl. RGB, bold/italic/
+underline/strikethrough, `show_text` hover → tooltip, click events like in chat; `span.guilib-text`, clickable parts
+`.guilib-text-link`). Translations: `val t = useTranslation()` (`net.sbo.guilib.fabric`), then `+t("mymod.key", arg)`;
+the component re-renders when the game language or resource packs change. `t.language`, `t.has(key)`.
 
 | Tag | Default display | Extra props / notes |
 |---|---|---|
@@ -242,6 +246,8 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
 - **Zebra rows:** `.row:nth-child(even) { background-color: #2b2d31 }`.
 - **Horizontal scroll row:** `display: flex; overflow-x: auto; overflow-y: hidden` with `flex-shrink: 0` on the children.
   The plain wheel scrolls it sideways (as does Shift + wheel or a trackpad).
+- **Translated UI:** `val t = useTranslation(); h1 { +t("mymod.gui.title") }` with `assets/mymod/lang/en_us.json`.
+- **Show a chat message / item name:** `text(stack.hoverName)` or `text(Component.translatable("mymod.msg").withStyle(ChatFormatting.GOLD))`.
 - **Reorderable list:** `sortableList(tasks, key = { it.id }, onReorder = { tasks = it }) { task, _ -> div { +task.name } }`.
 - **Responsive tiles:** `display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 4px`.
 - **Sidebar + content:** `display: grid; grid-template-columns: 80px 1fr` (or `grid-template-areas`).

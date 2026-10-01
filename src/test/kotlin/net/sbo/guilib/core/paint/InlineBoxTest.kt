@@ -70,4 +70,14 @@ class InlineBoxTest {
         assertEquals(listOf(0xFFFF0000.toInt(), 0xFF00FF00.toInt()), colors)
         assertEquals(listOf(10f, 6f), root.boxes().map { it.width }) // outer: "a" + inner (1 + "b" + 1)
     }
+
+    @Test
+    fun boundingRectOfAnInlineElementIsTheUnionOfItsFragments() {
+        val root = ui(".x { padding: 0 2px } .wrap { margin-left: 5px; height: 40px; overflow: auto }", width = 45f) {
+            div(className = "wrap") { +"ab "; span(className = "x") { +"cccc dddd" } }
+        }
+        // Line 1: "ab " (12) + edge 2 + "cccc" → x 17..35 relative to the content; line 2: "dddd" + edge → 5..23.
+        val r = root.document.body.querySelector(".x")!!.getBoundingClientRect()
+        assertEquals(listOf(5f, 0f, 30f, 20f), listOf(r.x, r.y, r.width, r.height))
+    }
 }

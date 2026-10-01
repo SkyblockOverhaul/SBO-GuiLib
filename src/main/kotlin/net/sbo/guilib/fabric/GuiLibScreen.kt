@@ -5,9 +5,11 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
 import net.sbo.guilib.core.UiRoot
 import net.sbo.guilib.core.dom.VNode
+import net.sbo.guilib.core.dom.VProvider
 import net.sbo.guilib.fabric.font.FontManager
 import net.sbo.guilib.fabric.input.Cursors
 import net.sbo.guilib.fabric.input.Keys
@@ -43,12 +45,24 @@ open class GuiLibScreen(
         root.document.setStylesheets(Stylesheets.loadAll(stylesheets))
     }
 
+    /** The translator the UI was last rendered with; a new one (language change, resource reload) re-renders. */
+    private var translator: Translator? = null
+
     override fun init() {
         if (!mounted) {
-            root.render(content)
+            renderContent()
             mounted = true
         }
     }
+
+    private fun renderContent() {
+        val t = Translator.current()
+        translator = t
+        root.render(VProvider(TranslatorContext, t, listOf(content), null))
+    }
+
+    /** Handles a chat [ClickEvent] (from [text]) like vanilla screens: links ask for confirmation, commands run … */
+    internal fun handleClickEvent(event: ClickEvent) = defaultHandleGameClickEvent(event, minecraft, this)
 
     override fun extractBackground(ctx: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         if (vanillaBackground) super.extractBackground(ctx, mouseX, mouseY, delta)
@@ -56,6 +70,7 @@ open class GuiLibScreen(
 
     override fun extractRenderState(ctx: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         root.document.resolution = minecraft.window.guiScale.toFloat()
+        if (mounted && Translator.current() !== translator) renderContent()
         val commands = root.frame(width.toFloat(), height.toFloat())
         CommandRenderer.draw(ctx, commands, mouseX, mouseY)
         Cursors.of(root.input.cursor)?.let(ctx::requestCursor)

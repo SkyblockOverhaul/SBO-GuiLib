@@ -37,6 +37,7 @@ code, pre { font-family: minecraft; }
 pre { white-space: pre; }
 
 a { color: #6cb6ff; cursor: pointer; }
+.guilib-text-link { cursor: pointer; }
 a:hover { text-decoration: underline; }
 
 hr {

@@ -16,6 +16,7 @@ object GuiLibMod : ClientModInitializer {
     val logger = LoggerFactory.getLogger("GuiLib")
 
     override fun onInitializeClient() {
+        installRichText()
         Log.sink = { level, msg ->
             when (level) {
                 Log.Level.DEBUG -> logger.debug(msg)

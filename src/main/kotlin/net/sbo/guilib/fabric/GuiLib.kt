@@ -59,6 +59,11 @@ object GuiLib {
         //#endif
     }
 
+    /** Handles a chat click event the way vanilla screens do (used by [text]). */
+    internal fun handleClickEvent(event: net.minecraft.network.chat.ClickEvent) {
+        (currentScreen() as? GuiLibScreen)?.handleClickEvent(event)
+    }
+
     /** Runs [block] on the client (render) thread. State setters are already thread-safe; use this for other work. */
     fun runOnUi(block: () -> Unit) = Minecraft.getInstance().execute(block)
 

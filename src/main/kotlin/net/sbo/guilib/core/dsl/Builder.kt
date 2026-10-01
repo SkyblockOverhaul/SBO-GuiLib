@@ -38,8 +38,12 @@ open class NodeBuilder {
         nodes += VText(this)
     }
 
-    /** Adds a text node (same as `+value`). */
+    /**
+     * Adds a text node (same as `+value.toString()`). Values a backend knows how to render (in the Fabric layer:
+     * Minecraft `Component`s, with colors, formatting, hover and click events) are rendered as rich text instead.
+     */
     fun text(value: Any?) {
+        if (value != null && richText?.invoke(this, value) == true) return
         nodes += VText(value.toString())
     }
 
@@ -90,6 +94,10 @@ open class NodeBuilder {
 
     companion object {
         private val FRAGMENT = ComponentType<List<VNode>>("Fragment") { children -> nodes += children }
+
+        /** Set by the backend: renders values like text components into a builder; returns false if it can't. */
+        @Volatile
+        var richText: ((NodeBuilder, Any) -> Boolean)? = null
     }
 }
 

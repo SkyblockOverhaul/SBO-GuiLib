@@ -1,6 +1,12 @@
 package net.sbo.guilib.fabric.showcase
 
 import net.minecraft.world.item.ItemStack
+import net.minecraft.ChatFormatting
+import net.minecraft.network.chat.ClickEvent
+import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.HoverEvent
+import net.sbo.guilib.fabric.text
+import net.sbo.guilib.fabric.useTranslation
 import net.minecraft.world.item.Items
 import net.sbo.guilib.core.dom.component
 import net.sbo.guilib.core.dsl.button
@@ -473,6 +479,38 @@ object Showcase {
         p(style = "font-size: 6px") { +"font-size: 6px" }
         p(style = "text-align: center") { +"text-align: center" }
         p(style = "text-align: right") { +"text-align: right" }
+        TranslationDemo()
+    }
+
+    private val TranslationDemo = component("TranslationDemo") {
+        val t = useTranslation()
+        h3 { +"Translations & Minecraft text" }
+        p {
+            +"useTranslation() (${t.language}): "
+            span(className = "inline-code") { +t("menu.singleplayer") }
+            +" "
+            span(className = "inline-code") { +t("gui.done") }
+            +" "
+            span(className = "inline-code") { +t("options.chunks", 12) }
+        }
+        p {
+            text(
+                Component.literal("text(Component): ")
+                    .append(Component.literal("RGB colors").withColor(0xFF8A3D))
+                    .append(", ")
+                    .append(Component.translatable("gui.yes").withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD))
+                    .append(", ")
+                    .append(Component.literal("strike").withStyle(ChatFormatting.STRIKETHROUGH))
+                    .append(" and a ")
+                    .append(
+                        Component.literal("clickable link").withStyle { s ->
+                            s.withColor(ChatFormatting.AQUA).withUnderlined(true)
+                                .withClickEvent(ClickEvent.CopyToClipboard("GuiLib"))
+                                .withHoverEvent(HoverEvent.ShowText(Component.literal("Copies \"GuiLib\" to the clipboard")))
+                        },
+                    ),
+            )
+        }
     }
 
     private val ScrollDemo = component("ScrollDemo") {

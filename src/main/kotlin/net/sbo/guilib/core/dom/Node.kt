@@ -35,9 +35,42 @@ sealed class Node : LayoutNode {
 
     override val box = LayoutBox()
 
-    /** Absolute border box on screen, taking ancestors' scroll offsets into account. */
-    /** Border box on screen, including the `transform` of this node and its ancestors (like the web). */
+    /**
+     * Border box on screen, including the `transform` of this node and its ancestors (like the web). For a
+     * `display: inline` element: the union of its line fragments.
+     */
     fun getBoundingClientRect(): Rect {
+        if (this is Element && box.inParagraph) inlineBounds()?.let { return it }
+        return toClient(Rect(0f, 0f, box.width, box.height), inside = false)
+    }
+
+    /** Union of the fragments of this inline element, mapped from its paragraph container to the screen. */
+    private fun inlineBounds(): Rect? {
+        var container = parent
+        while (container != null && container.box.inParagraph) container = container.parent
+        container ?: return null
+        var x0 = Float.MAX_VALUE
+        var y0 = Float.MAX_VALUE
+        var x1 = -Float.MAX_VALUE
+        var y1 = -Float.MAX_VALUE
+        for (p in container.box.paragraphs) for (line in p.lines) for (f in line.fragments) {
+            val owner = f.owner as? Node ?: continue
+            val mine = when (f) {
+                is net.sbo.guilib.core.layout.Fragment.Text -> owner.parent?.let { (this as Element).contains(it) } == true
+                else -> (this as Element).contains(owner)
+            }
+            if (!mine) continue
+            x0 = minOf(x0, p.x + f.x); x1 = maxOf(x1, p.x + f.x + f.width)
+            y0 = minOf(y0, p.y + line.y); y1 = maxOf(y1, p.y + line.y + line.height)
+        }
+        if (x0 > x1) return null
+        return container.toClient(Rect(x0, y0, x1 - x0, y1 - y0), inside = true)
+    }
+
+    /**
+     * Maps [local] (relative to this node's border box; with [inside], to its scrolled content) to the screen.
+     */
+    internal fun toClient(local: Rect, inside: Boolean): Rect {
         // Root first: each element's transform is applied around its own untransformed box.
         val chain = ArrayList<Node>()
         var n: Node? = this
@@ -55,12 +88,12 @@ sealed class Node : LayoutNode {
                 if (node.style.position == Position.FIXED) xf = Transform2D.IDENTITY // matches the painter
                 xf *= Transform2D.of(node.style, x, y, node.box.width, node.box.height)
             }
-            if (i > 0 && node is Element) {
+            if ((i > 0 || inside) && node is Element) {
                 x -= node.scrollLeft
                 y -= node.scrollTop
             }
         }
-        return xf.map(Rect(x, y, box.width, box.height))
+        return xf.map(Rect(x + local.x, y + local.y, local.width, local.height))
     }
 }
 
