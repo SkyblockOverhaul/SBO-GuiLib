@@ -134,7 +134,8 @@ class LayoutEngine(val measurer: TextMeasurer) {
         // Width.
         val iw = node.intrinsicWidth
         val ih = node.intrinsicHeight
-        val specH = specifiedHeight(node, cbHeight)
+        // min/max-height clamp the specified height before the children see it (they size against the clamped value).
+        val specH = specifiedHeight(node, cbHeight)?.let { clampHeight(node, it, cbHeight) }
         var width = forcedWidth ?: specifiedWidth(node, cbWidth) ?: when {
             iw != null -> {
                 // Replaced element: keep the aspect ratio if only the height is given.

@@ -531,4 +531,22 @@ class LayoutTest {
         assertEquals(300f, scroller.box.scrollHeight, 0.01f)
         assertEquals(50f, scroller.box.height)
     }
+
+    @Test
+    fun maxHeightCapsTheHeightChildrenSee() {
+        // Like a dialog with `height: 92vh; max-height: 420px`: the flex: 1 body must get the capped space,
+        // otherwise its scroll area reaches past the clipped panel and the last rows can't be scrolled into view.
+        val header = div("height: 10px")
+        val body = div("flex: 1; min-height: 0; overflow-y: auto", div("height: 300px"))
+        val pct = div("height: 50%")
+        val panel = el("div", "col", "height: 90px; max-height: 60px", header, body)
+        val block = div("height: 90px; max-height: 60px", pct)
+        val minPanel = el("div", "col", "height: 20px; min-height: 40px", div("flex: 1"))
+        layout(div("", panel, block, minPanel))
+        assertEquals(60f, panel.box.height, 0.01f)
+        assertBox(body, 0f, 10f, 100f, 50f)
+        assertEquals(300f, body.box.scrollHeight, 0.01f)
+        assertEquals(30f, pct.box.height, 0.01f)
+        assertEquals(40f, minPanel.children[0].box.height, 0.01f)
+    }
 }
