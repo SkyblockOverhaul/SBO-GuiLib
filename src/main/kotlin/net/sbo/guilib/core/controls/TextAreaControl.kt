@@ -47,6 +47,7 @@ internal class TextAreaControl(val el: Element) : EditableControl {
     private val controlled get() = el.getAttribute("value") != null
     private val placeholder get() = el.getAttribute("placeholder") as? String
     private val maxLength get() = (el.getAttribute("maxlength") as? Int) ?: Int.MAX_VALUE
+    private val maxLines get() = (el.getAttribute("maxlines") as? Int) ?: Int.MAX_VALUE
 
     private val selStart get() = minOf(caret, anchor)
     private val selEnd get() = maxOf(caret, anchor)
@@ -241,7 +242,13 @@ internal class TextAreaControl(val el: Element) : EditableControl {
     private fun filter(s: String) = s.replace("\r\n", "\n").replace('\r', '\n').replace("\t", "    ").filter { it >= ' ' || it == '\n' }
 
     private fun replaceSelection(insert: String) {
-        val ins = filter(insert)
+        var ins = filter(insert)
+        if (maxLines != Int.MAX_VALUE && '\n' in ins) {
+            // Line breaks beyond maxLines: Enter does nothing, pasted ones become spaces.
+            var breaksLeft = maxLines - 1 - text.count { it == '\n' } + text.substring(selStart, selEnd).count { it == '\n' }
+            if (ins == "\n" && breaksLeft <= 0) return
+            ins = buildString { for (c in ins) append(if (c == '\n' && breaksLeft-- <= 0) ' ' else c) }
+        }
         val room = maxLength - (text.length - (selEnd - selStart))
         var clipped = if (ins.length > room) ins.substring(0, room.coerceAtLeast(0)) else ins
         if (clipped.length < ins.length && clipped.isNotEmpty()) {

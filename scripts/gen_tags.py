@@ -53,6 +53,7 @@ ENTITY = [
     ("lookY", "Float", "0f", "looky"),
     ("scale", "Float", "1f", "scale"),
 ]
+PLAYER_HEAD = [("player", "Any", None, "player"), ("hat", "Boolean", "true", "hat")]
 
 # tag -> (doc, extra props, has children)
 TAGS = {
@@ -89,6 +90,7 @@ TAGS = {
     "img": ("Image: `src` is a resource location (`\"modid:textures/x.png\"`); PNG, SVG and (animated) GIF are supported.", IMG, False),
     "item": ("Minecraft item icon (16×16 by default). `stack` is a `net.minecraft.world.item.ItemStack`. (Not an HTML tag.)", ITEM, False),
     "entity": ("Minecraft entity model (48×72 by default), scaled to fit the box. `entity` is a `net.minecraft.world.entity.LivingEntity`, e.g. `FakePlayer.of(\"Notch\")`. `followMouse` turns it towards the cursor; otherwise it looks at its center offset by `lookX`/`lookY` px. `scale` multiplies the fitted size. (Not an HTML tag.)", ENTITY, False),
+    "player-head": ("Minecraft player face (16×16 by default), like in the tab list. `player` is a name (`String`), a `UUID`, a `GameProfile`, a `ResolvableProfile` or an `AbstractClientPlayer`; the skin loads in the background (default skin until then) and works without a world. `hat = false` hides the hat layer. (Not an HTML tag.)", PLAYER_HEAD, False),
     "input": ("Form input. `type`: `text`, `password`, `number`, `checkbox`. Controlled like React: pass `value`/`checked` and update them in `onInput`/`onChange`.", INPUT, False),
 }
 
@@ -166,8 +168,9 @@ def gen_tag(tag, doc, extra, children):
 
 
 def fn_name(tag):
-    # Kotlin keywords / clashes.
-    return tag
+    # Kotlin keywords / clashes; GuiLib tags with a hyphen become camelCase (`player-head` → `playerHead`).
+    head, *rest = tag.split("-")
+    return head + "".join(p.capitalize() for p in rest)
 
 
 def main():

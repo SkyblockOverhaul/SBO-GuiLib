@@ -87,26 +87,33 @@ object GuiLib {
         override val height = 16f
     }
 
+    private object PlayerHeadContent : ReplacedContent {
+        override val width = 16f
+        override val height = 16f
+    }
+
     private object EntityContent : ReplacedContent {
         override val width = 48f
         override val height = 72f
     }
 
-    /** The system clipboard, through Minecraft (GLFW). */
+    /** The system clipboard, through Minecraft (GLFW, which only works on the render thread). */
     private object SystemClipboard : Clipboard {
         override fun get(): String = Minecraft.getInstance().keyboardHandler.clipboard
         override fun set(text: String) {
-            Minecraft.getInstance().keyboardHandler.clipboard = text
+            val mc = Minecraft.getInstance()
+            if (mc.isSameThread) mc.keyboardHandler.clipboard = text else mc.execute { mc.keyboardHandler.clipboard = text }
         }
     }
 
-    /** Wires backend services into a new UI (clipboard, replaced content for `<item>`/`<entity>`/`<img>`). */
+    /** Wires backend services into a new UI (clipboard, replaced content for `<item>`/`<entity>`/`<player-head>`/`<img>`). */
     internal fun initDocument(root: UiRoot) {
         root.document.clipboard = SystemClipboard
         root.document.elementInitializer = { el ->
             when (el.tagName) {
                 "item" -> if (el.replaced == null) el.replaced = ItemContent
                 "entity" -> if (el.replaced == null) el.replaced = EntityContent
+                "player-head" -> if (el.replaced == null) el.replaced = PlayerHeadContent
                 "img" -> {
                     val src = el.getAttribute("src") as? String
                     val entry = src?.let { Images.entry(it) }

@@ -269,6 +269,50 @@ class SliderTest {
         assertEquals(2, value)
     }
 
+    @Test
+    fun nullableNumberInputCanBeEmpty() {
+        var value: Int? = 7
+        val root = ui {
+            var v by useState<Int?>(7)
+            value = v
+            numberInput(value = v, onChange = { v = it }, allowEmpty = true, min = 1, max = 5, placeholder = "any")
+        }
+        val field = root.el(".guilib-number-input")
+        fun text() = (field.control as InputControl).text
+        // Clearing the field reports null right away and keeps it empty after Enter.
+        root.click(field)
+        root.input.keyDown("a", 65, net.sbo.guilib.core.event.Modifiers(ctrl = true))
+        root.key("Backspace")
+        assertNull(value)
+        root.key("Enter")
+        assertNull(value)
+        assertEquals("", text())
+        assertFalse(root.el(".guilib-number-dec").disabled)
+        // Stepping an empty field starts at the nearest bound (0 is below min = 1).
+        root.click(root.el(".guilib-number-inc"))
+        assertEquals(1, value)
+        root.click(root.el(".guilib-number-inc"))
+        assertEquals(2, value)
+        assertEquals("2", text())
+    }
+
+    @Test
+    fun nonNullNumberInputRestoresTheValueWhenCleared() {
+        var value = 3
+        val root = ui {
+            var v by useState(3)
+            value = v
+            numberInput(value = v, onChange = { v = it }, min = 1, max = 5)
+        }
+        val field = root.el(".guilib-number-input")
+        root.click(field)
+        root.input.keyDown("a", 65, net.sbo.guilib.core.event.Modifiers(ctrl = true))
+        root.key("Backspace")
+        root.key("Enter")
+        assertEquals(3, value)
+        assertEquals("3", (field.control as InputControl).text)
+    }
+
     private fun UiRoot.click(el: Element) {
         val r = el.getBoundingClientRect()
         input.mouseDown(r.x + 2f, r.y + 2f, 0)

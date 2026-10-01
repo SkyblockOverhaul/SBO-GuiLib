@@ -1552,6 +1552,55 @@ fun NodeBuilder.entity(
     element("entity", key, id, className, style, ref, attrs, handlers, null)
 }
 
+/** Minecraft player face (16×16 by default), like in the tab list. `player` is a name (`String`), a `UUID`, a `GameProfile`, a `ResolvableProfile` or an `AbstractClientPlayer`; the skin loads in the background (default skin until then) and works without a world. `hat = false` hides the hat layer. (Not an HTML tag.) */
+fun NodeBuilder.playerHead(
+    player: Any,
+    className: String? = null,
+    id: String? = null,
+    style: String? = null,
+    key: Any? = null,
+    title: String? = null,
+    ref: Ref<Element?>? = null,
+    tabIndex: Int? = null,
+    hat: Boolean = true,
+    onClick: ((MouseEvent) -> Unit)? = null,
+    onDoubleClick: ((MouseEvent) -> Unit)? = null,
+    onContextMenu: ((MouseEvent) -> Unit)? = null,
+    onMouseDown: ((MouseEvent) -> Unit)? = null,
+    onMouseUp: ((MouseEvent) -> Unit)? = null,
+    onMouseMove: ((MouseEvent) -> Unit)? = null,
+    onMouseEnter: ((MouseEvent) -> Unit)? = null,
+    onMouseLeave: ((MouseEvent) -> Unit)? = null,
+    onWheel: ((WheelEvent) -> Unit)? = null,
+    onKeyDown: ((KeyboardEvent) -> Unit)? = null,
+    onKeyUp: ((KeyboardEvent) -> Unit)? = null,
+    onFocus: ((FocusEvent) -> Unit)? = null,
+    onBlur: ((FocusEvent) -> Unit)? = null,
+    onScroll: ((ScrollEvent) -> Unit)? = null,
+) {
+    val attrs = HashMap<String, Any?>()
+    if (title != null) attrs["title"] = title
+    if (tabIndex != null) attrs["tabindex"] = tabIndex
+    attrs["player"] = player
+    if (hat) attrs["hat"] = true
+    val handlers = HashMap<String, (UIEvent) -> Unit>()
+    handlers.on("click", onClick)
+    handlers.on("dblclick", onDoubleClick)
+    handlers.on("contextmenu", onContextMenu)
+    handlers.on("mousedown", onMouseDown)
+    handlers.on("mouseup", onMouseUp)
+    handlers.on("mousemove", onMouseMove)
+    handlers.on("mouseenter", onMouseEnter)
+    handlers.on("mouseleave", onMouseLeave)
+    handlers.on("wheel", onWheel)
+    handlers.on("keydown", onKeyDown)
+    handlers.on("keyup", onKeyUp)
+    handlers.on("focus", onFocus)
+    handlers.on("blur", onBlur)
+    handlers.on("scroll", onScroll)
+    element("player-head", key, id, className, style, ref, attrs, handlers, null)
+}
+
 /** Form input. `type`: `text`, `password`, `number`, `checkbox`. Controlled like React: pass `value`/`checked` and update them in `onInput`/`onChange`. */
 fun NodeBuilder.input(
     className: String? = null,

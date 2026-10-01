@@ -259,8 +259,8 @@ fun NodeBuilder.numberInput(
     key: Any? = null,
 ) = NumberInputComponent(
     NumberInputProps(
-        value.toDouble(), onChange?.let { f -> { v: Double -> f(Math.round(v).toInt()) } }, min.toDouble(), max.toDouble(),
-        step.toDouble(), 0, wheel, disabled, placeholder, className, id, style,
+        value.toDouble(), onChange?.let { f -> { v: Double? -> f(Math.round(v!!).toInt()) } }, min.toDouble(), max.toDouble(),
+        step.toDouble(), 0, wheel, disabled, placeholder, false, className, id, style,
     ),
     key,
 )
@@ -280,7 +280,60 @@ fun NodeBuilder.numberInput(
     style: String? = null,
     key: Any? = null,
 ) = NumberInputComponent(
-    NumberInputProps(value, onChange, min, max, step, decimalsOf(step), wheel, disabled, placeholder, className, id, style),
+    NumberInputProps(
+        value, onChange?.let { f -> { v: Double? -> f(v!!) } }, min, max, step, decimalsOf(step), wheel, disabled, placeholder,
+        false, className, id, style,
+    ),
+    key,
+)
+
+/**
+ * [numberInput] that may be empty: `numberInput(value = level, onChange = { level = it }, allowEmpty = true, placeholder = "any")`
+ * with `var level by useState<Int?>(null)`. `null` shows an empty field (with the [placeholder]); clearing the field
+ * reports `null` right away. − / +, the arrow keys and the wheel start at 0 (or the nearest bound when 0 is outside
+ * [min]..[max]). [allowEmpty] selects this overload; with `false` a cleared field restores the last value instead.
+ */
+@JvmName("numberInputNullable")
+fun NodeBuilder.numberInput(
+    value: Int?,
+    onChange: ((Int?) -> Unit)? = null,
+    allowEmpty: Boolean,
+    min: Int = Int.MIN_VALUE,
+    max: Int = Int.MAX_VALUE,
+    step: Int = 1,
+    wheel: Boolean = true,
+    disabled: Boolean = false,
+    placeholder: String? = null,
+    className: String? = null,
+    id: String? = null,
+    style: String? = null,
+    key: Any? = null,
+) = NumberInputComponent(
+    NumberInputProps(
+        value?.toDouble(), onChange?.let { f -> { v: Double? -> f(v?.let { Math.round(it).toInt() }) } }, min.toDouble(),
+        max.toDouble(), step.toDouble(), 0, wheel, disabled, placeholder, allowEmpty, className, id, style,
+    ),
+    key,
+)
+
+/** Decimal [numberInput] that may be empty (`null`), see the `Int?` overload. */
+@JvmName("numberInputNullableDouble")
+fun NodeBuilder.numberInput(
+    value: Double?,
+    onChange: ((Double?) -> Unit)? = null,
+    allowEmpty: Boolean,
+    min: Double = -Double.MAX_VALUE,
+    max: Double = Double.MAX_VALUE,
+    step: Double = 1.0,
+    wheel: Boolean = true,
+    disabled: Boolean = false,
+    placeholder: String? = null,
+    className: String? = null,
+    id: String? = null,
+    style: String? = null,
+    key: Any? = null,
+) = NumberInputComponent(
+    NumberInputProps(value, onChange, min, max, step, decimalsOf(step), wheel, disabled, placeholder, allowEmpty, className, id, style),
     key,
 )
 
@@ -288,7 +341,9 @@ fun NodeBuilder.numberInput(
  * Multi-line text field (like `<textarea>`), controlled like `input`:
  * `textarea(value = note, onChange = { note = it.value }, placeholder = "Description", rows = 4, maxLength = 256)`.
  * Wraps words, Enter inserts a line break, arrow keys/Home/End/PageUp/PageDown move the caret, Ctrl+A/C/X/V work,
- * and it scrolls vertically when the text is taller than [rows] lines. Styled with `textarea`,
+ * and it scrolls vertically when the text is taller than [rows] lines. [maxLines] limits the line breaks: Enter does
+ * nothing once the text has [maxLines] lines, and extra line breaks in pasted text become spaces (wrapped lines don't
+ * count). Styled with `textarea`,
  * `.guilib-textarea-line`, `.guilib-placeholder`, `.guilib-caret`, `.guilib-selection`.
  */
 fun NodeBuilder.textarea(
@@ -297,6 +352,7 @@ fun NodeBuilder.textarea(
     placeholder: String? = null,
     rows: Int = 3,
     maxLength: Int? = null,
+    maxLines: Int? = null,
     disabled: Boolean = false,
     autoFocus: Boolean = false,
     className: String? = null,
@@ -313,6 +369,7 @@ fun NodeBuilder.textarea(
     if (value != null) attrs["value"] = value
     if (placeholder != null) attrs["placeholder"] = placeholder
     if (maxLength != null) attrs["maxlength"] = maxLength
+    if (maxLines != null) attrs["maxlines"] = maxLines
     if (disabled) attrs["disabled"] = true
     if (autoFocus) attrs["autofocus"] = true
     val handlers = HashMap<String, (UIEvent) -> Unit>()

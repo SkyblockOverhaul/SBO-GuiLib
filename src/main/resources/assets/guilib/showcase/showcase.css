@@ -339,3 +339,4 @@ button.small { padding: 0 4px; }
 .tab-strip .chip { flex-shrink: 0; white-space: nowrap; }
 .hour:nth-child(even) { background-color: var(--panel-2); }
 .party-row { display: inline-block; }
+.party-head { margin-right: 4px; }

@@ -1,12 +1,16 @@
 package net.sbo.guilib.fabric.render
 
+import com.mojang.authlib.GameProfile
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
+import net.minecraft.client.gui.components.PlayerFaceExtractor
 import net.minecraft.client.gui.navigation.ScreenRectangle
 import net.minecraft.client.gui.screens.inventory.InventoryScreen
+import net.minecraft.client.player.AbstractClientPlayer
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.component.ResolvableProfile
 import net.sbo.guilib.core.Log
 import net.sbo.guilib.core.css.Colors
 import net.sbo.guilib.core.css.ObjectFit
@@ -19,6 +23,7 @@ import net.sbo.guilib.fabric.font.TrueTypeFont
 import net.sbo.guilib.fabric.font.VanillaFont
 import net.sbo.guilib.fabric.image.Images
 import org.joml.Matrix3x2f
+import java.util.UUID
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.roundToInt
@@ -88,7 +93,9 @@ object CommandRenderer {
                 }
                 is PaintCommand.Text -> drawText(ctx, cmd)
                 is PaintCommand.Replaced -> {
-                    drawReplaced(ctx, cmd); layerHasOverlay = true
+                    // Items and entities are drawn after the layer's quads; a player head is a plain textured quad.
+                    drawReplaced(ctx, cmd)
+                    if (cmd.element.tagName != "player-head") layerHasOverlay = true
                 }
                 is PaintCommand.PushClip -> {
                     // Clip rects are in screen coordinates, whatever transform is active.
@@ -357,7 +364,43 @@ object CommandRenderer {
             pose.popMatrix()
         } else if (el.tagName == "entity") {
             drawEntity(ctx, cmd)
+        } else if (el.tagName == "player-head") {
+            drawPlayerHead(ctx, cmd)
         }
+    }
+
+    /** Profiles of `player-head` elements by their `player` value, so the skin cache sees the same profile every frame. */
+    private val headProfiles = object : LinkedHashMap<Any, ResolvableProfile>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Any, ResolvableProfile>) = size > 256
+    }
+
+    /** Draws the face (and hat layer) of a skin, scaled to the element's box like the player list does. */
+    private fun drawPlayerHead(ctx: GuiGraphicsExtractor, cmd: PaintCommand.Replaced) {
+        val el = cmd.element
+        if (cmd.width <= 0f || cmd.height <= 0f) return
+        val skin = when (val player = el.getAttribute("player")) {
+            is AbstractClientPlayer -> player.skin
+            null -> return
+            else -> {
+                val profile = headProfiles.getOrPut(player) {
+                    when (player) {
+                        is ResolvableProfile -> player
+                        is GameProfile -> ResolvableProfile.createResolved(player)
+                        is UUID -> ResolvableProfile.createUnresolved(player)
+                        else -> ResolvableProfile.createUnresolved(player.toString())
+                    }
+                }
+                Minecraft.getInstance().playerSkinRenderCache().getOrDefault(profile).playerSkin()
+            }
+        }
+        beforeQuad(ctx, skin.body().texturePath(), cmd.x, cmd.y, cmd.x + cmd.width, cmd.y + cmd.height)
+        val pose = ctx.pose()
+        pose.pushMatrix()
+        pose.translate(cmd.x, cmd.y)
+        pose.scale(cmd.width / 8f, cmd.height / 8f)
+        val color = Colors.withOpacity(Colors.WHITE, cmd.alpha)
+        PlayerFaceExtractor.extractRenderState(ctx, skin.body().texturePath(), 0, 0, 8, el.getAttribute("hat") == true, false, color)
+        pose.popMatrix()
     }
 
     /**

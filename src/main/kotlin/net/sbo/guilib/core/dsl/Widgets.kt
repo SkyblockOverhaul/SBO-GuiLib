@@ -15,6 +15,7 @@ import net.sbo.guilib.core.controls.DetailsComponent
 import net.sbo.guilib.core.controls.DetailsProps
 import net.sbo.guilib.core.controls.MenuEntry
 import net.sbo.guilib.core.controls.Toaster
+import net.sbo.guilib.core.dom.Clipboard
 
 /**
  * Radio buttons, controlled like React: `radioGroup(value = size, onChange = { size = it }) { option("2", "Duo"); option("3", "Trio") }`.
@@ -150,6 +151,13 @@ fun NodeBuilder.details(
  * disappear on their own and on click. Safe to call from any thread (e.g. a network callback).
  */
 fun ComponentScope.useToast(): Toaster = Toaster.of(useDocument())
+
+/**
+ * The system clipboard, for "Copy" buttons: `val clipboard = useClipboard()` →
+ * `button(onClick = { clipboard.set(note); toast.success("Copied") }) { +"Copy note" }`; `clipboard.get()` reads it.
+ * `set` is safe to call from any thread; call `get` from the UI thread (event handlers, effects).
+ */
+fun ComponentScope.useClipboard(): Clipboard = useDocument().clipboard
 
 /** Collects the entries of a menu ([contextMenu]). */
 @GuiDsl

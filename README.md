@@ -50,10 +50,10 @@ UIs can be written quickly and correctly. Differences from the web are documente
 - **Events like the DOM:** click/dblclick/contextmenu, mouse enter/leave/move, wheel, keys, focus/blur, bubbling,
   `stopPropagation()`, `preventDefault()`, Tab navigation, `document`-level listeners.
 - **Controls:** text/password/number inputs (caret, selection, clipboard), checkbox, switch, slider, range slider, number field, radio/segmented buttons, chips, tabs, multi-line textarea,
-  select (searchable) and multi-select dropdowns, accordion (`details`), context menus, toasts, color picker, tooltip,
+  select (searchable) and multi-select dropdowns, accordion (`details`), context menus, toasts, clipboard (`useClipboard()`), color picker, tooltip,
   `title` tooltips, modal dialogs, drag-to-reorder lists (`sortableList`, also between lists), portals — all styleable with CSS.
 - **Minecraft integration:** `text(component)` renders chat components (RGB colors, formatting, hover tooltips, click
-  events), `useTranslation()` translates keys from lang files and re-renders on language change, item icons, entity models.
+  events), `useTranslation()` translates keys from lang files and re-renders on language change, item icons, entity models, player heads.
 - **Dev workflow:** CSS hot reload from `src/main/resources`, `/guilib showcase`, `/guilib reload`.
 
 ## Using it in a mod

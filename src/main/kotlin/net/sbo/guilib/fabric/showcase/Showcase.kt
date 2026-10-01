@@ -1,54 +1,56 @@
 package net.sbo.guilib.fabric.showcase
 
-import net.minecraft.world.item.ItemStack
 import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.HoverEvent
-import net.sbo.guilib.fabric.text
-import net.sbo.guilib.fabric.useTranslation
+import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
+import net.sbo.guilib.core.css.Colors
 import net.sbo.guilib.core.dom.component
+import net.sbo.guilib.core.dsl.b
 import net.sbo.guilib.core.dsl.button
+import net.sbo.guilib.core.dsl.checkbox
+import net.sbo.guilib.core.dsl.chips
 import net.sbo.guilib.core.dsl.classNames
+import net.sbo.guilib.core.dsl.code
+import net.sbo.guilib.core.dsl.colorInput
+import net.sbo.guilib.core.dsl.colorPicker
+import net.sbo.guilib.core.dsl.contextMenu
+import net.sbo.guilib.core.dsl.details
 import net.sbo.guilib.core.dsl.div
 import net.sbo.guilib.core.dsl.entity
 import net.sbo.guilib.core.dsl.h2
 import net.sbo.guilib.core.dsl.h3
-import net.sbo.guilib.core.css.Colors
-import net.sbo.guilib.core.dsl.b
-import net.sbo.guilib.core.dsl.checkbox
-import net.sbo.guilib.core.dsl.chips
-import net.sbo.guilib.core.dsl.contextMenu
-import net.sbo.guilib.core.dsl.details
-import net.sbo.guilib.core.dsl.multiSelect
-import net.sbo.guilib.core.dsl.numberInput
-import net.sbo.guilib.core.dsl.radioGroup
-import net.sbo.guilib.core.dsl.rangeSlider
-import net.sbo.guilib.core.dsl.segmented
-import net.sbo.guilib.core.dsl.tabs
-import net.sbo.guilib.core.dsl.textarea
-import net.sbo.guilib.core.dsl.useToast
-import net.sbo.guilib.core.dsl.slider
-import net.sbo.guilib.core.dsl.switch
-import net.sbo.guilib.core.dsl.colorInput
-import net.sbo.guilib.core.dsl.colorPicker
-import net.sbo.guilib.core.dsl.code
 import net.sbo.guilib.core.dsl.img
 import net.sbo.guilib.core.dsl.input
+import net.sbo.guilib.core.dsl.item
 import net.sbo.guilib.core.dsl.label
 import net.sbo.guilib.core.dsl.modal
-import net.sbo.guilib.core.dsl.select
-import net.sbo.guilib.core.dsl.tooltip
-import net.sbo.guilib.core.dsl.item
+import net.sbo.guilib.core.dsl.multiSelect
 import net.sbo.guilib.core.dsl.nav
+import net.sbo.guilib.core.dsl.numberInput
 import net.sbo.guilib.core.dsl.p
+import net.sbo.guilib.core.dsl.playerHead
 import net.sbo.guilib.core.dsl.presence
+import net.sbo.guilib.core.dsl.radioGroup
+import net.sbo.guilib.core.dsl.rangeSlider
 import net.sbo.guilib.core.dsl.scroll
+import net.sbo.guilib.core.dsl.segmented
+import net.sbo.guilib.core.dsl.select
+import net.sbo.guilib.core.dsl.slider
 import net.sbo.guilib.core.dsl.sortableList
 import net.sbo.guilib.core.dsl.span
+import net.sbo.guilib.core.dsl.switch
+import net.sbo.guilib.core.dsl.tabs
+import net.sbo.guilib.core.dsl.textarea
+import net.sbo.guilib.core.dsl.tooltip
+import net.sbo.guilib.core.dsl.useClipboard
+import net.sbo.guilib.core.dsl.useToast
 import net.sbo.guilib.fabric.GuiLib
 import net.sbo.guilib.fabric.entity.FakePlayer
+import net.sbo.guilib.fabric.text
+import net.sbo.guilib.fabric.useTranslation
 
 /** Demo UI showing every feature; open with `/guilib showcase`. */
 object Showcase {
@@ -180,6 +182,7 @@ object Showcase {
         var item by useState<String?>(null)
         var kills by useState(5000 to 20000)
         var mp by useState(1200)
+        var cata by useState<Int?>(null)
         var slots by useState(3)
         var price by useState(1.5)
         h2 { +"Pickers" }
@@ -237,8 +240,10 @@ object Showcase {
             span(className = "form-label", style = "margin-left: 8px") { +"Slots" }
             numberInput(value = slots, onChange = { slots = it }, min = 1, max = 5)
             numberInput(value = price, onChange = { price = it }, min = 0.0, max = 10.0, step = 0.25)
+            span(className = "form-label", style = "margin-left: 8px") { +"Cata" }
+            numberInput(value = cata, onChange = { cata = it }, allowEmpty = true, min = 0, max = 50, placeholder = "any")
         }
-        p(className = "muted") { +"size=$size · tier=$tier · fishing=$fishing · cats=$cats · item=$item · kills=$kills · mp=$mp" }
+        p(className = "muted") { +"size=$size · tier=$tier · fishing=$fishing · cats=$cats · item=$item · kills=$kills · mp=$mp · cata=$cata" }
     }
 
     private val PanelsDemo = component("PanelsDemo") {
@@ -247,6 +252,7 @@ object Showcase {
         var note by useState("")
         var openParty by useState<String?>("1")
         val toast = useToast()
+        val clipboard = useClipboard()
         h2 { +"Panels" }
         tabs(value = category, onChange = { category = it }) {
             tab("dungeons", "Dungeons") {
@@ -268,7 +274,7 @@ object Showcase {
                         item("View profile", shortcut = "P") { toast.info("Opening the profile of $leader") }
                         separator()
                         item("Kick", danger = true) { toast.error("Kicked $leader", title = "Party") }
-                    }) { b { +leader }; span(className = "muted") { +"  $info" } }
+                    }) { playerHead(leader, className = "party-head"); b { +leader }; span(className = "muted") { +"  $info" } }
                 },
                 open = openParty == id,
                 onToggle = { openParty = if (it) id else null },
@@ -279,8 +285,11 @@ object Showcase {
             }
         }
         h3 { +"Description" }
-        textarea(value = note, onChange = { note = it.value }, placeholder = "Describe your party…", rows = 3, maxLength = 256)
-        p(className = "muted") { +"${note.length}/256" }
+        textarea(value = note, onChange = { note = it.value }, placeholder = "Describe your party…", rows = 3, maxLength = 256, maxLines = 4)
+        div(className = "row") {
+            p(className = "muted") { +"${note.length}/256 · max 4 lines" }
+            button(disabled = note.isEmpty(), onClick = { clipboard.set(note); toast.success("Note copied") }) { +"Copy note" }
+        }
         div(className = "row") {
             button(className = "primary", onClick = { toast.success("Party created") }) { +"Create party" }
             button(onClick = { toast.warning("Join request declined", title = "Party finder") }) { +"Warning" }

@@ -12,8 +12,9 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 
 internal data class NumberInputProps(
-    val value: Double,
-    val onChange: ((Double) -> Unit)?,
+    /** `null` = empty field (only when [nullable]). */
+    val value: Double?,
+    val onChange: ((Double?) -> Unit)?,
     val min: Double,
     val max: Double,
     val step: Double,
@@ -21,6 +22,8 @@ internal data class NumberInputProps(
     val wheel: Boolean,
     val disabled: Boolean,
     val placeholder: String?,
+    /** The field may be empty: clearing it reports `null` instead of restoring the last value. */
+    val nullable: Boolean,
     val className: String?,
     val id: String?,
     val style: String?,
@@ -44,20 +47,21 @@ private const val REPEAT_MS = 60L
 /**
  * Number field with − and + buttons. The value always stays within min..max: typed values are clamped when the field
  * loses focus or Enter is pressed; values inside the range are reported while typing. ArrowUp/ArrowDown and the mouse
- * wheel (while hovered) step by `step`, Shift × 10; holding a button repeats.
+ * wheel (while hovered) step by `step`, Shift × 10; holding a button repeats. With `nullable`, the field may be empty
+ * (reported as `null`); stepping an empty field starts at 0, or at the nearest bound when 0 is outside min..max.
  * Styled with `.guilib-number` (`.disabled`), `.guilib-number-input`, `.guilib-number-dec`, `.guilib-number-inc`.
  */
 internal val NumberInputComponent = component<NumberInputProps>("NumberInput") { p ->
     var draft by useState<String?>(null)
-    val latest = useRef(p.value)
+    val latest = useRef<Double?>(p.value)
     latest.current = p.value
     val repeat = useRef<Cancelable?>(null)
     val doc = useDocument()
 
     fun clamp(v: Double) = roundTo(v.coerceIn(p.min, p.max), p.decimals)
 
-    fun emit(v: Double) {
-        val next = clamp(v)
+    fun emit(v: Double?) {
+        val next = v?.let { clamp(it) }
         if (next != latest.current) {
             latest.current = next
             p.onChange?.invoke(next)
@@ -65,13 +69,14 @@ internal val NumberInputComponent = component<NumberInputProps>("NumberInput") {
     }
 
     fun stepBy(times: Int) {
-        if (!p.disabled) emit(latest.current + times * p.step)
+        if (!p.disabled) emit(latest.current?.let { it + times * p.step } ?: 0.0)
         draft = null
     }
 
     fun commitDraft() {
         val d = draft ?: return
-        parseNumber(d)?.let { emit(it) }
+        val v = parseNumber(d)
+        if (v != null) emit(v) else if (p.nullable && d.isBlank()) emit(null)
         draft = null
     }
 
@@ -94,8 +99,8 @@ internal val NumberInputComponent = component<NumberInputProps>("NumberInput") {
         }
     }
 
-    val atMin = p.value <= p.min
-    val atMax = p.value >= p.max
+    val atMin = p.value != null && p.value <= p.min
+    val atMax = p.value != null && p.value >= p.max
     div(
         className = classNames("guilib-number", "disabled" to p.disabled, p.className),
         id = p.id,
@@ -112,13 +117,14 @@ internal val NumberInputComponent = component<NumberInputProps>("NumberInput") {
         input(
             className = "guilib-number-input",
             type = "number",
-            value = draft ?: formatNumber(p.value, p.decimals),
+            value = draft ?: p.value?.let { formatNumber(it, p.decimals) } ?: "",
             placeholder = p.placeholder,
             disabled = p.disabled,
             onChange = { e ->
                 draft = e.value
                 // Report values inside the range right away; out-of-range values are clamped on blur/Enter.
-                parseNumber(e.value)?.takeIf { it in p.min..p.max }?.let { emit(it) }
+                val typed = parseNumber(e.value)
+                if (typed != null && typed in p.min..p.max) emit(typed) else if (p.nullable && e.value.isBlank()) emit(null)
             },
             onBlur = { commitDraft() },
             onKeyDown = { e ->

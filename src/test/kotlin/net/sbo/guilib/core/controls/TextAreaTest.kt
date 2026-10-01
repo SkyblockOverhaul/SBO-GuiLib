@@ -7,7 +7,9 @@ import net.sbo.guilib.core.dom.Element
 import net.sbo.guilib.core.dom.VComponent
 import net.sbo.guilib.core.dom.component
 import net.sbo.guilib.core.dsl.ComponentScope
+import net.sbo.guilib.core.dsl.button
 import net.sbo.guilib.core.dsl.textarea
+import net.sbo.guilib.core.dsl.useClipboard
 import net.sbo.guilib.core.event.Modifiers
 import net.sbo.guilib.core.layout.FakeMeasurer
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -62,6 +64,36 @@ class TextAreaTest {
         assertEquals(5, shown.size)
         // Lines stack at the line height.
         assertEquals(12.5f, shown[1].box.y - shown[0].box.y, 0.01f)
+    }
+
+    @Test
+    fun maxLinesBlocksEnterAndFlattensPastedBreaks() {
+        var value = ""
+        val root = ui {
+            var v by useState("")
+            value = v
+            textarea(value = v, onChange = { v = it.value }, maxLines = 3)
+        }
+        root.focus()
+        root.type("a\nb\nc\n\nd")
+        assertEquals("a\nb\ncd", value)
+        // Pasted line breaks beyond the limit become spaces; breaks in the replaced selection don't count.
+        root.key("a", Modifiers(ctrl = true))
+        root.document.clipboard.set("1\n2\n3\n4\n5")
+        root.key("v", Modifiers(ctrl = true))
+        assertEquals("1\n2\n3 4 5", value)
+    }
+
+    @Test
+    fun useClipboardWritesTheDocumentClipboard() {
+        val root = ui {
+            val clipboard = useClipboard()
+            button(onClick = { clipboard.set("note text") }) { +"Copy" }
+        }
+        val r = root.document.body.querySelector("button")!!.getBoundingClientRect()
+        root.input.mouseDown(r.x + 1f, r.y + 1f, 0)
+        root.input.mouseUp(r.x + 1f, r.y + 1f, 0)
+        assertEquals("note text", root.document.clipboard.get())
     }
 
     @Test
