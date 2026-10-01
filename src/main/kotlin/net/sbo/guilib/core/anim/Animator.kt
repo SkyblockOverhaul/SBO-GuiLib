@@ -90,7 +90,16 @@ internal class Animator(private val engine: StyleEngine) {
                 running.props = Prop.entries.filter { p -> p !in Interpolation.NOT_ANIMATABLE && frames.any { it.second[p] != next[p] } }.toSet()
             }
         }
-        if (state != null && state.transitions.isEmpty() && state.animations.isEmpty()) states.remove(el)
+        if (state != null && state.transitions.isEmpty() && state.animations.isEmpty()) {
+            states.remove(el)
+            state = null
+        }
+        // Rebase the displayed style on the new one, dropping values of cancelled transitions (otherwise an element
+        // whose last transition got cancelled would keep its mid-transition value forever, as tick() no longer sees it).
+        val running = state?.let { s -> s.transitions.keys + s.animations.values.flatMap { it.props } } ?: emptySet()
+        val kept = el.animatedOverrides?.filterKeys { it in running }.orEmpty()
+        el.animatedOverrides = kept.ifEmpty { null }
+        el.animatedStyle = if (kept.isEmpty()) null else next.withOverrides(kept)
     }
 
     /**

@@ -27,10 +27,17 @@ class SortableTest {
         .s { height: 20px; overflow: auto }
     """.trimIndent()
 
+    /** The real ua.css transitions; only used where the test drives the clock. */
+    private val transitions = """
+        .guilib-sortable.sorting .guilib-sortable-item { transition: transform 120ms ease-out }
+        .guilib-sortable.sorting .guilib-sortable-item.dragging { transition: none; position: relative; z-index: 10 }
+    """.trimIndent()
+
     private var order = listOf("a", "b", "c", "d")
     private var clicks = 0
+    private var now = 0L
 
-    private fun ui(horizontal: Boolean = false, handle: Boolean = false, scrolled: Boolean = false): UiRoot {
+    private fun ui(horizontal: Boolean = false, handle: Boolean = false, scrolled: Boolean = false, animated: Boolean = false): UiRoot {
         val app = component("T") {
             var items by useState(order)
             fun list(b: net.sbo.guilib.core.dsl.NodeBuilder) = b.sortableList(
@@ -41,7 +48,7 @@ class SortableTest {
             }
             if (scrolled) div(className = "s") { list(this) } else list(this)
         }
-        val root = UiRoot(FakeMeasurer, listOf(Stylesheet.parse(ua, "ua", Origin.USER_AGENT)), clock = { 0L })
+        val root = UiRoot(FakeMeasurer, listOf(Stylesheet.parse(if (animated) "$ua\n$transitions" else ua, "ua", Origin.USER_AGENT)), clock = { now })
         root.render(VComponent(app, Unit, null))
         root.frame(300f, 200f)
         return root
@@ -140,5 +147,21 @@ class SortableTest {
         assertTrue(root.items().none { it.classList.contains("dragging") })
         root.input.mouseUp(1f, 41f, 0)
         assertEquals(listOf("a", "b", "c", "d"), order)
+    }
+
+    @Test
+    fun aFastDropDuringTheShiftTransitionLeavesNoItemOffset() {
+        val root = ui(animated = true)
+        // Grab "a", flick it past "c" and let go 30ms later: "b" and "c" are still mid-way through their 120ms shift.
+        root.input.mouseDown(1f, 5f, 0); root.frame(300f, 200f)
+        now += 16; root.input.mouseMove(1f, 31f); root.frame(300f, 200f)
+        now += 16; root.frame(300f, 200f)
+        assertTrue(root.items()[1].style.transform.isNotEmpty()) // "b" is shifting
+        now += 16; root.input.mouseUp(1f, 31f, 0); root.frame(300f, 200f)
+        assertEquals(listOf("b", "c", "a", "d"), order)
+        for (i in 0 until 10) { now += 16; root.frame(300f, 200f) }
+        val tops = root.items().map { it.getBoundingClientRect().y }
+        assertEquals(listOf(0f, 12f, 24f, 36f), tops) // every item sits in its slot, none keeps a stale offset
+        assertTrue(root.items().none { it.style.transform.isNotEmpty() })
     }
 }
