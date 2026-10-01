@@ -201,7 +201,9 @@ internal class InputControl(val el: Element) {
 
     fun indexAt(clientX: Float): Int {
         val r = el.getBoundingClientRect()
-        val x = clientX - r.x - el.box.border.left - el.box.padding.left + el.scrollLeft
+        // The client rect includes transforms; text is measured untransformed.
+        val scale = if (el.box.width > 0f) r.width / el.box.width else 1f
+        val x = (clientX - r.x) / scale - el.box.border.left - el.box.padding.left + el.scrollLeft
         val shown = displayText()
         var best = 0
         var bestDist = Float.MAX_VALUE

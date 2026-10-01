@@ -11,7 +11,7 @@ Key facts:
 - Hooks: useState, useEffect (no deps = once), useMemo, useRef, useContext, useInterval, useDocumentEvent
 - Controls: input (text/password/number/checkbox), select/option, checkbox, colorPicker, colorInput, tooltip, modal, portal, img, item, entity (FakePlayer for player models), scroll
 - CSS: selectors incl. combinators and :hover/:focus/:disabled/:checked/:not(); flexbox; grid; position incl. fixed; var(); calc()/min()/max()/clamp();
-  linear/radial gradients; transitions and @keyframes animations; no transforms/box-shadow/@media yet
+  linear/radial gradients; transitions and @keyframes animations; transform translate/scale (no rotate); presence(visible, exitMs) for exit animations; no box-shadow/@media yet
 - Dependency: `maven("https://skyblockoverhaul.github.io/maven")`, `implementation(include("net.sbo:guilib-26.2-fabric:<version>")!!)`; license LGPL-3.0
 - Differences from the web are listed in docs/AI_GUIDE.md section 6 — read them before writing CSS.
 

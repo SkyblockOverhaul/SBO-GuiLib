@@ -199,6 +199,15 @@ button.primary:hover { background-color: #6f9cf2; }
 .drawer.open { height: 30px; padding: 8px; background-color: #2f3a52; }
 .fade-in { margin-top: 6px; animation: fade-in 600ms ease-out; }
 
+@keyframes slide-in { from { opacity: 0; transform: translateX(-24px); } }
+@keyframes slide-out { to { opacity: 0; transform: translateX(24px); } }
+.chip { padding: 2px 6px; background-color: var(--panel-2); border-radius: 8px; }
+.slide-in { animation: slide-in 400ms ease-out backwards; }
+.grow { transition: transform 150ms ease-out; }
+.grow:hover { transform: scale(1.1); }
+.slide-panel { margin-top: 6px; padding: 6px; background-color: var(--panel); border-left: 2px solid var(--accent); animation: slide-in 250ms ease-out; }
+.slide-panel.leaving { animation: slide-out 250ms ease-in forwards; }
+
 .grid-areas {
     display: grid;
     grid-template-columns: 60px 1fr;

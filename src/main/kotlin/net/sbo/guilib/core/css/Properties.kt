@@ -90,6 +90,8 @@ enum class Prop(val css: String, val inherited: Boolean, val initial: Any?) {
     POINTER_EVENTS("pointer-events", true, PointerEvents.AUTO),
     USER_SELECT("user-select", false, UserSelect.AUTO),
     OBJECT_FIT("object-fit", false, ObjectFit.FILL),
+    TRANSFORM("transform", false, emptyList<TransformFn>()),
+    TRANSFORM_ORIGIN("transform-origin", false, TransformOrigin.CENTER),
 
     GRID_TEMPLATE_COLUMNS("grid-template-columns", false, TrackList.NONE),
     GRID_TEMPLATE_ROWS("grid-template-rows", false, TrackList.NONE),
@@ -185,6 +187,8 @@ object Properties {
         enumParser(Prop.POINTER_EVENTS) { single(it)?.let { v -> keyword<PointerEvents>(v) } }
         enumParser(Prop.USER_SELECT) { single(it)?.let { v -> keyword<UserSelect>(v) } }
         enumParser(Prop.OBJECT_FIT) { single(it)?.let { v -> keyword<ObjectFit>(v) } }
+        enumParser(Prop.TRANSFORM) { TransformParser.transform(it) }
+        enumParser(Prop.TRANSFORM_ORIGIN) { TransformParser.origin(it) }
         enumParser(Prop.GRID_TEMPLATE_COLUMNS, Prop.GRID_TEMPLATE_ROWS) { GridParser.trackList(it) }
         enumParser(Prop.GRID_AUTO_COLUMNS, Prop.GRID_AUTO_ROWS) { GridParser.trackList(it, allowAutoRepeat = false)?.takeIf { l -> l.tracks.isNotEmpty() } }
         enumParser(Prop.GRID_TEMPLATE_AREAS) { GridParser.areas(it) }

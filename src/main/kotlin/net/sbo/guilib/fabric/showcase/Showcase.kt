@@ -22,6 +22,7 @@ import net.sbo.guilib.core.dsl.tooltip
 import net.sbo.guilib.core.dsl.item
 import net.sbo.guilib.core.dsl.nav
 import net.sbo.guilib.core.dsl.p
+import net.sbo.guilib.core.dsl.presence
 import net.sbo.guilib.core.dsl.scroll
 import net.sbo.guilib.core.dsl.span
 import net.sbo.guilib.fabric.GuiLib
@@ -195,6 +196,20 @@ object Showcase {
         }
         div(className = classNames("drawer", "open" to open)) { +"This panel animates its height and background." }
         div(className = "fade-in") { +"I faded in when this section opened." }
+
+        var panel by useState(true)
+        h3 { +"Transforms & presence" }
+        div(className = "row") {
+            for ((i, word) in listOf("Slide", "in", "one", "by", "one").withIndex()) {
+                span(key = i, className = "chip slide-in", style = "animation-delay: ${i * 80}ms") { +word }
+            }
+        }
+        div(className = "row") {
+            button(className = "grow", onClick = { panel = !panel }) { +if (panel) "Hide panel" else "Show panel" }
+        }
+        presence(visible = panel, exitMs = 250) { leaving ->
+            div(className = classNames("slide-panel", "leaving" to leaving)) { +"I slide in and out (transform + presence)." }
+        }
     }
 
     private val GridDemo = component("GridDemo") {

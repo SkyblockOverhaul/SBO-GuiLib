@@ -92,6 +92,7 @@ Children go in the trailing lambda; text with `+"text"` or `text(value)`.
 | `checkbox(checked, onChange, label = "…")` | inline-flex | Convenience: `label` + `input(type = "checkbox")`. |
 | `tooltip("text", placement = "top|bottom|left|right") { anchor }` / `tooltip(content = { … }) { anchor }` | – | Hover tooltip (300 ms delay). For simple cases use the `title` prop. |
 | `modal(open, onClose) { … }` | – | Dialog in a portal with backdrop; Escape and backdrop click call `onClose`. |
+| `presence(visible, exitMs) { leaving -> … }` | – | Exit animations (like Framer Motion's `AnimatePresence`): when `visible` turns false, the children render with `leaving = true` and are removed after `exitMs`. Use `leaving` to switch to an exit `animation`/`transition`. |
 | `portal { … }` | – | Like `createPortal(children, document.body)`: renders above everything. Position content with `position: fixed`. |
 | `fragment(key) { … }` | – | `<>…</>` with a key. |
 | `colorPicker(value, onChange, alpha = false)` | – | Inline picker (saturation/value area, hue slider, optional alpha slider, hex input). Colors are ARGB `Int`s; `onChange: (Int) -> Unit`. |
@@ -149,7 +150,12 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
 - Animation: `transition` (+ `-property -duration -timing-function -delay`), `animation` (+ `-name -duration -timing-function -delay
   -iteration-count -direction -fill-mode -play-state`) with `@keyframes`; easing `linear ease ease-in ease-out ease-in-out cubic-bezier() steps()`.
   Animatable: colors, lengths (also px ↔ % via calc), numbers (`opacity`, `flex-grow`, `font-size` …), radii, `line-height`,
-  `text-shadow`, scrollbar colors, gradient stop colors, `visibility`; other values switch at 50% in keyframes and don't transition.
+  `text-shadow`, scrollbar colors, gradient stop colors, `visibility`, `transform`, `transform-origin`; other values switch at 50%
+  in keyframes and don't transition.
+- Transform: `transform` with `translate() translateX() translateY() scale() scaleX() scaleY()` (`none` to reset) and
+  `transform-origin` (lengths, %, `left center right top bottom`; default `50% 50%`). Like CSS it doesn't affect layout; clicks,
+  clipping and `getBoundingClientRect()` follow the transformed box. Scaled text is re-rendered at the new size (stays sharp).
+  Transforms interpolate when both lists have the same functions in the same order (`none` counts as matching anything).
 - Text: `color font-family font-size font-weight font-style line-height text-align white-space text-overflow text-decoration text-shadow`
 - Visual: `background background-color background-image opacity visibility object-fit`. `background-image` takes a comma list of layers
   (first = top): `url("modid:path.png")` (stretched to the box), `linear-gradient(…)` (angles, `to right`, `to top left`, stops with
@@ -178,8 +184,8 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
     (the border doesn't bend around the curve); uniform borders and sides between square corners are exact.
 11. Inline elements (`span`, …) ignore padding/border/background; use `display: inline-block` for boxes inside text.
 12. `border-width` default (`medium`) is 1px; like the web, a border without `border-style` draws nothing.
-13. Every positioned element (`relative/absolute/fixed`) is its own paint layer; `z-index` orders layers among siblings in the same layer. Use `portal { }` for things that must be on top of everything.
-14. Not supported (yet): transforms (`translate/scale/rotate`), box-shadow, `repeating-*-gradient`, `conic-gradient`, `@media`,
+13. Every positioned element (`relative/absolute/fixed`) is its own paint layer; `z-index` orders layers among siblings in the same layer. Use `portal { }` for things that must be on top of everything. `position: fixed` elements ignore their ancestors' `transform`.
+14. Not supported (yet): `rotate`/`skew`/`matrix` transforms (a `transform` containing them is ignored), box-shadow, `repeating-*-gradient`, `conic-gradient`, `@media`,
     `:nth-child`, pseudo-elements, float, `align-content`, `vertical-align`, letter-spacing, subgrid, named grid lines (`[name]` is ignored).
     Grid: `auto-fit` behaves like `auto-fill` (empty tracks aren't collapsed); items can't be placed before line 1.
 15. Images: `src` is a resource location (`"modid:textures/x.png"`), PNG or SVG only; no URLs yet.
@@ -199,6 +205,11 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
 - **Async data:** fetch in `useEffect`, call the state setter from the callback (thread-safe). Other work: `GuiLib.runOnUi { }`.
 - **Hover fade:** `.card { transition: background-color 150ms } .card:hover { background-color: #333 }`.
 - **Fade in on open:** `@keyframes fade-in { from { opacity: 0 } }` + `.panel { animation: fade-in 200ms ease-out }`.
+- **Staggered slide-in:** `@keyframes slide-in { from { opacity: 0; transform: translateX(-20px) } }` +
+  `.item { animation: slide-in 300ms ease-out backwards }` and `style = "animation-delay: ${i * 50}ms"` per item.
+- **Slide out before removal:** `presence(visible = open, exitMs = 200) { leaving -> div(className = classNames("panel", "leaving" to leaving)) { … } }`
+  with `.panel.leaving { animation: slide-out 200ms ease-in forwards }`.
+- **Grow on hover:** `.card { transition: transform 150ms ease-out } .card:hover { transform: scale(1.05) }`.
 - **Responsive tiles:** `display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 4px`.
 - **Sidebar + content:** `display: grid; grid-template-columns: 80px 1fr` (or `grid-template-areas`).
 - **Keyboard shortcut for the whole screen:** `useDocumentEvent("keydown") { e -> if ((e as KeyboardEvent).key == "r") refresh() }`.

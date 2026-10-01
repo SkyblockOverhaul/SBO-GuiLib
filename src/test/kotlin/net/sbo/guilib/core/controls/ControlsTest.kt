@@ -10,6 +10,8 @@ import net.sbo.guilib.core.dom.VComponent
 import net.sbo.guilib.core.dom.component
 import net.sbo.guilib.core.dsl.ComponentScope
 import net.sbo.guilib.core.dsl.button
+import net.sbo.guilib.core.dsl.classNames
+import net.sbo.guilib.core.dsl.presence
 import net.sbo.guilib.core.dsl.checkbox
 import net.sbo.guilib.core.dsl.div
 import net.sbo.guilib.core.dsl.input
@@ -160,6 +162,32 @@ class ControlsTest {
         assertEquals("§aHi", el.laidOut())
         // Normal text still applies the codes.
         assertEquals("Hi", root.document.body.querySelector(".label")!!.laidOut())
+    }
+
+    @Test
+    fun presenceKeepsChildrenWhileLeaving() {
+        val root = ui {
+            var open by useState(true)
+            button(className = "toggle", onClick = { open = !open }) { +"t" }
+            presence(visible = open, exitMs = 100) { leaving -> div(className = classNames("panel", "leaving" to leaving)) }
+        }
+        fun panel() = root.document.body.querySelector(".panel")
+        val toggle = root.document.body.querySelector(".toggle")!!
+        assertEquals("panel", panel()!!.className)
+
+        root.click(toggle) // close: stays mounted, marked as leaving
+        assertEquals("panel leaving", panel()?.className)
+        now += 50; root.frame(300f, 200f)
+        assertNotNull(panel())
+        now += 60; root.frame(300f, 200f)
+        assertNull(panel())
+
+        root.click(toggle) // open again, then close and reopen during the exit: the removal is cancelled
+        root.click(toggle)
+        now += 50; root.frame(300f, 200f)
+        root.click(toggle)
+        now += 200; root.frame(300f, 200f)
+        assertEquals("panel", panel()?.className)
     }
 
     @Test

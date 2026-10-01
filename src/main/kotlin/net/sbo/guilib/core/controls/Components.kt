@@ -194,3 +194,15 @@ internal val ModalComponent = component<ModalProps>("Modal") { p ->
         }
     }
 }
+
+internal data class PresenceProps(val visible: Boolean, val exitMs: Long, val children: NodeBuilder.(leaving: Boolean) -> Unit)
+
+internal val PresenceComponent = component<PresenceProps>("Presence") { p ->
+    var mounted by useState(p.visible)
+    useEffect(p.visible) {
+        if (p.visible) mounted = true
+        // Cancelled by the effect cleanup if `visible` comes back before the exit finished.
+        else if (mounted) setTimeout(p.exitMs) { mounted = false }
+    }
+    if (p.visible || mounted) p.children(this, !p.visible)
+}

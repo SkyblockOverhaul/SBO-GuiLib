@@ -8,6 +8,8 @@ import net.sbo.guilib.core.css.Length
 import net.sbo.guilib.core.css.LineHeight
 import net.sbo.guilib.core.css.Prop
 import net.sbo.guilib.core.css.TextShadow
+import net.sbo.guilib.core.css.TransformFn
+import net.sbo.guilib.core.css.TransformOrigin
 import net.sbo.guilib.core.css.Visibility
 import net.sbo.guilib.core.css.Z_INDEX_AUTO
 import kotlin.math.roundToInt
@@ -84,6 +86,27 @@ object Interpolation {
     }
 
     /**
+     * Transform lists interpolate function by function when both have the same shape; `none` acts as the identity
+     * of the other list (like CSS). Other combinations switch discretely.
+     */
+    private fun transforms(a: List<*>, b: List<*>, t: Float): List<TransformFn>? {
+        fun identity(f: Any?): TransformFn = if (f is TransformFn.Scale) TransformFn.Scale(1f, 1f) else TransformFn.Translate(Dim.ZERO, Dim.ZERO)
+        val la = if (a.isEmpty()) b.map(::identity) else a
+        val lb = if (b.isEmpty()) a.map(::identity) else b
+        if (la.size != lb.size) return null
+        return la.indices.map { i ->
+            val fa = la[i]
+            val fb = lb[i]
+            when {
+                fa is TransformFn.Translate && fb is TransformFn.Translate ->
+                    TransformFn.Translate(dim(fa.x, fb.x, t) ?: return null, dim(fa.y, fb.y, t) ?: return null)
+                fa is TransformFn.Scale && fb is TransformFn.Scale -> TransformFn.Scale(lerp(fa.x, fb.x, t), lerp(fa.y, fb.y, t))
+                else -> return null
+            }
+        }
+    }
+
+    /**
      * Value of [p] at [t] (0..1) between [a] and [b], or `null` if the values can't be interpolated
      * (callers then switch discretely).
      */
@@ -106,6 +129,8 @@ object Interpolation {
             p == Prop.SCROLLBAR_COLOR && a is Pair<*, *> && b is Pair<*, *> ->
                 Pair(color(a.first as Int, b.first as Int, t), color(a.second as Int, b.second as Int, t))
             p == Prop.BACKGROUND_IMAGE && a is List<*> && b is List<*> -> backgrounds(a, b, t)
+            p == Prop.TRANSFORM && a is List<*> && b is List<*> -> transforms(a, b, t)
+            a is TransformOrigin && b is TransformOrigin -> TransformOrigin(dim(a.x, b.x, t) ?: return null, dim(a.y, b.y, t) ?: return null)
             // Like CSS: visibility is "visible" during the whole transition if either end is visible.
             p == Prop.VISIBILITY && a is Visibility && b is Visibility -> when {
                 t <= 0f -> a

@@ -103,6 +103,10 @@ class ComputedStyle internal constructor(
     val pointerEvents get() = values[Prop.POINTER_EVENTS.ordinal] as PointerEvents
     val userSelect get() = values[Prop.USER_SELECT.ordinal] as UserSelect
     val objectFit get() = values[Prop.OBJECT_FIT.ordinal] as ObjectFit
+    /** Empty for `transform: none`. */
+    @Suppress("UNCHECKED_CAST")
+    val transform get() = values[Prop.TRANSFORM.ordinal] as List<TransformFn>
+    val transformOrigin get() = values[Prop.TRANSFORM_ORIGIN.ordinal] as TransformOrigin
 
     /** `transition` entries, with comma lists paired up like CSS (shorter lists repeat). */
     @Suppress("UNCHECKED_CAST")
@@ -187,7 +191,7 @@ class ComputedStyle internal constructor(
             Prop.POINTER_EVENTS, Prop.USER_SELECT, Prop.OBJECT_FIT, Prop.TEXT_DECORATION, Prop.TEXT_SHADOW, Prop.Z_INDEX,
             Prop.BORDER_TOP_COLOR, Prop.BORDER_RIGHT_COLOR, Prop.BORDER_BOTTOM_COLOR, Prop.BORDER_LEFT_COLOR,
             Prop.BORDER_TOP_LEFT_RADIUS, Prop.BORDER_TOP_RIGHT_RADIUS, Prop.BORDER_BOTTOM_RIGHT_RADIUS, Prop.BORDER_BOTTOM_LEFT_RADIUS,
-            Prop.SCROLLBAR_COLOR,
+            Prop.SCROLLBAR_COLOR, Prop.TRANSFORM, Prop.TRANSFORM_ORIGIN,
             Prop.TRANSITION_PROPERTY, Prop.TRANSITION_DURATION, Prop.TRANSITION_TIMING_FUNCTION, Prop.TRANSITION_DELAY,
             Prop.ANIMATION_NAME, Prop.ANIMATION_DURATION, Prop.ANIMATION_TIMING_FUNCTION, Prop.ANIMATION_DELAY,
             Prop.ANIMATION_ITERATION_COUNT, Prop.ANIMATION_DIRECTION, Prop.ANIMATION_FILL_MODE, Prop.ANIMATION_PLAY_STATE,

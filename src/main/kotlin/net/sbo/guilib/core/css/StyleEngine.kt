@@ -233,8 +233,14 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
             is TrackList -> v.map { resolveTrack(it, fontSize, ctx) }
             is List<*> -> if (p == Prop.BACKGROUND_IMAGE) v.map { resolveLayer(it as BackgroundLayer, fontSize, color, ctx) } else v
             is Properties.ScrollbarColor -> Pair(if (v.thumb == CurrentColor) color else v.thumb as Int, if (v.track == CurrentColor) color else v.track as Int)
+            is TransformParser.TransformValue -> v.fns.map { f ->
+                if (f is TransformParser.TranslateValue) TransformFn.Translate(resolveDim(f.x, fontSize, ctx), resolveDim(f.y, fontSize, ctx)) else f as TransformFn
+            }
+            is TransformParser.OriginValue -> TransformOrigin(resolveDim(v.x, fontSize, ctx), resolveDim(v.y, fontSize, ctx))
             else -> v
         }
+
+        private fun resolveDim(l: Length, fontSize: Float, ctx: StyleContext): Dim = resolve(Prop.LEFT, l, fontSize, 0, ctx) as Dim
 
         private fun resolveTrack(t: TrackSize, fontSize: Float, ctx: StyleContext): TrackSize = when (t) {
             is TrackSize.Fixed -> TrackSize.Fixed(resolve(Prop.WIDTH, t.size, fontSize, 0, ctx) ?: Dim.Auto)

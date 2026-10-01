@@ -3,6 +3,7 @@ package net.sbo.guilib.core.dom
 import net.sbo.guilib.core.css.ComputedStyle
 import net.sbo.guilib.core.css.CssParser
 import net.sbo.guilib.core.css.Declaration
+import net.sbo.guilib.core.css.Position
 import net.sbo.guilib.core.css.PseudoState
 import net.sbo.guilib.core.css.Selectable
 import net.sbo.guilib.core.css.Selector
@@ -35,16 +36,31 @@ sealed class Node : LayoutNode {
     override val box = LayoutBox()
 
     /** Absolute border box on screen, taking ancestors' scroll offsets into account. */
+    /** Border box on screen, including the `transform` of this node and its ancestors (like the web). */
     fun getBoundingClientRect(): Rect {
-        var x = box.x
-        var y = box.y
-        var p = parent
-        while (p != null) {
-            x += p.box.x - p.scrollLeft
-            y += p.box.y - p.scrollTop
-            p = p.parent
+        // Root first: each element's transform is applied around its own untransformed box.
+        val chain = ArrayList<Node>()
+        var n: Node? = this
+        while (n != null) {
+            chain += n; n = n.parent
         }
-        return Rect(x, y, box.width, box.height)
+        var x = 0f
+        var y = 0f
+        var xf = Transform2D.IDENTITY
+        for (i in chain.indices.reversed()) {
+            val node = chain[i]
+            x += node.box.x
+            y += node.box.y
+            if (node is Element) {
+                if (node.style.position == Position.FIXED) xf = Transform2D.IDENTITY // matches the painter
+                xf *= Transform2D.of(node.style, x, y, node.box.width, node.box.height)
+            }
+            if (i > 0 && node is Element) {
+                x -= node.scrollLeft
+                y -= node.scrollTop
+            }
+        }
+        return xf.map(Rect(x, y, box.width, box.height))
     }
 }
 

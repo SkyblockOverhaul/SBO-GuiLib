@@ -2,6 +2,8 @@ package net.sbo.guilib.core.dsl
 
 import net.sbo.guilib.core.controls.ModalComponent
 import net.sbo.guilib.core.controls.ModalProps
+import net.sbo.guilib.core.controls.PresenceComponent
+import net.sbo.guilib.core.controls.PresenceProps
 import net.sbo.guilib.core.controls.SelectComponent
 import net.sbo.guilib.core.controls.SelectOption
 import net.sbo.guilib.core.controls.SelectProps
@@ -96,6 +98,21 @@ fun NodeBuilder.modal(
     key: Any? = null,
     children: NodeBuilder.() -> Unit,
 ) = ModalComponent(ModalProps(open, onClose, className, closeOnBackdropClick, children), key)
+
+/**
+ * Keeps [children] mounted while they animate out (like Framer Motion's `AnimatePresence`):
+ *
+ * ```kotlin
+ * presence(visible = open, exitMs = 200) { leaving ->
+ *     div(className = classNames("panel", "leaving" to leaving)) { … }
+ * }
+ * ```
+ * Entering plays the element's CSS `animation` as usual. When [visible] turns false the children render once more with
+ * `leaving = true` (switch to an exit animation or transition there) and are removed after [exitMs].
+ * Becoming visible again during the exit cancels it.
+ */
+fun NodeBuilder.presence(visible: Boolean, exitMs: Long, key: Any? = null, children: NodeBuilder.(leaving: Boolean) -> Unit) =
+    PresenceComponent(PresenceProps(visible, exitMs, children), key)
 
 /**
  * Inline color picker (saturation/value area, hue slider, optional alpha, hex input), controlled like React:
