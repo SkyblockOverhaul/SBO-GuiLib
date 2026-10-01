@@ -39,13 +39,17 @@ UIs can be written quickly and correctly. Differences from the web are documente
   `:hover :active :focus :disabled :checked :not()` …; specificity, `!important`, inheritance, custom properties
   (`var(--accent)`), `px % em rem vw vh`. Unknown properties/values log a warning with file and line — no crashes.
 - **Layout:** box model, block flow, inline text, **flexbox** (grow/shrink/basis, wrap, gap, alignment, auto margins,
-  order), relative/absolute/fixed positioning, `z-index`, scroll containers with clipping and scrollbars.
-- **Rendering:** own anti-aliased SDF shader for `border-radius` and borders, **TTF text** (Inter bundled; FreeType,
+  order), **CSS grid** (`fr`, `minmax()`, `repeat(auto-fill, …)`, spans, template areas, auto-placement),
+  relative/absolute/fixed positioning, `z-index`, scroll containers with clipping and scrollbars, `calc()`/`min()`/`max()`/`clamp()`.
+- **Animation:** CSS `transition` and `@keyframes` + `animation` (easing, delays, iterations, alternate, fill modes) for
+  colors, sizes, opacity, gradients and more.
+- **Rendering:** own anti-aliased SDF shader for `border-radius` and borders, exact `linear-gradient`/`radial-gradient`
+  backgrounds (multiple layers), **TTF text** (Inter bundled; FreeType,
   pixel-exact at every GUI scale) with wrapping, ellipsis and Minecraft `§` codes, the vanilla font via
   `font-family: minecraft`, PNG and **SVG** images, item icons, opacity.
 - **Events like the DOM:** click/dblclick/contextmenu, mouse enter/leave/move, wheel, keys, focus/blur, bubbling,
   `stopPropagation()`, `preventDefault()`, Tab navigation, `document`-level listeners.
-- **Controls:** text/password/number inputs (caret, selection, clipboard), checkbox, select dropdown, tooltip,
+- **Controls:** text/password/number inputs (caret, selection, clipboard), checkbox, select dropdown, color picker, tooltip,
   `title` tooltips, modal dialogs, portals — all styleable with CSS.
 - **Dev workflow:** CSS hot reload from `src/main/resources`, `/guilib showcase`, `/guilib reload`.
 

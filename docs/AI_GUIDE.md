@@ -93,6 +93,8 @@ Children go in the trailing lambda; text with `+"text"` or `text(value)`.
 | `modal(open, onClose) { … }` | – | Dialog in a portal with backdrop; Escape and backdrop click call `onClose`. |
 | `portal { … }` | – | Like `createPortal(children, document.body)`: renders above everything. Position content with `position: fixed`. |
 | `fragment(key) { … }` | – | `<>…</>` with a key. |
+| `colorPicker(value, onChange, alpha = false)` | – | Inline picker (saturation/value area, hue slider, optional alpha slider, hex input). Colors are ARGB `Int`s; `onChange: (Int) -> Unit`. |
+| `colorInput(value, onChange, alpha = false)` | inline-flex | Swatch button that opens a `colorPicker` popover (portal). |
 | `classNames("a", "b" to cond, null)` | – | Like `clsx`. |
 
 **Forms are controlled like React:** pass `value`/`checked` and update your state in `onChange`
@@ -126,19 +128,29 @@ Invalid or unsupported CSS is **skipped with a warning** (`file:line:col`, "did 
 **Selectors:** `*`, `tag`, `.class`, `#id`, `[attr]`, `[attr=value]`, `[attr^=v]`, `[attr$=v]`, `[attr*=v]`, compounds
 (`button.primary:hover`), descendant (`a b`), child (`a > b`), `a + b`, `a ~ b`, lists (`a, b`);
 pseudo-classes `:hover :active :focus :focus-within :disabled :enabled :checked :first-child :last-child :only-child :root :not(…)`.
-Not supported: pseudo-elements (`::before`), `:nth-child`, at-rules (`@media`, `@import`, `@keyframes`, `@font-face`).
+At-rules: `@keyframes` is supported. Not supported: pseudo-elements (`::before`), `:nth-child`, `@media`, `@import`, `@font-face`.
 
 **Values:** `px`, `%`, `em`, `rem`, `vw`, `vh`, `vmin`, `vmax`, unitless `0`; colors `#rgb #rgba #rrggbb #rrggbbaa`,
 `rgb()/rgba()` (comma or space syntax), `hsl()/hsla()`, all CSS named colors, `transparent`, `currentColor`;
-custom properties `--name` with `var(--name, fallback)`. No `calc()`.
+custom properties `--name` with `var(--name, fallback)`; math functions `calc()`, `min()`, `max()`, `clamp()`
+(e.g. `width: calc(100% - 2em)`, `max-width: clamp(100px, 50vw, 300px)`; percentages resolve during layout).
 
 **Properties:**
 - Box: `width height min-width min-height max-width max-height box-sizing margin(-*) padding(-*)`
 - Border: `border border-(top|right|bottom|left) border-width border-style border-color border-*-width/-style/-color border-radius border-*-radius` (styles `solid`; `dashed/dotted` draw solid)
-- Layout: `display` (`block inline inline-block flex inline-flex none`), `position` (`static relative absolute fixed`), `top right bottom left inset z-index overflow overflow-x overflow-y`
+- Layout: `display` (`block inline inline-block flex inline-flex grid inline-grid none`), `position` (`static relative absolute fixed`), `top right bottom left inset z-index overflow overflow-x overflow-y`
 - Flexbox: `flex flex-direction flex-wrap flex-flow flex-grow flex-shrink flex-basis justify-content align-items align-self place-items gap row-gap column-gap order`
+- Grid: `grid-template-columns grid-template-rows` (`px % fr auto min-content max-content minmax() repeat(n | auto-fill | auto-fit, …)`),
+  `grid-template-areas grid-area grid-row grid-column grid-row-start/-end grid-column-start/-end` (line numbers, negative lines, `span n`, area names),
+  `grid-auto-rows grid-auto-columns grid-auto-flow` (`row column dense`), `justify-items justify-self place-items place-self`, `gap`/`grid-gap`
+- Animation: `transition` (+ `-property -duration -timing-function -delay`), `animation` (+ `-name -duration -timing-function -delay
+  -iteration-count -direction -fill-mode -play-state`) with `@keyframes`; easing `linear ease ease-in ease-out ease-in-out cubic-bezier() steps()`.
+  Animatable: colors, lengths (also px ↔ % via calc), numbers (`opacity`, `flex-grow`, `font-size` …), radii, `line-height`,
+  `text-shadow`, scrollbar colors, gradient stop colors, `visibility`; other values switch at 50% in keyframes and don't transition.
 - Text: `color font-family font-size font-weight font-style line-height text-align white-space text-overflow text-decoration text-shadow`
-- Visual: `background background-color background-image: url("modid:path.png")` (stretched to the box), `opacity visibility object-fit`
+- Visual: `background background-color background-image opacity visibility object-fit`. `background-image` takes a comma list of layers
+  (first = top): `url("modid:path.png")` (stretched to the box), `linear-gradient(…)` (angles, `to right`, `to top left`, stops with
+  positions, hard stops) and `radial-gradient(…)` (`circle`/`ellipse`, size keywords, `at <position>`). Gradients respect `border-radius`.
 - Interaction: `cursor` (`auto default pointer text not-allowed crosshair move ns-resize ew-resize grab`), `pointer-events`, `user-select` (parsed only)
 - Scrollbars: `scrollbar-width` (`auto thin none`), `scrollbar-color: <thumb> <track>`
 
@@ -164,7 +176,9 @@ custom properties `--name` with `var(--name, fallback)`. No `calc()`.
 11. Inline elements (`span`, …) ignore padding/border/background; use `display: inline-block` for boxes inside text.
 12. `border-width` default (`medium`) is 1px; like the web, a border without `border-style` draws nothing.
 13. Every positioned element (`relative/absolute/fixed`) is its own paint layer; `z-index` orders layers among siblings in the same layer. Use `portal { }` for things that must be on top of everything.
-14. No `calc()`, grid, float, transforms, transitions/animations, box-shadow, gradients, `@media`, `:nth-child`, pseudo-elements, `align-content`, `vertical-align`, letter-spacing (yet).
+14. Not supported (yet): transforms (`translate/scale/rotate`), box-shadow, `repeating-*-gradient`, `conic-gradient`, `@media`,
+    `:nth-child`, pseudo-elements, float, `align-content`, `vertical-align`, letter-spacing, subgrid, named grid lines (`[name]` is ignored).
+    Grid: `auto-fit` behaves like `auto-fill` (empty tracks aren't collapsed); items can't be placed before line 1.
 15. Images: `src` is a resource location (`"modid:textures/x.png"`), PNG or SVG only; no URLs yet.
 16. Text has no kerning; `text-align: justify` behaves like `left`.
 17. `display: inline-block` / `img` / `item` sit on the text baseline; `vertical-align` is not supported.
@@ -178,6 +192,10 @@ custom properties `--name` with `var(--name, fallback)`. No `calc()`.
 - **Theme:** define `--vars` on `:root` in one CSS file, use `var(--x)` everywhere.
 - **Close button:** `button(onClick = { GuiLib.close() })`.
 - **Async data:** fetch in `useEffect`, call the state setter from the callback (thread-safe). Other work: `GuiLib.runOnUi { }`.
+- **Hover fade:** `.card { transition: background-color 150ms } .card:hover { background-color: #333 }`.
+- **Fade in on open:** `@keyframes fade-in { from { opacity: 0 } }` + `.panel { animation: fade-in 200ms ease-out }`.
+- **Responsive tiles:** `display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 4px`.
+- **Sidebar + content:** `display: grid; grid-template-columns: 80px 1fr` (or `grid-template-areas`).
 - **Keyboard shortcut for the whole screen:** `useDocumentEvent("keydown") { e -> if ((e as KeyboardEvent).key == "r") refresh() }`.
 
 ## 8. Development

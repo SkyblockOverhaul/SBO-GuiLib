@@ -9,8 +9,9 @@ Key facts:
 - Open: `GuiLib.open(App, stylesheets = listOf("modid:ui/app.css"))` (file at `assets/modid/ui/app.css`)
 - Props: `className`, `id`, `style` (CSS string), `key`, `title`, `ref`, `onClick`/`onChange`/… (Kotlin lambdas)
 - Hooks: useState, useEffect (no deps = once), useMemo, useRef, useContext, useInterval, useDocumentEvent
-- Controls: input (text/password/number/checkbox), select/option, checkbox, tooltip, modal, portal, img, item, scroll
-- CSS: selectors incl. combinators and :hover/:focus/:disabled/:checked/:not(); flexbox; position incl. fixed; var(); no calc/grid/@media/transitions
+- Controls: input (text/password/number/checkbox), select/option, checkbox, colorPicker, colorInput, tooltip, modal, portal, img, item, scroll
+- CSS: selectors incl. combinators and :hover/:focus/:disabled/:checked/:not(); flexbox; grid; position incl. fixed; var(); calc()/min()/max()/clamp();
+  linear/radial gradients; transitions and @keyframes animations; no transforms/box-shadow/@media yet
 - Dependency: `maven("https://skyblockoverhaul.github.io/maven")`, `implementation(include("net.sbo:guilib-26.2-fabric:<version>")!!)`; license LGPL-3.0
 - Differences from the web are listed in docs/AI_GUIDE.md section 6 — read them before writing CSS.
 
