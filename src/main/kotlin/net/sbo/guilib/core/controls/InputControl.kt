@@ -12,6 +12,7 @@ import net.sbo.guilib.core.event.KeyboardEvent
 import net.sbo.guilib.core.event.MouseEvent
 import net.sbo.guilib.core.event.UIEvent
 import net.sbo.guilib.core.layout.TextStyle
+import java.text.BreakIterator
 
 /**
  * Behaviour of `<input>` (text, password, number) and `<input type="checkbox">`.
@@ -139,7 +140,9 @@ internal class InputControl(val el: Element) {
     private fun replaceSelection(insert: String) {
         val ins = filter(insert)
         val room = maxLength - (text.length - (selEnd - selStart))
-        val clipped = if (ins.length > room) ins.substring(0, room.coerceAtLeast(0)) else ins
+        var clipped = if (ins.length > room) ins.substring(0, room.coerceAtLeast(0)) else ins
+        // Don't cut a character (emoji, combining accent) in half at the length limit.
+        if (clipped.length < ins.length) clipped = clipped.substring(0, boundaryAtOrBefore(ins, clipped.length))
         val next = text.substring(0, selStart) + clipped + text.substring(selEnd)
         val newCaret = selStart + clipped.length
         commit(next, newCaret)
@@ -168,6 +171,20 @@ internal class InputControl(val el: Element) {
         touch()
     }
 
+    // Caret positions are user-perceived character boundaries, so an emoji (two UTF-16 chars) or a letter with a
+    // combining accent is never split.
+    private fun charLeft(from: Int): Int = if (from <= 0) 0 else breaker().preceding(from.coerceAtMost(text.length))
+
+    private fun charRight(from: Int): Int = if (from >= text.length) text.length else breaker().following(from.coerceAtLeast(0))
+
+    private fun breaker() = BreakIterator.getCharacterInstance().also { it.setText(text) }
+
+    private fun boundaryAtOrBefore(s: String, i: Int): Int {
+        if (i <= 0 || i >= s.length) return i.coerceIn(0, s.length)
+        val b = BreakIterator.getCharacterInstance().also { it.setText(s) }
+        return if (b.isBoundary(i)) i else b.preceding(i)
+    }
+
     private fun wordLeft(from: Int): Int {
         var i = from
         while (i > 0 && text[i - 1] == ' ') i--
@@ -188,11 +205,14 @@ internal class InputControl(val el: Element) {
         val shown = displayText()
         var best = 0
         var bestDist = Float.MAX_VALUE
-        for (i in 0..shown.length) {
+        var i = 0
+        while (true) {
             val d = kotlin.math.abs(measure(shown.substring(0, i)) - x)
             if (d < bestDist) {
                 bestDist = d; best = i
             } else break
+            if (i >= text.length) break
+            i = charRight(i)
         }
         return best
     }
@@ -233,21 +253,21 @@ internal class InputControl(val el: Element) {
         val ctrl = ev.ctrlKey || ev.modifiers.meta
         val shift = ev.shiftKey
         when (ev.key) {
-            "ArrowLeft" -> moveCaret(if (!shift && hasSelection) selStart else if (ctrl) wordLeft(caret) else caret - 1, shift)
-            "ArrowRight" -> moveCaret(if (!shift && hasSelection) selEnd else if (ctrl) wordRight(caret) else caret + 1, shift)
+            "ArrowLeft" -> moveCaret(if (!shift && hasSelection) selStart else if (ctrl) wordLeft(caret) else charLeft(caret), shift)
+            "ArrowRight" -> moveCaret(if (!shift && hasSelection) selEnd else if (ctrl) wordRight(caret) else charRight(caret), shift)
             "Home" -> moveCaret(0, shift)
             "End" -> moveCaret(text.length, shift)
             "Backspace" -> when {
                 hasSelection -> replaceSelection("")
                 caret > 0 -> {
-                    val from = if (ctrl) wordLeft(caret) else caret - 1
+                    val from = if (ctrl) wordLeft(caret) else charLeft(caret)
                     commit(text.substring(0, from) + text.substring(caret), from)
                 }
             }
             "Delete" -> when {
                 hasSelection -> replaceSelection("")
                 caret < text.length -> {
-                    val to = if (ctrl) wordRight(caret) else caret + 1
+                    val to = if (ctrl) wordRight(caret) else charRight(caret)
                     commit(text.substring(0, caret) + text.substring(to), caret)
                 }
             }

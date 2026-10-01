@@ -163,6 +163,36 @@ class ControlsTest {
     }
 
     @Test
+    fun caretNeverSplitsCharacters() {
+        val root = ui { input(maxLength = 5) }
+        val el = root.document.body.querySelector("input")!!
+        root.click(el)
+        val smile = "😀" // one emoji, two UTF-16 chars
+        root.type("a")
+        root.input.charTyped(smile)
+        root.type("b")
+        root.key("ArrowLeft") // before b
+        root.key("ArrowLeft") // before the emoji, not inside it
+        root.type("x")
+        assertEquals("ax${smile}b", el.shownText())
+        root.key("ArrowRight")
+        root.key("Backspace") // removes the whole emoji
+        assertEquals("axb", el.shownText())
+        root.key("End")
+        root.input.charTyped(smile) // 3 + 2 = 5 fits
+        root.input.charTyped(smile) // would need 7: rejected, not half-inserted
+        root.frame(300f, 200f)
+        assertEquals("axb$smile", el.shownText())
+
+        val accent = "é" // e + combining acute accent: one character
+        root.key("a", Modifiers(ctrl = true))
+        root.input.charTyped(accent)
+        root.key("ArrowLeft")
+        root.type("z")
+        assertEquals("z$accent", el.shownText())
+    }
+
+    @Test
     fun passwordAndNumberTypes() {
         val root = ui {
             input(type = "password", className = "pw")

@@ -183,7 +183,9 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
     `:nth-child`, pseudo-elements, float, `align-content`, `vertical-align`, letter-spacing, subgrid, named grid lines (`[name]` is ignored).
     Grid: `auto-fit` behaves like `auto-fill` (empty tracks aren't collapsed); items can't be placed before line 1.
 15. Images: `src` is a resource location (`"modid:textures/x.png"`), PNG or SVG only; no URLs yet.
-16. Text has no kerning; `text-align: justify` behaves like `left`.
+16. Text has no kerning; `text-align: justify` behaves like `left`. No right-to-left or complex-script shaping: Arabic/Hebrew
+    render as unconnected letters in left-to-right order. Characters missing from the font (CJK, emoji, …) fall back to
+    Minecraft's font.
 17. `display: inline-block` / `img` / `item` sit on the text baseline; `vertical-align` is not supported.
 18. Flex items have `min-width: auto` (content size) like the web — for ellipsis inside flex, set `min-width: 0`.
 

@@ -117,7 +117,8 @@ object DevAutomation : ClientModInitializer {
                 root.input.mouseUp(r.x + 2f, r.y + r.height / 2f, 0)
             }
             "hover" -> hover(arg)
-            "type" -> arg.forEach { root.input.charTyped(it.toString()) }
+            // "type:abc"; U+65E5 escapes for text the Windows command line would mangle. Typed per code point, like GLFW does.
+            "type" -> unescape(arg).codePoints().forEach { root.input.charTyped(String(Character.toChars(it))) }
             // "key:Enter", with modifiers "key:shift+Home" / "key:ctrl+a".
             "key" -> {
                 val parts = arg.split('+')
@@ -133,6 +134,8 @@ object DevAutomation : ClientModInitializer {
             }
         }
     }
+
+    private fun unescape(s: String) = Regex("""U\+([0-9a-fA-F]{4,6})""").replace(s) { String(Character.toChars(it.groupValues[1].toInt(16))) }
 
     /** Moves the virtual mouse over the first element matching [selector] (for :hover screenshots). */
     private fun hover(selector: String?) {
