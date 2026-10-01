@@ -23,7 +23,7 @@ class Toast internal constructor(private val toaster: Toaster, internal val elem
  * button(onClick = { toast.success("Party created") }) { … }
  * ```
  * Styled with `.guilib-toasts` (the stack, bottom right), `.guilib-toast` (`.info`, `.success`, `.warning`, `.error`,
- * `.leaving`), `.guilib-toast-title`, `.guilib-toast-message`, `.guilib-toast-close`.
+ * `.leaving`), `.guilib-toast-accent` (the colored bar), `.guilib-toast-title`, `.guilib-toast-message`, `.guilib-toast-close`.
  */
 class Toaster internal constructor(private val doc: Document) {
     private var stack: Element? = null
@@ -43,7 +43,8 @@ class Toaster internal constructor(private val doc: Document) {
         parts += Element("div").also { it.className = "guilib-toast-message"; it.setChildren(listOf(TextNode(message))) }
         body.setChildren(parts)
         val close = Element("span").also { it.className = "guilib-toast-close"; it.setChildren(listOf(TextNode("✕"))) }
-        el.setChildren(listOf(body, close))
+        val accent = Element("div").also { it.className = "guilib-toast-accent" }
+        el.setChildren(listOf(accent, body, close))
         el.handlers = mapOf(EventType.CLICK to { _ -> toast.dismiss() })
         onUiThread {
             val s = stack ?: Element("div").also {

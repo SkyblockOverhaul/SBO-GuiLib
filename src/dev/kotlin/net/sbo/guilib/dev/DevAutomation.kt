@@ -114,8 +114,14 @@ object DevAutomation : ClientModInitializer {
         val screen = GuiLib.currentScreen() as? GuiLibScreen ?: return
         val root = screen.root
         val (verb, arg) = action.split(':', limit = 2).let { it[0] to it.getOrElse(1) { "" } }
-        fun find(sel: String) = root.document.body.querySelector(sel)
+        // The overlay (menus, popovers, toasts) is searched too, after the body.
+        fun find(sel: String) = root.document.body.querySelector(sel) ?: root.document.overlayRoot.querySelector(sel)
         when (verb) {
+            // "rclick:.row" right-clicks (opens context menus).
+            "rclick" -> find(arg)?.getBoundingClientRect()?.let { r ->
+                root.input.mouseDown(r.x + 2f, r.y + r.height / 2f, 2)
+                root.input.mouseUp(r.x + 2f, r.y + r.height / 2f, 2)
+            }
             "click" -> find(arg)?.getBoundingClientRect()?.let { r ->
                 root.input.mouseDown(r.x + 2f, r.y + r.height / 2f, 0)
                 root.input.mouseUp(r.x + 2f, r.y + r.height / 2f, 0)

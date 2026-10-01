@@ -367,7 +367,6 @@ select:disabled { opacity: 0.5; cursor: not-allowed; }
 .guilib-radio.checked .guilib-radio-dot { border: 3px solid var(--guilib-accent); background-color: #ffffff; }
 .guilib-radio:focus .guilib-radio-dot { border-color: #ffffff; }
 .guilib-radio.checked:focus .guilib-radio-dot { border-color: var(--guilib-accent); background-color: #ffffff; }
-.guilib-radio:focus .guilib-radio-label { text-decoration: underline; }
 .guilib-radio.disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ---- segmented buttons ---- */
@@ -400,7 +399,8 @@ select:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 .guilib-segment:hover { color: #f2f3f5; background-color: rgba(255, 255, 255, 0.06); }
 .guilib-segment.selected { color: #ffffff; background-color: transparent; }
-.guilib-segment:focus .guilib-segment-label { text-decoration: underline; }
+.guilib-segment:focus { background-color: rgba(255, 255, 255, 0.08); }
+.guilib-segment.selected:focus { background-color: transparent; }
 .guilib-segment.disabled { opacity: 0.4; cursor: not-allowed; }
 .guilib-segmented.disabled { opacity: 0.5; }
 
@@ -441,7 +441,7 @@ select:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 .guilib-tab:hover { color: #f2f3f5; }
 .guilib-tab.active { color: #ffffff; }
-.guilib-tab:focus { text-decoration: underline; }
+.guilib-tab:focus { background-color: rgba(255, 255, 255, 0.05); }
 .guilib-tab.disabled { opacity: 0.4; cursor: not-allowed; }
 .guilib-tab-indicator {
     position: absolute;
@@ -470,10 +470,21 @@ select:disabled { opacity: 0.5; cursor: not-allowed; }
     user-select: none;
 }
 .guilib-details-summary:hover { background-color: rgba(255, 255, 255, 0.05); }
-.guilib-details-summary:focus .guilib-details-title { text-decoration: underline; }
+.guilib-details-summary:focus { background-color: rgba(255, 255, 255, 0.05); }
 .guilib-details-title { flex-grow: 1; min-width: 0; }
-.guilib-details-chevron { color: var(--guilib-text-muted); transition: transform 200ms ease; }
-.guilib-details.open .guilib-details-chevron { transform: rotate(90deg); }
+/* A chevron drawn from two borders of a small rotated square: points right, turns down when open. */
+.guilib-details-chevron {
+    display: inline-block;
+    flex-shrink: 0;
+    width: 4px;
+    height: 4px;
+    margin: 0 2px 0 1px;
+    border-right: 1px solid #b5bac1;
+    border-bottom: 1px solid #b5bac1;
+    transform: rotate(-45deg);
+    transition: transform 200ms ease;
+}
+.guilib-details.open .guilib-details-chevron { transform: rotate(45deg); }
 .guilib-details-content { padding: 2px 8px 6px 8px; }
 .guilib-details.disabled { opacity: 0.5; }
 .guilib-details.disabled .guilib-details-summary { cursor: not-allowed; }
@@ -498,15 +509,16 @@ select:disabled { opacity: 0.5; cursor: not-allowed; }
     padding: 5px 7px;
     background-color: #111214;
     border: 1px solid #3f4147;
-    border-left: 3px solid var(--guilib-accent);
     border-radius: 4px;
     pointer-events: auto;
     cursor: pointer;
     animation: guilib-toast-in 180ms ease-out;
 }
-.guilib-toast.success { border-left-color: #3ba55d; }
-.guilib-toast.warning { border-left-color: #faa61a; }
-.guilib-toast.error { border-left-color: #ed4245; }
+.guilib-toast { align-items: stretch; }
+.guilib-toast-accent { flex-shrink: 0; width: 3px; margin-right: -2px; border-radius: 2px; background-color: var(--guilib-accent); }
+.guilib-toast.success .guilib-toast-accent { background-color: #3ba55d; }
+.guilib-toast.warning .guilib-toast-accent { background-color: #faa61a; }
+.guilib-toast.error .guilib-toast-accent { background-color: #ed4245; }
 .guilib-toast.leaving { animation: guilib-toast-out 180ms ease-in; opacity: 0; }
 .guilib-toast-body { flex-grow: 1; min-width: 0; }
 .guilib-toast-title { font-weight: bold; margin-bottom: 1px; }
@@ -563,7 +575,7 @@ select:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 .guilib-number:hover { border-color: #6d6f78; }
 .guilib-number:focus-within { border-color: var(--guilib-accent); }
-.guilib-number-input { flex-grow: 1; min-width: 28px; width: 40px; border: none; border-radius: 0; background-color: transparent; }
+.guilib-number-input { flex-grow: 1; min-width: 20px; width: 30px; border: none; border-radius: 0; background-color: transparent; }
 .guilib-number-dec, .guilib-number-inc {
     flex-shrink: 0;
     width: 13px;

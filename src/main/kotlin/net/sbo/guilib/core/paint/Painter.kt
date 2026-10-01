@@ -85,7 +85,10 @@ class Painter(private val measurer: TextMeasurer) {
         for (l in layers) {
             val saved = roundClip
             roundClip = l.round
+            // The layer paints after its clipping ancestors popped their clips, so re-apply the clip it was found in.
+            if (l.clip != null) emit(PaintCommand.PushClip(l.clip))
             paintLayer(l.el, l.x, l.y, l.clip, l.alpha, l.xf)
+            if (l.clip != null) emit(PaintCommand.PopClip)
             roundClip = saved
         }
     }

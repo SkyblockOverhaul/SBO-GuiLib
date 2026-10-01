@@ -10,7 +10,19 @@ import net.sbo.guilib.core.dsl.entity
 import net.sbo.guilib.core.dsl.h2
 import net.sbo.guilib.core.dsl.h3
 import net.sbo.guilib.core.css.Colors
+import net.sbo.guilib.core.dsl.b
 import net.sbo.guilib.core.dsl.checkbox
+import net.sbo.guilib.core.dsl.chips
+import net.sbo.guilib.core.dsl.contextMenu
+import net.sbo.guilib.core.dsl.details
+import net.sbo.guilib.core.dsl.multiSelect
+import net.sbo.guilib.core.dsl.numberInput
+import net.sbo.guilib.core.dsl.radioGroup
+import net.sbo.guilib.core.dsl.rangeSlider
+import net.sbo.guilib.core.dsl.segmented
+import net.sbo.guilib.core.dsl.tabs
+import net.sbo.guilib.core.dsl.textarea
+import net.sbo.guilib.core.dsl.useToast
 import net.sbo.guilib.core.dsl.slider
 import net.sbo.guilib.core.dsl.switch
 import net.sbo.guilib.core.dsl.colorInput
@@ -33,7 +45,7 @@ import net.sbo.guilib.fabric.entity.FakePlayer
 
 /** Demo UI showing every feature; open with `/guilib showcase`. */
 object Showcase {
-    val SECTIONS = listOf("Buttons", "Forms", "Colors", "Boxes", "Animation", "Layout", "Grid", "Text", "Scroll", "Sortable", "Images", "Items", "Entities", "State")
+    val SECTIONS = listOf("Buttons", "Forms", "Pickers", "Panels", "Colors", "Boxes", "Animation", "Layout", "Grid", "Text", "Scroll", "Sortable", "Images", "Items", "Entities", "State")
 
     private val App = component<String>("Showcase") { initialSection ->
         var section by useState(initialSection)
@@ -52,6 +64,8 @@ object Showcase {
                     when (section) {
                         "Buttons" -> ButtonsDemo()
                         "Forms" -> FormsDemo()
+                        "Pickers" -> PickersDemo()
+                        "Panels" -> PanelsDemo()
                         "Colors" -> ColorsDemo()
                         "Boxes" -> BoxesDemo()
                         "Animation" -> AnimationDemo()
@@ -147,6 +161,123 @@ object Showcase {
                 button(onClick = { dialog = false }) { +"Cancel" }
                 button(className = "primary", onClick = { dialog = false }) { +"OK" }
             }
+        }
+    }
+
+    private val PickersDemo = component("PickersDemo") {
+        var size by useState("5")
+        var tier by useState("t5")
+        var floor by useState("m7")
+        var fishing by useState(listOf("trophy", "lava"))
+        var cats by useState(listOf<String>())
+        var item by useState<String?>(null)
+        var kills by useState(5000 to 20000)
+        var mp by useState(1200)
+        var slots by useState(3)
+        var price by useState(1.5)
+        h2 { +"Pickers" }
+        div(className = "form-row") {
+            span(className = "form-label") { +"Size" }
+            radioGroup(value = size, onChange = { size = it }) {
+                option("1", "Solo"); option("2", "Duo"); option("3", "Trio"); option("5", "Full")
+            }
+        }
+        div(className = "form-row") {
+            span(className = "form-label") { +"Kuudra" }
+            segmented(value = tier, onChange = { tier = it }) {
+                option("t1", "Basic"); option("t2", "Hot"); option("t3", "Burning"); option("t4", "Fiery"); option("t5", "Infernal")
+            }
+        }
+        div(className = "form-row") {
+            span(className = "form-label") { +"Floor" }
+            segmented(value = floor, onChange = { floor = it }) {
+                option("f7", "F7"); option("m5", "M5"); option("m6", "M6"); option("m7", "M7"); option("m8", "M8", disabled = true)
+            }
+        }
+        div(className = "form-row") {
+            span(className = "form-label") { +"Fishing" }
+            chips(values = fishing, onChange = { fishing = it }) {
+                option("trophy", "Trophy"); option("lava", "Lava"); option("water", "Water"); option("ink", "Ink"); option("event", "Events")
+            }
+        }
+        div(className = "form-row") {
+            span(className = "form-label") { +"Filter" }
+            multiSelect(values = cats, onChange = { cats = it }, placeholder = "All categories", searchable = true) {
+                option("dungeons", "Dungeons"); option("kuudra", "Kuudra"); option("fishing", "Fishing")
+                option("diana", "Diana"); option("slayer", "Slayer"); option("mining", "Mining")
+            }
+        }
+        div(className = "form-row") {
+            span(className = "form-label") { +"Item" }
+            select(value = item, onChange = { item = it.value }, placeholder = "Search an item…", searchable = true) {
+                for ((id, name) in listOf(
+                    "hyperion" to "§6Hyperion", "terminator" to "§6Terminator", "necron_blade" to "§5Necron's Blade",
+                    "aote" to "§9Aspect of the End", "aotv" to "§5Aspect of the Void", "juju" to "§5Juju Shortbow",
+                    "giants_sword" to "§6Giant's Sword", "valkyrie" to "§6Valkyrie", "scylla" to "§6Scylla", "astraea" to "§6Astraea",
+                )) option(id, name)
+            }
+        }
+        div(className = "form-row") {
+            span(className = "form-label") { +"Kills" }
+            rangeSlider(
+                low = kills.first, high = kills.second, onChange = { lo, hi -> kills = lo to hi }, min = 0, max = 50000, step = 500,
+                showValue = true, format = { "%,d".format(it) }, style = "width: 120px",
+            )
+        }
+        div(className = "form-row") {
+            span(className = "form-label") { +"MP" }
+            numberInput(value = mp, onChange = { mp = it }, min = 0, max = 2000, step = 10)
+            span(className = "form-label", style = "margin-left: 8px") { +"Slots" }
+            numberInput(value = slots, onChange = { slots = it }, min = 1, max = 5)
+            numberInput(value = price, onChange = { price = it }, min = 0.0, max = 10.0, step = 0.25)
+        }
+        p(className = "muted") { +"size=$size · tier=$tier · fishing=$fishing · cats=$cats · item=$item · kills=$kills · mp=$mp" }
+    }
+
+    private val PanelsDemo = component("PanelsDemo") {
+        var category by useState("dungeons")
+        var sub by useState("all")
+        var note by useState("")
+        var openParty by useState<String?>("1")
+        val toast = useToast()
+        h2 { +"Panels" }
+        tabs(value = category, onChange = { category = it }) {
+            tab("dungeons", "Dungeons") {
+                tabs(value = sub, onChange = { sub = it }, variant = "pills") {
+                    tab("all", "All"); tab("f7", "F7"); tab("m6", "M6"); tab("m7", "M7")
+                }
+            }
+            tab("kuudra", "Kuudra") { p(className = "muted") { +"Kuudra parties would be listed here." } }
+            tab("fishing", "Fishing") { p(className = "muted") { +"Fishing parties would be listed here." } }
+            tab("other", "Other", disabled = true)
+        }
+        h3 { +"Parties (right-click a name)" }
+        for ((id, leader, info) in listOf(Triple("1", "Steve", "M7 · 4/5 · cata 45+"), Triple("2", "Alex", "Kuudra T5 · 2/4"))) {
+            details(
+                summary = {
+                    contextMenu(className = "party-row", menu = {
+                        header(leader)
+                        item("Invite") { toast.success("Invited $leader") }
+                        item("View profile", shortcut = "P") { toast.info("Opening the profile of $leader") }
+                        separator()
+                        item("Kick", danger = true) { toast.error("Kicked $leader", title = "Party") }
+                    }) { b { +leader }; span(className = "muted") { +"  $info" } }
+                },
+                open = openParty == id,
+                onToggle = { openParty = if (it) id else null },
+                key = id,
+            ) {
+                p { +"Requirements: catacombs 45, secrets 10k, magical power 1,200." }
+                p(className = "muted") { +"Note: bring a healer. Starting in 5 minutes." }
+            }
+        }
+        h3 { +"Description" }
+        textarea(value = note, onChange = { note = it.value }, placeholder = "Describe your party…", rows = 3, maxLength = 256)
+        p(className = "muted") { +"${note.length}/256" }
+        div(className = "row") {
+            button(className = "primary", onClick = { toast.success("Party created") }) { +"Create party" }
+            button(onClick = { toast.warning("Join request declined", title = "Party finder") }) { +"Warning" }
+            button(onClick = { toast.error("Server not reachable") }) { +"Error" }
         }
     }
 

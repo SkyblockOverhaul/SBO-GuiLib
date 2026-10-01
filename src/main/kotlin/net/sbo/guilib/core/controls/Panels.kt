@@ -78,7 +78,7 @@ internal val DetailsComponent = component<DetailsProps>("Details") { p ->
     }
     div(className = classNames("guilib-details", "open" to open, "disabled" to p.disabled, p.className)) {
         element("div", null, null, "guilib-details-summary", null, null, attrs, handlers) {
-            span(className = "guilib-details-chevron") { +"▸" }
+            span(className = "guilib-details-chevron")
             div(className = "guilib-details-title") { p.summary(this) }
         }
         CollapseComponent(CollapseProps(open, p.durationMs, false, null) {

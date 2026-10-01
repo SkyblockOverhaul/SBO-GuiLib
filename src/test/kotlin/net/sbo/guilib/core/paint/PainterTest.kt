@@ -32,6 +32,36 @@ class PainterTest {
 
     private fun UiRoot.texts() = painter.commands.filterIsInstance<PaintCommand.Text>().map { it.text }
 
+    /** Clip rect active when each box was painted (null = none), in painting order. */
+    private fun UiRoot.clipsOfBoxes(): List<Pair<Int, net.sbo.guilib.core.dom.Rect?>> {
+        val stack = ArrayList<net.sbo.guilib.core.dom.Rect>()
+        val out = ArrayList<Pair<Int, net.sbo.guilib.core.dom.Rect?>>()
+        for (c in painter.commands) when (c) {
+            is PaintCommand.PushClip -> stack += c.rect
+            PaintCommand.PopClip -> stack.removeAt(stack.lastIndex)
+            is PaintCommand.Box -> out += c.background to stack.lastOrNull()
+            else -> {}
+        }
+        return out
+    }
+
+    @Test
+    fun positionedChildrenOfAScrollContainerAreClipped() {
+        // Regression: positioned elements paint as their own layer after the container; its clip must still apply.
+        val root = ui(
+            """
+            .list { height: 20px; overflow: hidden }
+            .rel { position: relative; height: 10px; margin-top: 30px; background-color: #ff0000 }
+            .abs { position: absolute; left: 0; top: 0; width: 5px; height: 5px; background-color: #00ff00 }
+            """.trimIndent(),
+        ) {
+            div(className = "list") { div(className = "rel") { div(className = "abs") } }
+        }
+        val clips = root.clipsOfBoxes().toMap()
+        assertEquals(net.sbo.guilib.core.dom.Rect(0f, 0f, 200f, 20f), clips[0xFFFF0000.toInt()])
+        assertEquals(net.sbo.guilib.core.dom.Rect(0f, 0f, 200f, 20f), clips[0xFF00FF00.toInt()])
+    }
+
     @Test
     fun paintsTextOfFlexItemsAndParagraphs() {
         val root = ui("") {

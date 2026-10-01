@@ -98,7 +98,7 @@ class TextAreaTest {
         assertEquals(4, root.control.caret) // back at column 4
         root.key("ArrowDown", Modifiers(shift = true))
         root.type("X")
-        assertEquals("abcdX\nabcdefgh", root.control.text.let { root.control.text })
+        assertEquals("abcdX\nabcdefgh", root.control.text)
     }
 
     @Test
