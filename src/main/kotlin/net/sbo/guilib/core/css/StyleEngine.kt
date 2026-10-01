@@ -224,8 +224,21 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
             Properties.NoImage -> null
             is Properties.LineHeightLength -> LineHeight.Px(toPx(v.length, fontSize, ctx))
             is Properties.TextShadowValue -> TextShadow(toPx(v.x, fontSize, ctx), toPx(v.y, fontSize, ctx), if (v.color == CurrentColor) color else v.color)
+            is List<*> -> if (p == Prop.BACKGROUND_IMAGE) v.map { resolveLayer(it as BackgroundLayer, fontSize, color, ctx) } else v
             is Properties.ScrollbarColor -> Pair(if (v.thumb == CurrentColor) color else v.thumb as Int, if (v.track == CurrentColor) color else v.track as Int)
             else -> v
+        }
+
+        /** Resolves currentColor and font/viewport-relative units inside a background layer. */
+        private fun resolveLayer(layer: BackgroundLayer, fontSize: Float, color: Int, ctx: StyleContext): BackgroundLayer {
+            if (layer !is BackgroundLayer.Gradient) return layer
+            fun len(l: Length) = if (l.isPercent || l.unit == "px") l else Length(toPx(l, fontSize, ctx), "px")
+            return layer.copy(
+                stops = layer.stops.map { BackgroundLayer.Stop(if (it.color == CurrentColor) color else it.color, it.position?.let(::len)) },
+                centerX = len(layer.centerX),
+                centerY = len(layer.centerY),
+                explicitSize = layer.explicitSize?.let { (a, b) -> len(a) to len(b) },
+            )
         }
 
         fun toPx(l: Length, fontSize: Float, ctx: StyleContext): Float = when (l.unit) {

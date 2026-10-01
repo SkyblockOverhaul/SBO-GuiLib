@@ -168,3 +168,4 @@ button.primary:hover { background-color: #6f9cf2; }
 .form-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
 .form-label { width: 50px; color: var(--muted); }
 .form-row input { flex-grow: 1; max-width: 160px; }
+.demo-box.grad { border-radius: 6px; text-shadow: 1px 1px #0008; }

@@ -31,6 +31,16 @@ sealed interface PaintCommand {
         val src: String, val fit: ObjectFit, val alpha: Float, val radii: FloatArray,
     ) : PaintCommand
 
+    /**
+     * A gradient (or any smoothly colored shape) as colored triangles, clipped to the box [x], [y], [width], [height]
+     * with rounded corners [radii].
+     */
+    class Gradient(
+        val x: Float, val y: Float, val width: Float, val height: Float,
+        val mesh: ColorMesh,
+        val radii: FloatArray,
+    ) : PaintCommand
+
     /** Replaced element the backend draws itself (e.g. `<item>`). */
     class Replaced(val element: Element, val x: Float, val y: Float, val width: Float, val height: Float, val alpha: Float) : PaintCommand
 

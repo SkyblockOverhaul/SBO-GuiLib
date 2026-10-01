@@ -127,6 +127,15 @@ object Showcase {
             div(className = "demo-box", style = "border-radius: 6px; opacity: 0.4") { +"opacity" }
             div(className = "demo-box", style = "border-radius: 6px; background-color: rgba(91, 141, 239, 0.35); border: 1px solid #5b8def") { +"rgba" }
         }
+        h3 { +"Gradients" }
+        div(className = "box-grid") {
+            div(className = "demo-box grad", style = "background: linear-gradient(to right, #5b8def, #b16cea)") { +"linear" }
+            div(className = "demo-box grad", style = "background: linear-gradient(135deg, #ff7b72 0%, #ffd166 50%, #06d6a0 100%)") { +"3 stops" }
+            div(className = "demo-box grad", style = "background: linear-gradient(to right, red 50%, blue 50%)") { +"hard" }
+            div(className = "demo-box grad", style = "background: radial-gradient(circle, #ffd166, #e5484d 60%, #2b2d31)") { +"radial" }
+            div(className = "demo-box grad", style = "background: linear-gradient(to bottom, transparent, black), linear-gradient(to right, white, red)") { +"layers" }
+            div(className = "demo-box grad", style = "background: linear-gradient(to right, red, yellow, lime, cyan, blue, magenta, red); border: 1px solid #fff") { +"hue" }
+        }
     }
 
     private val ImagesDemo = component("ImagesDemo") {

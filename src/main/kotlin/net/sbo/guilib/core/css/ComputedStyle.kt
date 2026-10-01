@@ -61,7 +61,9 @@ class ComputedStyle internal constructor(
     val borderBottomLeftRadius get() = dim(Prop.BORDER_BOTTOM_LEFT_RADIUS)
 
     val backgroundColor get() = values[Prop.BACKGROUND_COLOR.ordinal] as Int
-    val backgroundImage get() = values[Prop.BACKGROUND_IMAGE.ordinal] as String?
+    /** `background-image` layers, first = top-most. Gradient colors are resolved ARGB ints. */
+    @Suppress("UNCHECKED_CAST")
+    val backgroundLayers: List<BackgroundLayer> get() = values[Prop.BACKGROUND_IMAGE.ordinal] as List<BackgroundLayer>? ?: emptyList()
     val color get() = values[Prop.COLOR.ordinal] as Int
     val opacity get() = values[Prop.OPACITY.ordinal] as Float
     val visibility get() = values[Prop.VISIBILITY.ordinal] as Visibility

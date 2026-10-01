@@ -121,7 +121,7 @@ object Properties {
         enumParser(Prop.BORDER_TOP_LEFT_RADIUS, Prop.BORDER_TOP_RIGHT_RADIUS, Prop.BORDER_BOTTOM_RIGHT_RADIUS, Prop.BORDER_BOTTOM_LEFT_RADIUS) {
             single(it)?.let(::nonNegativeLength)
         }
-        enumParser(Prop.BACKGROUND_IMAGE) { single(it)?.let { v -> if (isIdent(v, "none")) NoImage else url(v) } }
+        enumParser(Prop.BACKGROUND_IMAGE) { backgroundLayers(it) }
         enumParser(Prop.OPACITY) { single(it)?.let(::numberOrPercent)?.coerceIn(0f, 1f) }
         enumParser(Prop.VISIBILITY) { single(it)?.let { v -> if (isIdent(v, "collapse")) Visibility.HIDDEN else keyword<Visibility>(v) } }
         enumParser(Prop.OVERFLOW_X, Prop.OVERFLOW_Y) { single(it)?.let { v -> if (isIdent(v, "clip")) Overflow.HIDDEN else keyword<Overflow>(v) } }
@@ -209,12 +209,22 @@ object Properties {
             listOfNotNull(dir?.let { Prop.FLEX_DIRECTION to it }, wrap?.let { Prop.FLEX_WRAP to it }).ifEmpty { null }
         }
         put("background") { v ->
-            var col: Any? = null; var img: Any? = null
-            for (w in words(v)) {
-                if (isIdent(w, "none")) { img = NoImage; continue }
-                url(w)?.let { img = it } ?: color(w)?.let { col = it } ?: return@put null
+            // Comma-separated layers; only the last layer may contain the background color (like CSS).
+            var col: Any? = null
+            val layers = ArrayList<BackgroundLayer>()
+            val parts = BackgroundParser.splitCommas(v)
+            for ((i, part) in parts.withIndex()) {
+                for (w in words(part)) {
+                    if (isIdent(w, "none")) continue
+                    val layer = BackgroundParser.layer(w, ::url)
+                    when {
+                        layer != null -> layers += layer
+                        i == parts.lastIndex && col == null && color(w) != null -> col = color(w)
+                        else -> return@put null
+                    }
+                }
             }
-            listOf(Prop.BACKGROUND_COLOR to (col ?: Colors.TRANSPARENT), Prop.BACKGROUND_IMAGE to (img ?: NoImage))
+            listOf(Prop.BACKGROUND_COLOR to (col ?: Colors.TRANSPARENT), Prop.BACKGROUND_IMAGE to (if (layers.isEmpty()) NoImage else layers))
         }
         put("place-items") { v -> words(v).singleOrNull()?.let(::alignItems)?.let { listOf(Prop.ALIGN_ITEMS to it) } }
     }
@@ -360,6 +370,17 @@ object Properties {
             }
             else -> null
         }
+    }
+
+    /** `none` or a comma-separated list of `url()` / gradient layers. */
+    private fun backgroundLayers(values: Values): Any? {
+        val w = words(values)
+        if (w.size == 1 && isIdent(w[0], "none")) return NoImage
+        val layers = BackgroundParser.splitCommas(values).map { part ->
+            val single = words(part).singleOrNull() ?: return null
+            BackgroundParser.layer(single, ::url) ?: return null
+        }
+        return layers
     }
 
     private fun url(v: ComponentValue): String? = when {

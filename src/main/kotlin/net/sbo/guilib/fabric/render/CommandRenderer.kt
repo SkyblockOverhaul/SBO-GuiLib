@@ -52,6 +52,12 @@ object CommandRenderer {
             when (cmd) {
                 is PaintCommand.Box -> drawBox(ctx, cmd)
                 is PaintCommand.Image -> drawImage(ctx, cmd)
+                is PaintCommand.Gradient -> if (cmd.mesh.triangleCount > 0 && cmd.width > 0f && cmd.height > 0f) {
+                    beforeQuad(ctx, "rounded", cmd.x, cmd.y, cmd.x + cmd.width, cmd.y + cmd.height)
+                    ctx.guiRenderState.addGuiElement(
+                        GradientMeshState(Matrix3x2f(ctx.pose()), cmd.mesh, cmd.x, cmd.y, cmd.width, cmd.height, cmd.radii, ctx.scissorStack.peek()),
+                    )
+                }
                 is PaintCommand.Text -> drawText(ctx, cmd)
                 is PaintCommand.Replaced -> {
                     drawReplaced(ctx, cmd); layerHasOverlay = true

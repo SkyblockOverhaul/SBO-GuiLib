@@ -1,5 +1,6 @@
 package net.sbo.guilib.core.paint
 
+import net.sbo.guilib.core.css.BackgroundLayer
 import net.sbo.guilib.core.css.Colors
 import net.sbo.guilib.core.css.ComputedStyle
 import net.sbo.guilib.core.css.Display
@@ -161,17 +162,23 @@ class Painter(private val measurer: TextMeasurer) {
         val hasBorder = borders.any { it > 0f }
         val radii = radii(s, r)
         followRoundClip(r, radii)
-        if (Colors.alpha(bg) > 0 || hasBorder) {
-            commands += PaintCommand.Box(
-                r.x, r.y, r.width, r.height, bg, radii, borders,
-                intArrayOf(
-                    Colors.withOpacity(s.borderTopColor, alpha), Colors.withOpacity(s.borderRightColor, alpha),
-                    Colors.withOpacity(s.borderBottomColor, alpha), Colors.withOpacity(s.borderLeftColor, alpha),
-                ),
-            )
-        }
-        s.backgroundImage?.let { src ->
-            commands += PaintCommand.Image(r.x, r.y, r.width, r.height, src, net.sbo.guilib.core.css.ObjectFit.FILL, alpha, radii)
+        val borderColors = intArrayOf(
+            Colors.withOpacity(s.borderTopColor, alpha), Colors.withOpacity(s.borderRightColor, alpha),
+            Colors.withOpacity(s.borderBottomColor, alpha), Colors.withOpacity(s.borderLeftColor, alpha),
+        )
+        val layers = s.backgroundLayers
+        if (layers.isEmpty()) {
+            if (Colors.alpha(bg) > 0 || hasBorder) commands += PaintCommand.Box(r.x, r.y, r.width, r.height, bg, radii, borders, borderColors)
+        } else {
+            // CSS order: background-color, then the image layers from last to first, then the border on top.
+            if (Colors.alpha(bg) > 0) commands += PaintCommand.Box(r.x, r.y, r.width, r.height, bg, radii, FloatArray(4), IntArray(4))
+            for (layer in layers.asReversed()) when (layer) {
+                is BackgroundLayer.Url ->
+                    commands += PaintCommand.Image(r.x, r.y, r.width, r.height, layer.src, net.sbo.guilib.core.css.ObjectFit.FILL, alpha, radii)
+                is BackgroundLayer.Gradient ->
+                    commands += PaintCommand.Gradient(r.x, r.y, r.width, r.height, GradientMesh.build(layer, r.x, r.y, r.width, r.height, alpha), radii)
+            }
+            if (hasBorder) commands += PaintCommand.Box(r.x, r.y, r.width, r.height, Colors.TRANSPARENT, radii, borders, borderColors)
         }
         if (el.replaced != null) {
             val cx = r.x + b.contentX

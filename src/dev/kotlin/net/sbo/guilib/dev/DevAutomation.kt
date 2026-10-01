@@ -84,6 +84,12 @@ object DevAutomation : ClientModInitializer {
             "hover" -> hover(arg)
             "type" -> arg.forEach { root.input.charTyped(it.toString()) }
             "key" -> root.input.keyDown(arg, 0)
+            // "wheel:.content:200" scrolls the scroll container matching the selector by 200px.
+            "wheel" -> {
+                val sel = arg.substringBeforeLast(':')
+                val dy = arg.substringAfterLast(':').toFloat()
+                find(sel)?.getBoundingClientRect()?.let { r -> root.input.wheel(r.x + r.width / 2f, r.y + r.height / 2f, 0f, dy) }
+            }
         }
     }
 
