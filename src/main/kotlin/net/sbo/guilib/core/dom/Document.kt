@@ -88,6 +88,10 @@ class Document(
         }
     }
 
+    /** Screen pixels per GUI pixel (the GUI scale), for `@media (resolution)`; set by the backend. */
+    var resolution = 1f
+    private var appliedResolution = 1f
+
     var viewportWidth = 0f
         private set
     var viewportHeight = 0f
@@ -257,6 +261,10 @@ class Document(
         runTimers()
         flushWork()
 
+        if (resolution != appliedResolution) {
+            appliedResolution = resolution
+            body.styleChanged(true) // @media (resolution)
+        }
         if (viewportWidth != this.viewportWidth || viewportHeight != this.viewportHeight) {
             this.viewportWidth = viewportWidth
             this.viewportHeight = viewportHeight
@@ -304,8 +312,8 @@ class Document(
 
     private fun recalcStyles() {
         styleDirty = false
-        val rootStyle = styleEngine.compute(body, body.inlineDeclarations, null, StyleContext(viewportWidth, viewportHeight))
-        val ctx = StyleContext(viewportWidth, viewportHeight, rootStyle.fontSize)
+        val rootStyle = styleEngine.compute(body, body.inlineDeclarations, null, StyleContext(viewportWidth, viewportHeight, resolution = resolution))
+        val ctx = StyleContext(viewportWidth, viewportHeight, rootStyle.fontSize, resolution)
         recalc(body, null, force = false, ctx)
     }
 

@@ -46,7 +46,15 @@ class Declaration(
     override fun toString() = "$property: ${value.joinToString("")}${if (important) " !important" else ""}"
 }
 
-class StyleRule(val selectors: List<Selector>, val declarations: List<Declaration>, val line: Int)
+/** [media]: the enclosing `@media` rules (all must match; empty = always applies). */
+class StyleRule(
+    val selectors: List<Selector>,
+    val declarations: List<Declaration>,
+    val line: Int,
+    val media: List<MediaQueryList> = emptyList(),
+) {
+    fun appliesTo(ctx: StyleContext) = media.isEmpty() || media.all { it.matches(ctx) }
+}
 
 class Stylesheet(
     val source: String,
@@ -70,6 +78,14 @@ object CssParser {
         val tokens = Tokenizer(text).tokenize()
         val rules = ArrayList<StyleRule>()
         val keyframes = LinkedHashMap<String, Keyframes>()
+        parseRules(tokens, source, rules, keyframes, emptyList())
+        return Stylesheet(source, rules, origin, keyframes)
+    }
+
+    /** Parses a list of rules ([tokens] = a whole sheet or the body of an `@media` block). */
+    private fun parseRules(
+        tokens: List<Token>, source: String, rules: MutableList<StyleRule>, keyframes: MutableMap<String, Keyframes>, media: List<MediaQueryList>,
+    ) {
         var i = 0
         while (i < tokens.size) {
             val t = tokens[i]
@@ -79,6 +95,19 @@ object CssParser {
                 TokenType.AT_KEYWORD -> {
                     if (t.text.equals("keyframes", true) || t.text.equals("-webkit-keyframes", true)) {
                         i = parseKeyframes(tokens, i + 1, source, keyframes)
+                    } else if (t.text.equals("media", true)) {
+                        var open = i + 1
+                        while (open < tokens.size && tokens[open].type != TokenType.LBRACE && tokens[open].type != TokenType.SEMICOLON &&
+                            tokens[open].type != TokenType.EOF) open++
+                        if (open >= tokens.size || tokens[open].type != TokenType.LBRACE) {
+                            warn(source, t, "@media without a block was ignored")
+                            i = skipAtRule(tokens, i + 1)
+                            continue
+                        }
+                        val queries = MediaParser.parse(toComponentValues(tokens.subList(i + 1, open))) { warn(source, t, it) }
+                        val end = findBlockEnd(tokens, open)
+                        parseRules(tokens.subList(open + 1, end), source, rules, keyframes, media + queries)
+                        i = end + 1
                     } else {
                         warn(source, t, "at-rule '@${t.text}' is not supported yet and was ignored")
                         i = skipAtRule(tokens, i + 1)
@@ -100,13 +129,12 @@ object CssParser {
                         is SelectorParser.Result.Error -> warn(source, parsed.at ?: t, "invalid selector '${prelude.joinToString("").trim()}': ${parsed.message}; rule ignored")
                         is SelectorParser.Result.Ok -> {
                             val decls = parseDeclarationTokens(body, source)
-                            rules += StyleRule(parsed.selectors, decls, t.line)
+                            rules += StyleRule(parsed.selectors, decls, t.line, media)
                         }
                     }
                 }
             }
         }
-        return Stylesheet(source, rules, origin, keyframes)
     }
 
     /** Parses `color: red; padding: 4px` as used by inline `style` attributes. */

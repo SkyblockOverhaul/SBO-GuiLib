@@ -427,6 +427,19 @@ object Showcase {
             div(className = "chip") { +"short" }
             div(className = "badge") { +"abs" }
         }
+        h3 { +"@media" }
+        p(className = "muted") { +"Resize the window or change the GUI scale: these react to the screen size and resolution (= GUI scale)." }
+        div(className = "media-demo") {
+            div(className = "media-chip size") {
+                span(className = "bp-s") { +"narrow screen (< 400px)" }
+                span(className = "bp-m") { +"medium screen (400-639px)" }
+                span(className = "bp-l") { +"wide screen (>= 640px)" }
+            }
+            div(className = "media-chip scale") {
+                span(className = "sc-lo") { +"GUI scale < 3" }
+                span(className = "sc-hi") { +"GUI scale >= 3" }
+            }
+        }
     }
 
     private val TextDemo = component("TextDemo") {

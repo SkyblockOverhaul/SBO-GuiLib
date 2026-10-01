@@ -150,7 +150,8 @@ Invalid or unsupported CSS is **skipped with a warning** (`file:line:col`, "did 
 (`button.primary:hover`), descendant (`a b`), child (`a > b`), `a + b`, `a ~ b`, lists (`a, b`);
 pseudo-classes `:hover :active :focus :focus-within :disabled :enabled :checked :first-child :last-child :only-child :root :not(…)`,
 `:nth-child() :nth-last-child() :nth-of-type() :nth-last-of-type()` (`odd`, `even`, `3`, `2n+1`, `-n+3`; not the `of S` form).
-At-rules: `@keyframes` is supported. Not supported: pseudo-elements (`::before`), `@media`, `@import`, `@font-face`.
+At-rules: `@keyframes` and `@media` (nestable): comma lists, `not`/`only`, `screen`/`all`/`print`, `and`/`or`; features `width` `height` `aspect-ratio` `orientation` in GUI px, `resolution` = Minecraft's GUI scale (`min-resolution: 3dppx` or `3x`), `hover` (hover), `pointer` (fine), `prefers-reduced-motion` (no-preference), `prefers-color-scheme` (dark); `min-`/`max-` prefixes and range syntax `(400px <= width < 640px)`. Styles update when the window size or GUI scale changes.
+Not supported: pseudo-elements (`::before`), `@import`, `@font-face`, `@container`, `@supports`.
 
 **Values:** `px`, `%`, `em`, `rem`, `vw`, `vh`, `vmin`, `vmax`, unitless `0`; colors `#rgb #rgba #rrggbb #rrggbbaa`,
 `rgb()/rgba()` (comma or space syntax), `hsl()/hsla()`, all CSS named colors, `transparent`, `currentColor`;
@@ -212,7 +213,7 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
     Use `display: inline-block` when the box must not wrap or needs a width/height.
 12. `border-width` default (`medium`) is 1px; like the web, a border without `border-style` draws nothing.
 13. Every positioned element (`relative/absolute/fixed`) is its own paint layer; `z-index` orders layers among siblings in the same layer. Use `portal { }` for things that must be on top of everything. `position: fixed` elements ignore their ancestors' `transform`.
-14. Not supported (yet): 3D transforms (a `transform` containing them is ignored), `repeating-*-gradient`, `conic-gradient`, `@media`,
+14. Not supported (yet): 3D transforms (a `transform` containing them is ignored), `repeating-*-gradient`, `conic-gradient`,
     `:nth-child(… of S)`, pseudo-elements, float, `align-content`, `vertical-align`, letter-spacing, subgrid, named grid lines (`[name]` is ignored).
     Grid: `auto-fit` behaves like `auto-fill` (empty tracks aren't collapsed); items can't be placed before line 1.
 15. Images: `src` is a resource location (`"modid:textures/x.png"`), PNG, SVG or GIF only; no URLs yet. Animated GIFs loop like in a browser (all images with the same `src` play in sync); very long GIFs are cut off after ~32M pixels of frames.

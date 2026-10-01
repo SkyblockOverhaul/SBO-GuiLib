@@ -55,6 +55,7 @@ open class GuiLibScreen(
     }
 
     override fun extractRenderState(ctx: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
+        root.document.resolution = minecraft.window.guiScale.toFloat()
         val commands = root.frame(width.toFloat(), height.toFloat())
         CommandRenderer.draw(ctx, commands, mouseX, mouseY)
         Cursors.of(root.input.cursor)?.let(ctx::requestCursor)

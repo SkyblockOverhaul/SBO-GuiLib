@@ -175,6 +175,23 @@ button.primary:hover { background-color: #6f9cf2; }
 .inline-code { padding: 1px 3px; border-radius: 3px; background-color: #ffffff14; color: #ffd166; }
 .highlight { padding: 0 2px; background-color: #ffd16640; border-radius: 2px; }
 .tag-pill { padding: 1px 5px; margin: 0 1px; border-radius: 999px; background-color: #5b8def; color: #fff; }
+.media-demo { display: flex; gap: 6px; }
+.media-chip { padding: 4px 8px; border-radius: 4px; background-color: #2b2d31; }
+.media-chip.size { background-color: #e5484d; }
+.bp-m, .bp-l, .sc-hi { display: none; }
+@media (400px <= width < 640px) {
+    .media-chip.size { background-color: #b7791f; }
+    .bp-s { display: none; } .bp-m { display: inline; }
+}
+@media (min-width: 640px) {
+    .media-chip.size { background-color: #30a46c; }
+    .bp-s { display: none; } .bp-l { display: inline; }
+}
+@media (orientation: portrait) { .media-demo { flex-direction: column; } }
+@media (min-resolution: 3dppx) {
+    .media-chip.scale { background-color: #5b8def; }
+    .sc-lo { display: none; } .sc-hi { display: inline; }
+}
 .shadow-grid { gap: 10px; padding: 6px 4px 10px; }
 .demo-box.shadow { border-radius: 6px; }
 .demo-box.glass { background-color: #ffffff22; border: 1px solid #ffffff44; }

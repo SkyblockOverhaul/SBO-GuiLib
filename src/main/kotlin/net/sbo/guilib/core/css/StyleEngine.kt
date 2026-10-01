@@ -88,12 +88,16 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
 
     private class Matched(val decl: Declaration, val rank: Int, val specificity: Int, val order: Int)
 
-    /** Returns all rules matching [el], each with its highest matching specificity. Exposed for tests/devtools. */
-    fun matchingRules(el: Selectable): List<Pair<StyleRule, Int>> {
+    /**
+     * Returns all rules matching [el], each with its highest matching specificity. Rules inside `@media` are only
+     * considered when [ctx] is given and they match it. Exposed for tests/devtools.
+     */
+    fun matchingRules(el: Selectable, ctx: StyleContext? = null): List<Pair<StyleRule, Int>> {
         val best = LinkedHashMap<StyleRule, Int>()
         fun consider(list: List<IndexedRule>?) {
             list ?: return
             for (ir in list) {
+                if (ir.rule.media.isNotEmpty() && (ctx == null || !ir.rule.appliesTo(ctx))) continue
                 if (ir.selector.matches(el)) {
                     val prev = best[ir.rule]
                     if (prev == null || ir.selector.specificity > prev) best[ir.rule] = ir.selector.specificity
@@ -122,7 +126,7 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
         remember(universal)
 
         val matched = ArrayList<Matched>()
-        for ((rule, spec) in matchingRules(el)) {
+        for ((rule, spec) in matchingRules(el, ctx)) {
             val origin = originOf.getValue(rule)
             val order = orderOf.getValue(rule)
             for (d in rule.declarations) matched += Matched(d, rank(origin, d.important), spec, order)

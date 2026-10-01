@@ -6,6 +6,8 @@ data class StyleContext(
     val viewportHeight: Float,
     /** Font size of the root element, used for `rem`. */
     val rootFontSize: Float = Prop.FONT_SIZE.initial as Float,
+    /** Screen pixels per GUI pixel (Minecraft's GUI scale); `@media (resolution)` tests it. */
+    val resolution: Float = 1f,
 )
 
 /**
