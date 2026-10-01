@@ -48,6 +48,16 @@ internal val MenuComponent = component<MenuProps>("Menu") { p ->
     }
 
     useEffect { menuRef.current?.let { doc.focus(it) } }
+    // The menu sits at a mouse position, which means nothing after a resize or GUI scale change: close it (like browsers).
+    val onClose = useRef(p.onClose)
+    onClose.current = p.onClose
+    useEffect {
+        val w = doc.viewportWidth
+        val h = doc.viewportHeight
+        val hook: (Long) -> Unit = { if (doc.viewportWidth != w || doc.viewportHeight != h) onClose.current() }
+        doc.frameHooks += hook
+        onCleanup { doc.frameHooks -= hook }
+    }
     useDocumentEvent(EventType.MOUSEDOWN) { e -> if (menuRef.current?.contains(e.target) != true) p.onClose() }
     useDocumentEvent(EventType.WHEEL) { e -> if (menuRef.current?.contains(e.target) != true) p.onClose() }
     useDocumentEvent(EventType.KEYDOWN) { e ->

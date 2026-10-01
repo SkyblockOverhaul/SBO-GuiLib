@@ -288,6 +288,29 @@ class ControlsTest {
     }
 
     @Test
+    fun selectMenuFollowsTheSelectWhenTheScreenResizes() {
+        // Moving the window to a smaller monitor resizes the screen (and maybe the GUI scale) while the menu is open.
+        val root = ui {
+            div(style = "display: flex; justify-content: center; padding-top: 30px") {
+                select(value = "a", onChange = {}) { option("a", "Alpha"); option("b", "Beta") }
+            }
+        }
+        val sel = root.document.body.querySelector("select")!!
+        root.click(sel)
+        root.frame(300f, 200f)
+        fun check() {
+            val s = sel.getBoundingClientRect()
+            val m = root.document.overlayRoot.querySelector(".guilib-select-menu")!!.getBoundingClientRect()
+            assertEquals(s.x, m.x, 0.01f, "select=$s menu=$m")
+            assertEquals(s.bottom + 1f, m.y, 0.01f, "select=$s menu=$m")
+        }
+        check()
+        root.frame(160f, 120f)
+        root.frame(160f, 120f)
+        check()
+    }
+
+    @Test
     fun selectKeyboardAndOutsideClick() {
         var value = "a"
         val root = ui {

@@ -148,6 +148,7 @@ internal val ColorInputComponent = component<ColorInputProps>("ColorInput") { p 
     val popRef = useElementRef()
     val doc = useDocument()
 
+    useAnchorTracking(ref, if (open) anchor else null) { anchor = it }
     useDocumentEvent(EventType.MOUSEDOWN) { e ->
         if (open && ref.current?.contains(e.target) != true && popRef.current?.contains(e.target) != true) open = false
     }

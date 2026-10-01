@@ -1,6 +1,7 @@
 package net.sbo.guilib.core.controls
 
 import net.sbo.guilib.core.dom.Element
+import net.sbo.guilib.core.dom.Rect
 import net.sbo.guilib.core.dom.Ref
 import net.sbo.guilib.core.dsl.ComponentScope
 import java.util.Locale
@@ -31,6 +32,28 @@ internal fun ComponentScope.useLayoutStyle(target: Ref<Element?>, compute: () ->
         onCleanup { doc.frameHooks -= hook }
     }
     return last.current
+}
+
+/**
+ * Keeps the client rect a popup is anchored to up to date: while [anchor] is non-null, [target]'s rect is compared
+ * after every layout and [update] is called when it moved (window resized, GUI scale changed, layout shifted).
+ */
+internal fun ComponentScope.useAnchorTracking(target: Ref<Element?>, anchor: Rect?, update: (Rect) -> Unit) {
+    val latest = useRef(anchor to update)
+    latest.current = anchor to update
+    val doc = useDocument()
+    useEffect {
+        val hook: (Long) -> Unit = hook@{
+            val (a, set) = latest.current
+            if (a == null) return@hook
+            val el = target.current ?: return@hook
+            if (el.ownerDocument !== doc) return@hook
+            val r = el.getBoundingClientRect()
+            if (r != a) set(r)
+        }
+        doc.frameHooks += hook
+        onCleanup { doc.frameHooks -= hook }
+    }
 }
 
 /** Box of [child] relative to [container]'s padding box origin, including the container's scroll offset. */

@@ -233,6 +233,21 @@ class WidgetsTest {
     }
 
     @Test
+    fun contextMenuClosesWhenTheScreenResizes() {
+        // The menu sits at a mouse position; after a resize that point no longer matches what was clicked.
+        val root = ui { contextMenu(menu = { item("Invite") {} }) { div(style = "height: 50px") } }
+        root.input.mouseDown(20f, 10f, 2)
+        root.input.mouseUp(20f, 10f, 2)
+        root.frame(300f, 200f)
+        assertEquals(1, root.overlay(".guilib-menu").size)
+        root.frame(300f, 200f)
+        assertEquals(1, root.overlay(".guilib-menu").size)
+        root.frame(200f, 150f)
+        root.frame(200f, 150f)
+        assertEquals(0, root.overlay(".guilib-menu").size)
+    }
+
+    @Test
     fun contextMenuOpensAtTheMouseStaysOnScreenAndRuns() {
         val clicked = ArrayList<String>()
         val root = ui {

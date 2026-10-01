@@ -92,6 +92,7 @@ internal val SelectComponent = component<SelectProps>("Select") { p ->
 
     fun inside(target: Element, ref: net.sbo.guilib.core.dom.Ref<Element?>) = ref.current?.contains(target) == true
 
+    useAnchorTracking(ref, if (open) anchor else null) { anchor = it }
     useDocumentEvent(EventType.MOUSEDOWN) { e -> if (open && !inside(e.target, ref) && !inside(e.target, menuRef)) close(false) }
     useDocumentEvent(EventType.WHEEL) { e -> if (open && !inside(e.target, menuRef)) close(false) }
 
@@ -199,6 +200,7 @@ internal val TooltipComponent = component<TooltipProps>("Tooltip") { p ->
     val timer = useRef<Cancelable?>(null)
     val doc = useDocument()
     useEffect { onCleanup { timer.current?.cancel() } }
+    useAnchorTracking(ref, rect) { rect = it }
 
     span(
         className = "guilib-tooltip-anchor",
