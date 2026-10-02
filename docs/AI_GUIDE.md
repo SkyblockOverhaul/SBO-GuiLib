@@ -60,6 +60,7 @@ body { display: flex; align-items: center; justify-content: center; }  /* body =
 | `useEffect(a, b) { … }` | Runs after mount and whenever `a`/`b` change (`==`). There is **no** "every render" form. |
 | inside `useEffect`: `onCleanup { }`, `setInterval(ms) { }`, `setTimeout(ms) { }` | Timers are cancelled automatically on cleanup/unmount. |
 | `useInterval(ms) { … }` | Interval that always calls the latest lambda. |
+| `val r = useAsync(keys) { slowCall() }` · `useFuture(keys) { completableFuture }` · `usePromise(keys) { resolve, reject -> api.load(resolve, reject) }` | Async data: runs after mount and when a key changes (`useAsync` on a GuiLib background thread), re-renders with the result. `r.loading`, `r.value` (last successful result, kept while reloading), `r.error`, `r.isSuccess`, `r.reload()`. Outdated results (keys changed, unmounted) are dropped. Never touch the UI inside the loader. |
 | `useMemo(deps…) { … }`, `useRef(init)`, `useElementRef()` | `ref = myRef` on any tag sets `myRef.current` to the `Element`. |
 | `createContext(default)`, `Ctx.Provider(value) { … }`, `useContext(Ctx)` | Like React context. |
 | `useDocument()` | The `Document` (viewport size, `focusedElement`, `addEventListener`). |
@@ -257,7 +258,7 @@ in one stylesheet works in every screen. Weights map to the nearest face (400/50
 - **Ellipsis:** `white-space: nowrap; overflow: hidden; text-overflow: ellipsis` (+ `min-width: 0` in flex rows).
 - **Theme:** define `--vars` on `:root` in one CSS file, use `var(--x)` everywhere.
 - **Close button:** `button(onClick = { GuiLib.close() })`.
-- **Async data:** fetch in `useEffect`, call the state setter from the callback (thread-safe). Other work: `GuiLib.runOnUi { }`.
+- **Async data:** `val commit = useAsync { fetchLatestCommit() }` → `+when { commit.error != null -> "unavailable"; commit.loading -> "loading…"; else -> commit.value!! }`; `button(onClick = { commit.reload() })`. Callback APIs: `usePromise { resolve, reject -> api.load(resolve, reject) }`. State setters are thread-safe too. Other work: `GuiLib.runOnUi { }`.
 - **Hover fade:** `.card { transition: background-color 150ms } .card:hover { background-color: #333 }`.
 - **Fade in on open:** `@keyframes fade-in { from { opacity: 0 } }` + `.panel { animation: fade-in 200ms ease-out }`.
 - **Staggered slide-in:** `@keyframes slide-in { from { opacity: 0; transform: translateX(-20px) } }` +

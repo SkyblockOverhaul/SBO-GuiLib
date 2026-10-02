@@ -49,6 +49,7 @@ import net.sbo.guilib.core.dsl.switch
 import net.sbo.guilib.core.dsl.tabs
 import net.sbo.guilib.core.dsl.textarea
 import net.sbo.guilib.core.dsl.tooltip
+import net.sbo.guilib.core.dsl.useAsync
 import net.sbo.guilib.core.dsl.useClipboard
 import net.sbo.guilib.core.dsl.useToast
 import net.sbo.guilib.fabric.GuiLib
@@ -832,6 +833,26 @@ object Showcase {
             button(onClick = { todos = todos.drop(1) }, disabled = todos.isEmpty()) { +"Remove first" }
         }
         for (t in todos) div(key = t, className = "todo") { +t }
+        h3 { +"Async data (useAsync)" }
+        var fail by useState(false)
+        // Pretends to be a slow request (runs on a background thread, the game keeps running).
+        val commit = useAsync(fail) {
+            Thread.sleep(1200)
+            if (fail) error("GitHub is unreachable")
+            "a1b2c3d" + (System.nanoTime() % 1000)
+        }
+        div(className = "row") {
+            span(className = classNames("async-result", "loading" to commit.loading, "failed" to (commit.error != null))) {
+                +when {
+                    commit.error != null -> "Error: ${commit.error!!.message}"
+                    commit.loading && commit.value != null -> "${commit.value} (refreshing…)"
+                    commit.loading -> "Loading latest commit…"
+                    else -> "Latest commit: ${commit.value}"
+                }
+            }
+            button(onClick = { commit.reload() }, disabled = commit.loading) { +"Reload" }
+            switch(checked = fail, onChange = { fail = it.checked }, label = "Fail")
+        }
     }
 
     fun open(section: String = SECTIONS.first()) =

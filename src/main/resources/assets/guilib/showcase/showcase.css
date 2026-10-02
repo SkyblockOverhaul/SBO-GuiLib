@@ -425,3 +425,8 @@ body.showcase-mc-font { font-family: minecraft; }
     .supports-demo::after { content: " yes, this block applies"; color: #3fb950; }
 }
 .font-face-demo { font-family: "Showcase Display", inter; font-size: 10px; color: var(--accent); }
+
+/* useAsync demo */
+.async-result { min-width: 200px; }
+.async-result.loading { color: #949ba4; }
+.async-result.failed { color: #f23f42; }
