@@ -7,12 +7,13 @@ import net.minecraft.network.chat.Style
 import net.sbo.guilib.core.dsl.NodeBuilder
 import net.sbo.guilib.core.dsl.classNames
 import net.sbo.guilib.core.dsl.span
+import net.sbo.guilib.core.event.UIEvent
 import java.util.Optional
 
 /**
  * Renders a Minecraft text [component] (chat messages, item names, `Component.translatable(…)`) as inline text:
  * colors (also RGB), bold, italic, underlined and strikethrough become CSS, `show_text` hover events become `title`
- * tooltips, and click events (open URL, run/suggest command, copy to clipboard …) work like in chat.
+ * tooltips, `show_item` / `show_entity` hover events show Minecraft's item / entity tooltip, and click events (open URL, run/suggest command, copy to clipboard …) work like in chat.
  * The text sits in a `span.guilib-text`; clickable parts get `.guilib-text-link`.
  */
 fun NodeBuilder.text(component: Component, className: String? = null, key: Any? = null) {
@@ -47,16 +48,23 @@ private fun NodeBuilder.segment(style: Style, s: String) {
         val decorations = listOfNotNull("underline".takeIf { style.isUnderlined }, "line-through".takeIf { style.isStrikethrough })
         if (decorations.isNotEmpty()) append("text-decoration: ${decorations.joinToString(" ")}; ")
     }.trim()
-    val hover = (style.hoverEvent as? HoverEvent.ShowText)?.value?.string
+    val hover = style.hoverEvent
+    val title = (hover as? HoverEvent.ShowText)?.value?.string
     val click = style.clickEvent
     if (css.isEmpty() && hover == null && click == null) {
         +s
         return
     }
-    span(
-        className = if (click != null) "guilib-text-link" else null,
-        style = css.ifEmpty { null },
-        title = hover,
-        onClick = click?.let { ev -> { _ -> GuiLib.handleClickEvent(ev) } },
+    val attrs = HashMap<String, Any?>()
+    if (title != null) attrs["title"] = title
+    // Item and entity tooltips are drawn by Minecraft (GuiLibScreen), like in chat.
+    if (hover is HoverEvent.ShowItem || hover is HoverEvent.ShowEntity) attrs[MC_HOVER_ATTR] = hover
+    val handlers = HashMap<String, (UIEvent) -> Unit>()
+    if (click != null) handlers["click"] = { GuiLib.handleClickEvent(click) }
+    element(
+        "span", null, null, if (click != null) "guilib-text-link" else null, css.ifEmpty { null }, null, attrs, handlers,
     ) { +s }
 }
+
+/** Attribute holding a `show_item` / `show_entity` [HoverEvent] whose tooltip Minecraft draws while hovered. */
+internal const val MC_HOVER_ATTR = "mc-hover"

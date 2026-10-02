@@ -40,6 +40,16 @@ class InteractionController(private val doc: Document, private val hitTest: (Flo
     /** The element under the mouse, if any. */
     val hovered: Element? get() = hoverChain.lastOrNull()
 
+    /** Attribute [name] of the hovered element or its nearest ancestor that has it (e.g. hover events of chat text). */
+    fun hoveredAttribute(name: String): Any? {
+        var e = hovered
+        while (e != null) {
+            e.getAttribute(name)?.let { return it }
+            e = e.parent
+        }
+        return null
+    }
+
     /**
      * Cursor requested by the hovered element's `cursor` property. While the left button is held on an element with a
      * drag cursor (`grab`, `grabbing`, `move`, resize cursors) that cursor stays, even when the mouse leaves it.

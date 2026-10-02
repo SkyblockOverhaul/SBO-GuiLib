@@ -551,6 +551,13 @@ object Showcase {
                     ),
             )
         }
+        // displayName carries a show_item hover event (like item links in chat); stacks need a loaded world.
+        val sword = try {
+            ItemStack(Items.DIAMOND_SWORD)
+        } catch (_: Exception) {
+            null
+        }
+        if (sword != null) p(className = "item-link") { text(Component.literal("Item link (hover it): ").append(sword.displayName)) }
     }
 
     private val ScrollDemo = component("ScrollDemo") {

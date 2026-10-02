@@ -77,7 +77,7 @@ Every tag accepts: `className`, `id`, `style` (a **CSS string**, e.g. `style = "
 `onWheel` (WheelEvent), `onKeyDown, onKeyUp` (KeyboardEvent), `onFocus, onBlur` (FocusEvent), `onScroll` (ScrollEvent).
 Children go in the trailing lambda; text with `+"text"` or `text(value)`.
 Minecraft text: `text(component)` renders a `net.minecraft.network.chat.Component` (colors incl. RGB, bold/italic/
-underline/strikethrough, `show_text` hover → tooltip, click events like in chat; `span.guilib-text`, clickable parts
+underline/strikethrough, `show_text` hover → tooltip, `show_item` hover → Minecraft's item tooltip (e.g. `text(stack.displayName)`), click events like in chat; `span.guilib-text`, clickable parts
 `.guilib-text-link`). Translations: `val t = useTranslation()` (`net.sbo.guilib.fabric`), then `+t("mymod.key", arg)`;
 the component re-renders when the game language or resource packs change. `t.language`, `t.has(key)`.
 
