@@ -51,7 +51,12 @@ object CommandRenderer {
     private val layerQuads = ArrayList<Quad>()
 
     /** Adds one of our elements to the current layer (after [beforeQuad] chose it). */
-    private fun add(ctx: GuiGraphicsExtractor, state: GuiElementRenderState) = ctx.guiRenderState.current.addGuiElement(state)
+    private fun add(ctx: GuiGraphicsExtractor, state: GuiElementRenderState) {
+        // Like vanilla's GuiRenderState.addGuiElement: no bounds = completely clipped away. Such an element must not
+        // be drawn – inside nested clips that don't overlap the scissor is 0x0 and Minecraft would crash on it.
+        if (state.bounds() == null) return
+        ctx.guiRenderState.current.addGuiElement(state)
+    }
 
     /** Minecraft placed something itself: our next element starts a new layer above everything. */
     private fun vanillaDrew() {
