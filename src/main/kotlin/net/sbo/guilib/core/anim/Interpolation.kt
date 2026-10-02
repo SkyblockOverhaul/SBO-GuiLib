@@ -73,8 +73,9 @@ object Interpolation {
             when {
                 la == lb -> la
                 la is BackgroundLayer.Gradient && lb is BackgroundLayer.Gradient &&
-                    la.radial == lb.radial && la.stops.size == lb.stops.size && la.toCorner == lb.toCorner -> la.copy(
+                    la.radial == lb.radial && la.conic == lb.conic && la.repeating == lb.repeating && la.stops.size == lb.stops.size && la.toCorner == lb.toCorner -> la.copy(
                     angle = lerp(la.angle, lb.angle, t),
+                    fromAngle = lerp(la.fromAngle, lb.fromAngle, t),
                     stops = la.stops.indices.map { s ->
                         val sa = la.stops[s]
                         val sb = lb.stops[s]

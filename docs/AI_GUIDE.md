@@ -190,7 +190,7 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
 - Text: `color font-family font-size font-weight font-style line-height text-align white-space text-overflow text-decoration text-shadow letter-spacing` (`letter-spacing`: `normal` or a length, also negative; added after every character, animatable)
 - Visual: `background background-color background-image opacity visibility object-fit`. `background-image` takes a comma list of layers
   (first = top): `url("modid:path.png")` (stretched to the box), `linear-gradient(…)` (angles, `to right`, `to top left`, stops with
-  positions, hard stops) and `radial-gradient(…)` (`circle`/`ellipse`, size keywords, `at <position>`). Gradients respect `border-radius`.
+  positions, hard stops) and `radial-gradient(…)` (`circle`/`ellipse`, size keywords, `at <position>`), `conic-gradient(…)` (`from <angle>`, `at <position>`, stops in angles or %; `from` is animatable) and the `repeating-linear/radial/conic-gradient(…)` forms. Gradients respect `border-radius`.
   `box-shadow`: `none` or a comma list of `[inset] <x> <y> [<blur> [<spread>]] [<color>]` (first = top; color defaults to `currentColor`).
   Real Gaussian blur, follows `border-radius`; outer shadows are never drawn under the box (fine with translucent backgrounds),
   inset shadows sit inside the padding box. Transitions between shadow lists work (`inset` must match per position).
@@ -223,7 +223,7 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
     Use `display: inline-block` when the box must not wrap or needs a width/height.
 12. `border-width` default (`medium`) is 1px; like the web, a border without `border-style` draws nothing.
 13. Every positioned element (`relative/absolute/fixed`) is its own paint layer; `z-index` orders layers among siblings in the same layer. Use `portal { }` for things that must be on top of everything. `position: fixed` elements ignore their ancestors' `transform`.
-14. Not supported (yet): 3D transforms (a `transform` containing them is ignored), `repeating-*-gradient`, `conic-gradient`,
+14. Not supported (yet): 3D transforms (a `transform` containing them is ignored),
     `:nth-child(… of S)`, pseudo-elements other than `::before`/`::after`, float, `vertical-align` on text (no `sub`/`sup` text shifting), subgrid, named grid lines (`[name]` is ignored).
     Grid: `auto-fit` behaves like `auto-fill` (empty tracks aren't collapsed); items can't be placed before line 1.
 15. Images: `src` is a resource location (`"modid:textures/x.png"`), PNG, SVG or GIF only; no URLs yet. Animated GIFs loop like in a browser (all images with the same `src` play in sync); very long GIFs are cut off after ~32M pixels of frames.

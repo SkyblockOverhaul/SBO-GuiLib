@@ -7,8 +7,9 @@ sealed interface BackgroundLayer {
     data class Url(val src: String) : BackgroundLayer
 
     /**
-     * `linear-gradient()` / `radial-gradient()`. Colors are ARGB ints (or [CurrentColor] before computation);
-     * stop positions are lengths (`%` of the gradient line / ray) or `null` = distribute evenly.
+     * `linear-gradient()` / `radial-gradient()` / `conic-gradient()` and their `repeating-` forms. Colors are ARGB
+     * ints (or [CurrentColor] before computation); stop positions are lengths (`%` of the gradient line / ray / turn)
+     * or `null` = distribute evenly. Conic stop angles are stored as `%` of a full turn.
      */
     data class Gradient(
         val radial: Boolean,
@@ -23,6 +24,12 @@ sealed interface BackgroundLayer {
         val centerX: Length = Length(50f, "%"),
         val centerY: Length = Length(50f, "%"),
         val stops: List<Stop>,
+        /** `conic-gradient`: colors go clockwise around [centerX]/[centerY], starting at [fromAngle]. */
+        val conic: Boolean = false,
+        /** Conic: CSS angle in degrees where the gradient starts (0 = top). */
+        val fromAngle: Float = 0f,
+        /** `repeating-*-gradient`: the stops repeat with the distance from the first to the last stop. */
+        val repeating: Boolean = false,
     ) : BackgroundLayer
 
     data class Stop(val color: Any, val position: Length?)
@@ -54,6 +61,10 @@ internal object BackgroundParser {
         return when (v.name) {
             "linear-gradient" -> linear(v.args)
             "radial-gradient" -> radial(v.args)
+            "conic-gradient" -> conic(v.args)
+            "repeating-linear-gradient" -> linear(v.args)?.copy(repeating = true)
+            "repeating-radial-gradient" -> radial(v.args)?.copy(repeating = true)
+            "repeating-conic-gradient" -> conic(v.args)?.copy(repeating = true)
             else -> null
         }
     }
@@ -144,6 +155,34 @@ internal object BackgroundParser {
         return BackgroundLayer.Gradient(radial = true, circle = circle, size = size, explicitSize = explicit, centerX = cx, centerY = cy, stops = stops)
     }
 
+    /** `conic-gradient([from <angle>] [at <position>], stops…)`; stop positions are angles or percentages. */
+    private fun conic(args: List<ComponentValue>): BackgroundLayer.Gradient? {
+        val parts = splitCommas(args)
+        var from = 0f
+        var cx = Length(50f, "%")
+        var cy = Length(50f, "%")
+        var stopParts = parts
+        val first = parts.firstOrNull()?.filter { !ws(it) } ?: return null
+        if (first.isNotEmpty() && (Properties.isIdent(first[0], "from") || Properties.isIdent(first[0], "at"))) {
+            var i = 0
+            if (Properties.isIdent(first[0], "from")) {
+                from = first.getOrNull(1)?.let(::angle) ?: return null
+                i = 2
+            }
+            if (i < first.size) {
+                if (!Properties.isIdent(first[i], "at")) return null
+                val (x, y) = position(first.subList(i + 1, first.size)) ?: return null
+                cx = x; cy = y
+            }
+            stopParts = parts.drop(1)
+        }
+        // Angles become % of a full turn, so stop resolution works like for the other gradients.
+        fun pos(v: ComponentValue): Length? = angle(v)?.let { Length(it / 360f * 100f, "%") }
+            ?: Properties.length(v)?.takeIf { it.isPercent }
+        val stops = stops(stopParts, ::pos) ?: return null
+        return BackgroundLayer.Gradient(radial = false, conic = true, fromAngle = from, centerX = cx, centerY = cy, stops = stops)
+    }
+
     /** `center`, `left top`, `25% 75%`, `right 10px`… (keywords or lengths, 1–2 values). */
     private fun position(values: List<ComponentValue>): Pair<Length, Length>? {
         fun kw(v: ComponentValue): Pair<Char, Float>? = when {
@@ -172,7 +211,10 @@ internal object BackgroundParser {
         return (x ?: Length(50f, "%")) to (y ?: Length(50f, "%"))
     }
 
-    private fun stops(parts: List<List<ComponentValue>>): List<BackgroundLayer.Stop>? {
+    private fun stops(
+        parts: List<List<ComponentValue>>,
+        position: (ComponentValue) -> Length? = Properties::length,
+    ): List<BackgroundLayer.Stop>? {
         val out = ArrayList<BackgroundLayer.Stop>()
         for (p in parts) {
             val w = p.filter { !ws(it) }
@@ -180,10 +222,10 @@ internal object BackgroundParser {
             val color = Properties.color(w[0]) ?: return null // color hints without a color are not supported
             when (w.size) {
                 1 -> out += BackgroundLayer.Stop(color, null)
-                2 -> out += BackgroundLayer.Stop(color, Properties.length(w[1]) ?: return null)
+                2 -> out += BackgroundLayer.Stop(color, position(w[1]) ?: return null)
                 3 -> { // double position: "red 10% 30%"
-                    out += BackgroundLayer.Stop(color, Properties.length(w[1]) ?: return null)
-                    out += BackgroundLayer.Stop(color, Properties.length(w[2]) ?: return null)
+                    out += BackgroundLayer.Stop(color, position(w[1]) ?: return null)
+                    out += BackgroundLayer.Stop(color, position(w[2]) ?: return null)
                 }
                 else -> return null
             }

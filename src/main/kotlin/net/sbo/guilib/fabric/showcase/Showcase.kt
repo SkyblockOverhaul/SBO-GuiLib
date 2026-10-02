@@ -355,6 +355,12 @@ object Showcase {
             div(className = "demo-box grad", style = "background: radial-gradient(circle, #ffd166, #e5484d 60%, #2b2d31)") { +"radial" }
             div(className = "demo-box grad", style = "background: linear-gradient(to bottom, transparent, black), linear-gradient(to right, white, red)") { +"layers" }
             div(className = "demo-box grad", style = "background: linear-gradient(to right, red, yellow, lime, cyan, blue, magenta, red); border: 1px solid #fff") { +"hue" }
+            div(className = "demo-box grad", style = "background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red); border-radius: 50%") { +"conic" }
+            div(className = "demo-box grad conic-spin", title = "conic-gradient(from …) animated") { +"spin" }
+            div(className = "demo-box grad", style = "background: conic-gradient(#ffd166 0 25%, #e5484d 0 60%, #5b8def 0); border-radius: 50%") { +"pie" }
+            div(className = "demo-box grad", style = "background: repeating-linear-gradient(45deg, #e5484d 0 6px, #2b2d31 6px 12px)") { +"stripes" }
+            div(className = "demo-box grad", style = "background: repeating-radial-gradient(circle, #5b8def 0 4px, #1e1f22 4px 8px)") { +"rings" }
+            div(className = "demo-box grad", style = "background: repeating-conic-gradient(#ddd 0 25%, #888 0 50%); border: 1px solid #fff") { +"checker" }
         }
         h3 { +"Shadows" }
         div(className = "box-grid shadow-grid") {

@@ -6,7 +6,9 @@ import net.sbo.guilib.core.css.Length
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.atan2
+import kotlin.math.ceil
 import kotlin.math.cos
+import kotlin.math.floor
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
@@ -26,10 +28,14 @@ class ColorMesh(val x: FloatArray, val y: FloatArray, val color: IntArray) {
  *
  * Linear gradients are exact: between two color stops the color is an affine function of the position, which is
  * exactly what the GPU's per-vertex color interpolation over a triangle computes. The box is cut into one polygon
- * per stop interval. Radial gradients use rings of [RADIAL_SEGMENTS] segments (exact along the radius).
+ * per stop interval. Radial gradients use rings of [RADIAL_SEGMENTS] segments (exact along the radius). Conic
+ * gradients are a fan of thin triangles around the center, split at every stop. Repeating gradients repeat their
+ * resolved stops over the covered range (at most [MAX_REPEATED_STOPS]).
  */
 object GradientMesh {
     const val RADIAL_SEGMENTS = 64
+    const val CONIC_SEGMENTS = 128
+    const val MAX_REPEATED_STOPS = 1024
 
     private class Builder {
         val x = ArrayList<Float>()
@@ -46,8 +52,11 @@ object GradientMesh {
     /** A polygon vertex with its gradient parameter `t` (0..1 along the gradient line/ray). */
     private data class V(val x: Float, val y: Float, val t: Float)
 
-    fun build(g: BackgroundLayer.Gradient, x: Float, y: Float, w: Float, h: Float, alpha: Float): ColorMesh =
-        if (g.radial) radial(g, x, y, w, h, alpha) else linear(g, x, y, w, h, alpha)
+    fun build(g: BackgroundLayer.Gradient, x: Float, y: Float, w: Float, h: Float, alpha: Float): ColorMesh = when {
+        g.conic -> conic(g, x, y, w, h, alpha)
+        g.radial -> radial(g, x, y, w, h, alpha)
+        else -> linear(g, x, y, w, h, alpha)
+    }
 
     // ---- stops ---------------------------------------------------------------------------------------------------
 
@@ -77,6 +86,34 @@ object GradientMesh {
             i++
         }
         return stops.mapIndexed { idx, s -> ResolvedStop(Colors.withOpacity(s.color as Int, alpha), pos[idx]!!) }
+    }
+
+    /**
+     * `repeating-*-gradient`: copies of [stops], shifted by their length (first to last stop), covering
+     * [tMin]..[tMax]. A zero-length repetition just uses the stops as they are.
+     */
+    private fun repeatStops(stops: List<ResolvedStop>, tMin: Float, tMax: Float): List<ResolvedStop> {
+        val first = stops.first().t
+        val period = stops.last().t - first
+        if (period <= 1e-5f) return stops
+        val kStart = floor((tMin - first) / period).toInt()
+        val kEnd = minOf(ceil((tMax - first) / period).toInt(), kStart + MAX_REPEATED_STOPS / stops.size)
+        val out = ArrayList<ResolvedStop>((kEnd - kStart + 1) * stops.size)
+        for (k in kStart..kEnd) for (s in stops) out += ResolvedStop(s.color, s.t + k * period)
+        return out
+    }
+
+    /** Color at [t] over all [stops] (solid before the first and after the last); binary search. */
+    private fun colorIn(stops: List<ResolvedStop>, t: Float): Int {
+        if (t <= stops.first().t) return stops.first().color
+        if (t >= stops.last().t) return stops.last().color
+        var lo = 0
+        var hi = stops.size - 1
+        while (hi - lo > 1) {
+            val mid = (lo + hi) / 2
+            if (stops[mid].t < t) lo = mid else hi = mid
+        }
+        return colorAt(stops[lo], stops[hi], t)
     }
 
     /**
@@ -116,7 +153,8 @@ object GradientMesh {
         val sy = cy - dy * length / 2f
         fun tOf(px: Float, py: Float) = if (length > 0f) ((px - sx) * dx + (py - sy) * dy) / length else 0f
 
-        val stops = resolveStops(g.stops, length, alpha)
+        var stops = resolveStops(g.stops, length, alpha)
+        if (g.repeating) stops = repeatStops(stops, 0f, 1f) // the corners are at t = 0 and 1
         val rect = listOf(V(x, y, tOf(x, y)), V(x + w, y, tOf(x + w, y)), V(x + w, y + h, tOf(x + w, y + h)), V(x, y + h, tOf(x, y + h)))
         val out = Builder()
 
@@ -193,20 +231,16 @@ object GradientMesh {
         rx = max(rx, 0.0001f)
         ry = max(ry, 0.0001f)
 
-        val stops = resolveStops(g.stops, rx, alpha)
+        var stops = resolveStops(g.stops, rx, alpha)
         // Rings at every stop plus one ring far enough out to cover the whole box.
         val cover = max(
             max(hypot(left / rx, top / ry), hypot(right / rx, top / ry)),
             max(hypot(left / rx, bottom / ry), hypot(right / rx, bottom / ry)),
         ) * 1.01f
+        if (g.repeating) stops = repeatStops(stops, 0f, cover)
         val ringTs = (listOf(0f) + stops.map { it.t } + listOf(max(cover, stops.last().t + 0.0001f))).distinct().sorted()
 
-        fun color(t: Float): Int {
-            if (t <= stops.first().t) return stops.first().color
-            if (t >= stops.last().t) return stops.last().color
-            for (i in 0 until stops.size - 1) if (t <= stops[i + 1].t) return colorAt(stops[i], stops[i + 1], t)
-            return stops.last().color
-        }
+        fun color(t: Float) = colorIn(stops, t)
 
         val box = listOf(x to y, x + w to y, x + w to y + h, x to y + h)
         val out = Builder()
@@ -214,8 +248,10 @@ object GradientMesh {
         for (ri in 0 until ringTs.size - 1) {
             val t0 = ringTs[ri]
             val t1 = ringTs[ri + 1]
-            val c0 = color(t0)
-            val c1 = color(t1)
+            // Sample just inside the ring, so a hard stop on its border picks the right side.
+            val eps = (t1 - t0) * 1e-3f
+            val c0 = color(t0 + eps)
+            val c1 = color(t1 - eps)
             for (s in 0 until n) {
                 val a0 = 2f * PI.toFloat() * s / n
                 val a1 = 2f * PI.toFloat() * (s + 1) / n
@@ -231,6 +267,42 @@ object GradientMesh {
                     clippedTri(out, box, p00, c0, p11, c1, p01, c0)
                 }
             }
+        }
+        return out.build()
+    }
+
+    // ---- conic ---------------------------------------------------------------------------------------------------
+
+    private fun conic(g: BackgroundLayer.Gradient, x: Float, y: Float, w: Float, h: Float, alpha: Float): ColorMesh {
+        fun lenX(l: Length) = if (l.isPercent) w * l.value / 100f else l.value
+        fun lenY(l: Length) = if (l.isPercent) h * l.value / 100f else l.value
+        val cx = x + lenX(g.centerX)
+        val cy = y + lenY(g.centerY)
+        var stops = resolveStops(g.stops, 1f, alpha) // positions are % of a turn
+        if (g.repeating) stops = repeatStops(stops, 0f, 1f)
+        // Far enough out that every chord of the fan still covers the box.
+        val reach = max(max(hypot(cx - x, cy - y), hypot(x + w - cx, cy - y)), max(hypot(cx - x, y + h - cy), hypot(x + w - cx, y + h - cy)))
+        val r = (reach + 1f) / cos(PI.toFloat() / CONIC_SEGMENTS) * 1.01f
+        // Segment borders: a uniform fan plus every stop, so hard stops stay sharp.
+        val ts = ((0..CONIC_SEGMENTS).map { it.toFloat() / CONIC_SEGMENTS } + stops.map { it.t }.filter { it > 0f && it < 1f })
+            .sorted()
+        val box = listOf(x to y, x + w to y, x + w to y + h, x to y + h)
+        val out = Builder()
+        val from = g.fromAngle * PI.toFloat() / 180f
+        fun point(t: Float): Pair<Float, Float> {
+            val a = from + t * 2f * PI.toFloat()
+            return cx + sin(a) * r to cy - cos(a) * r
+        }
+        for (i in 0 until ts.size - 1) {
+            val t0 = ts[i]
+            val t1 = ts[i + 1]
+            if (t1 - t0 < 1e-6f) continue
+            // Sample just inside the segment, so a hard stop on its border picks the right side.
+            val eps = (t1 - t0) * 1e-3f
+            val c0 = colorIn(stops, t0 + eps)
+            val c1 = colorIn(stops, t1 - eps)
+            val cm = colorIn(stops, (t0 + t1) / 2f)
+            clippedTri(out, box, cx to cy, cm, point(t0), c0, point(t1), c1)
         }
         return out.build()
     }

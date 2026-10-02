@@ -132,4 +132,57 @@ class GradientTest {
         val mesh = GradientMesh.build(gradient("linear-gradient(red, red)"), 0f, 0f, 10f, 10f, 0.5f)
         assertColor(0x80FF0000.toInt(), sample(mesh, 5f, 5f))
     }
+
+    @Test
+    fun repeatingLinearGradientsRepeatTheirStops() {
+        val g = gradient("repeating-linear-gradient(to right, red 0px, red 10px, blue 10px, blue 20px)")
+        assertTrue(g.repeating)
+        val mesh = GradientMesh.build(g, 0f, 0f, 100f, 10f, 1f)
+        assertColor(0xFFFF0000.toInt(), sample(mesh, 5f, 5f))
+        assertColor(0xFF0000FF.toInt(), sample(mesh, 15f, 5f))
+        assertColor(0xFFFF0000.toInt(), sample(mesh, 85f, 5f))
+        assertColor(0xFF0000FF.toInt(), sample(mesh, 95f, 5f))
+    }
+
+    @Test
+    fun repeatingRadialGradientsRepeatOutwards() {
+        val g = gradient("repeating-radial-gradient(circle, white 0px, white 5px, black 5px, black 10px)")
+        assertTrue(g.radial && g.repeating)
+        val mesh = GradientMesh.build(g, 0f, 0f, 100f, 100f, 1f)
+        assertColor(0xFFFFFFFF.toInt(), sample(mesh, 52f, 50f), 8)
+        assertColor(0xFF000000.toInt(), sample(mesh, 57.5f, 50f), 8)
+        assertColor(0xFFFFFFFF.toInt(), sample(mesh, 72.5f, 50f), 8) // third period: 20..25
+        assertColor(0xFF000000.toInt(), sample(mesh, 50f, 87.5f), 8)
+    }
+
+    @Test
+    fun conicGradients() {
+        val g = gradient("conic-gradient(from 90deg at 50% 50%, red 0deg, red 90deg, blue 90deg, blue 180deg, lime 180deg 50%, yellow 0.75turn)")
+        assertTrue(g.conic)
+        assertEquals(90f, g.fromAngle)
+        assertEquals(25f, g.stops[1].position!!.value) // angles are stored as % of a turn
+        val mesh = GradientMesh.build(g, 0f, 0f, 100f, 100f, 1f)
+        // "from 90deg": red covers the quarter from 3 o'clock to 6 o'clock (clockwise), blue 6 → 9 o'clock.
+        assertColor(0xFFFF0000.toInt(), sample(mesh, 80f, 70f), 8)
+        assertColor(0xFF0000FF.toInt(), sample(mesh, 20f, 70f), 8)
+        // Default: from the top, clockwise; the whole box is covered.
+        val simple = GradientMesh.build(gradient("conic-gradient(red 25%, blue 25%)"), 0f, 0f, 40f, 40f, 1f)
+        var area = 0f
+        for (t in 0 until simple.triangleCount) {
+            val i = t * 3
+            area += abs((simple.x[i + 1] - simple.x[i]) * (simple.y[i + 2] - simple.y[i]) - (simple.x[i + 2] - simple.x[i]) * (simple.y[i + 1] - simple.y[i])) / 2f
+        }
+        assertEquals(1600f, area, 1f)
+        assertColor(0xFFFF0000.toInt(), sample(simple, 30f, 10f), 8) // top right quarter
+        assertColor(0xFF0000FF.toInt(), sample(simple, 10f, 30f), 8)
+        assertColor(0xFF0000FF.toInt(), sample(simple, 10f, 10f), 8)
+    }
+
+    @Test
+    fun radialHardStopsStaySharp() {
+        // The ring between 10px and the edge used to fade from white to black instead of being solid black.
+        val mesh = GradientMesh.build(gradient("radial-gradient(circle, white 10px, black 10px)"), 0f, 0f, 100f, 100f, 1f)
+        assertColor(0xFFFFFFFF.toInt(), sample(mesh, 55f, 50f), 8)
+        assertColor(0xFF000000.toInt(), sample(mesh, 62f, 50f), 8)
+    }
 }
