@@ -24,10 +24,13 @@ import net.sbo.guilib.fabric.font.TrueTypeFont
 import net.sbo.guilib.fabric.font.VanillaFont
 import net.sbo.guilib.fabric.image.Images
 import org.joml.Matrix3x2f
+import org.joml.Vector2f
 import java.util.UUID
+import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
 /** Draws [PaintCommand]s with Minecraft's GUI renderer. */
 object CommandRenderer {
@@ -421,25 +424,33 @@ object CommandRenderer {
     private fun drawEntity(ctx: GuiGraphicsExtractor, cmd: PaintCommand.Replaced) {
         val el = cmd.element
         val entity = el.getAttribute("entity") as? LivingEntity ?: return
-        val x1 = r(cmd.x)
-        val y1 = r(cmd.y)
-        val x2 = r(cmd.x + cmd.width)
-        val y2 = r(cmd.y + cmd.height)
+        if (cmd.width <= 0f || cmd.height <= 0f) return
+        // Minecraft renders entities as a picture-in-picture at absolute GUI coordinates and ignores the pose, so the
+        // box is mapped through it here (own screen scale, scale()/rotate() transforms). Rotated boxes use their
+        // bounding box; the entity itself stays upright.
+        val pose = ctx.pose()
+        val corners = listOf(cmd.x to cmd.y, cmd.x + cmd.width to cmd.y, cmd.x to cmd.y + cmd.height, cmd.x + cmd.width to cmd.y + cmd.height)
+            .map { (x, y) -> pose.transformPosition(x, y, Vector2f()) }
+        val x1 = r(corners.minOf { it.x })
+        val y1 = r(corners.minOf { it.y })
+        val x2 = r(corners.maxOf { it.x })
+        val y2 = r(corners.maxOf { it.y })
         if (x2 <= x1 || y2 <= y1) return
+        val k = sqrt(abs(pose.determinant()))
         // The renderer centers the bounding box; leave room for limbs and the head turning (vanilla: 30 in a 49×70 box).
-        val fit = minOf((y2 - y1) * 0.85f / entity.bbHeight, (x2 - x1) * 0.85f / (entity.bbWidth + 0.5f))
+        val fit = k * minOf(cmd.height * 0.85f / entity.bbHeight, cmd.width * 0.85f / (entity.bbWidth + 0.5f))
         val size = (fit * ((el.getAttribute("scale") as? Float) ?: 1f)).roundToInt()
         if (size <= 0) return
         // Vanilla turns the entity towards (lookAtX, lookAtY) relative to the box center.
-        val lookAtX: Float
-        val lookAtY: Float
-        if (el.getAttribute("followmouse") == true) {
-            lookAtX = mouseX.toFloat()
-            lookAtY = mouseY.toFloat()
+        val lookAt = if (el.getAttribute("followmouse") == true) {
+            Vector2f(mouseX.toFloat(), mouseY.toFloat())
         } else {
-            lookAtX = (x1 + x2) / 2f + ((el.getAttribute("lookx") as? Float) ?: 0f)
-            lookAtY = (y1 + y2) / 2f + ((el.getAttribute("looky") as? Float) ?: 0f)
+            Vector2f(cmd.x + cmd.width / 2f + ((el.getAttribute("lookx") as? Float) ?: 0f), cmd.y + cmd.height / 2f + ((el.getAttribute("looky") as? Float) ?: 0f))
         }
-        InventoryScreen.extractEntityInInventoryFollowsMouse(ctx, x1, y1, x2, y2, size, 0.0625f, lookAtX, lookAtY, entity)
+        pose.transformPosition(lookAt)
+        pose.pushMatrix()
+        pose.identity()
+        InventoryScreen.extractEntityInInventoryFollowsMouse(ctx, x1, y1, x2, y2, size, 0.0625f, lookAt.x, lookAt.y, entity)
+        pose.popMatrix()
     }
 }

@@ -787,6 +787,30 @@ object Showcase {
             players.getOrNull(1)?.let { entity(it, className = "entity-box", lookX = 30f, title = "Notch") }
             entity(players[0], className = "entity-box small", title = "Fits any box size")
         }
+        h3 { +"Inside containers" }
+        div(className = "row entity-containers") {
+            div {
+                p(className = "muted") { +"scrolled" }
+                scroll(className = "entity-scroll") {
+                    for (i in 1..3) div(key = i, className = "entity-scroll-row") {
+                        span { +"#$i" }
+                        entity(players[0], className = "entity-box small")
+                    }
+                }
+            }
+            div {
+                p(className = "muted") { +"overflow: hidden" }
+                div(className = "entity-clip") { entity(players[0], className = "entity-box") }
+            }
+            div {
+                p(className = "muted") { +"rotate(12deg)" }
+                div(style = "transform: rotate(12deg)") { entity(players[0], className = "entity-box small") }
+            }
+            div {
+                p(className = "muted") { +"scale(1.5)" }
+                div(style = "transform: scale(1.5); transform-origin: top left") { entity(players[0], className = "entity-box small") }
+            }
+        }
     }
 
     private val StateDemo = component("StateDemo") {

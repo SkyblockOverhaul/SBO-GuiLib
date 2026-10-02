@@ -68,6 +68,7 @@ object DevAutomation : ClientModInitializer {
                     if (mc.level == null || mc.player == null || GuiLib.currentScreen() != null) return@register
                     started = true
                     wait = 60 // let chunks and skins load
+                    applyGuiScale()
                     return@register
                 }
                 if (GuiLib.currentScreen() !is TitleScreen) return@register
@@ -78,6 +79,7 @@ object DevAutomation : ClientModInitializer {
                 }
                 started = true
                 wait = 40
+                applyGuiScale()
                 return@register
             }
             if (--wait > 0) return@register
@@ -89,6 +91,15 @@ object DevAutomation : ClientModInitializer {
             }
             wait = steps.firstOrNull()?.ticks ?: 0
         }
+    }
+
+    /** -Pguilib.dev.guiscale=3 sets Minecraft's GUI scale (0 = auto) before the first section opens. */
+    private fun applyGuiScale() {
+        val scale = System.getProperty("guilib.dev.guiscale")?.toIntOrNull() ?: return
+        val mc = Minecraft.getInstance()
+        mc.options.guiScale().set(scale)
+        mc.resizeGui()
+        Log.info("GuiLib dev automation: GUI scale ${mc.window.guiScale}")
     }
 
     private fun openWorld(name: String) {
@@ -127,6 +138,8 @@ object DevAutomation : ClientModInitializer {
                 root.input.mouseUp(r.x + 2f, r.y + r.height / 2f, 0)
             }
             "hover" -> hover(arg)
+            // "uiscale:1.5" gives the screen its own GUI scale (like useScreenScale); "uiscale:mc" resets it.
+            "uiscale" -> root.document.scale = arg.toFloatOrNull()
             // "mcclick:.btn" clicks through Minecraft's Screen.mouseClicked/mouseReleased (Minecraft GUI coordinates),
             // so the screen's own coordinate mapping (useScreenScale) is part of the test.
             "mcclick" -> find(arg)?.getBoundingClientRect()?.let { r ->

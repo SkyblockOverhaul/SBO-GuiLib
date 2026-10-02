@@ -151,6 +151,10 @@ button.primary:hover { background-color: #6f9cf2; }
 
 .entity-box { width: 60px; height: 90px; background-color: var(--panel); border: 1px solid var(--border); border-radius: 4px; }
 .entity-box.small { width: 30px; height: 45px; }
+.entity-containers { align-items: flex-start; gap: 14px; }
+.entity-scroll { height: 60px; width: 70px; border: 1px solid var(--border); }
+.entity-scroll-row { display: flex; align-items: center; gap: 4px; padding: 2px; }
+.entity-clip { width: 60px; height: 50px; overflow: hidden; border: 1px solid #e5484d; }
 
 .todo {
     padding: 3px 6px;
