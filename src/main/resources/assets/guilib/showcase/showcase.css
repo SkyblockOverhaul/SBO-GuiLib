@@ -233,6 +233,13 @@ button.primary:hover { background-color: #6f9cf2; }
 .grow:hover { transform: scale(1.1); }
 .slide-panel { margin-top: 6px; padding: 6px; background-color: var(--panel); border-left: 2px solid var(--accent); animation: slide-in 250ms ease-out; }
 .slide-panel.leaving { animation: slide-out 250ms ease-in forwards; }
+.exit-list { margin-top: 4px; width: 160px; }
+.exit-row { display: flex; align-items: center; justify-content: space-between; height: 16px; padding: 0 6px; margin-bottom: 2px;
+    overflow: hidden; background-color: var(--panel); border-radius: 3px; animation: row-in 220ms ease-out; }
+.exit-row.leaving { animation: row-out 220ms ease-in forwards; pointer-events: none; }
+.exit-x { padding: 0 3px; background-color: transparent; }
+@keyframes row-in { from { opacity: 0; height: 0; margin-bottom: 0; transform: translateX(-12px); } }
+@keyframes row-out { to { opacity: 0; height: 0; margin-bottom: 0; transform: translateX(12px); } }
 
 .grid-areas {
     display: grid;

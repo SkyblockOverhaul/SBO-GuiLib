@@ -33,6 +33,7 @@ import net.sbo.guilib.core.dsl.numberInput
 import net.sbo.guilib.core.dsl.p
 import net.sbo.guilib.core.dsl.playerHead
 import net.sbo.guilib.core.dsl.presence
+import net.sbo.guilib.core.dsl.presenceList
 import net.sbo.guilib.core.dsl.radioGroup
 import net.sbo.guilib.core.dsl.rangeSlider
 import net.sbo.guilib.core.dsl.scroll
@@ -394,6 +395,21 @@ object Showcase {
         }
         presence(visible = panel, exitMs = 250) { leaving ->
             div(className = classNames("slide-panel", "leaving" to leaving)) { +"I slide in and out (transform + presence)." }
+        }
+
+        var rows by useState(listOf(1, 2, 3))
+        var nextRow by useState(4)
+        div(className = "row") {
+            button(className = "grow add-row", onClick = { rows = listOf(nextRow) + rows; nextRow++ }) { +"Add row" }
+            span(style = "color: var(--muted)") { +"presenceList: removed rows animate out" }
+        }
+        div(className = "exit-list") {
+            presenceList(rows, key = { it }, exitMs = 220) { n, leaving ->
+                div(className = classNames("exit-row", "leaving" to leaving)) {
+                    span { +"Party #$n" }
+                    button(className = "exit-x", onClick = { rows = rows - n }) { +"✕" }
+                }
+            }
         }
 
         var turns by useState(0)

@@ -42,7 +42,7 @@ UIs can be written quickly and correctly. Differences from the web are documente
   order), **CSS grid** (`fr`, `minmax()`, `repeat(auto-fill, …)`, spans, template areas, auto-placement),
   relative/absolute/fixed positioning, `z-index`, scroll containers with clipping and scrollbars, `calc()`/`min()`/`max()`/`clamp()`.
 - **Animation:** CSS `transition` and `@keyframes` + `animation` (easing, delays, iterations, alternate, fill modes) for
-  colors, sizes, opacity, gradients, `transform` (translate, scale, rotate, skew) and more; `presence { }` for exit animations.
+  colors, sizes, opacity, gradients, `transform` (translate, scale, rotate, skew) and more; `presence { }` and `presenceList(items) { }` for exit animations.
 - **Rendering:** own anti-aliased SDF shader for `border-radius`, borders and blurred `box-shadow`s, exact `linear-gradient`/`radial-gradient`
   backgrounds (multiple layers), **TTF text** (Inter bundled; FreeType,
   pixel-exact at every GUI scale) with wrapping, ellipsis and Minecraft `§` codes, the vanilla font via

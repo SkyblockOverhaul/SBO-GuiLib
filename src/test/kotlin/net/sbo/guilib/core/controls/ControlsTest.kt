@@ -12,6 +12,7 @@ import net.sbo.guilib.core.dsl.ComponentScope
 import net.sbo.guilib.core.dsl.button
 import net.sbo.guilib.core.dsl.classNames
 import net.sbo.guilib.core.dsl.presence
+import net.sbo.guilib.core.dsl.presenceList
 import net.sbo.guilib.core.dsl.checkbox
 import net.sbo.guilib.core.dsl.div
 import net.sbo.guilib.core.dsl.input
@@ -188,6 +189,45 @@ class ControlsTest {
         root.click(toggle)
         now += 200; root.frame(300f, 200f)
         assertEquals("panel", panel()?.className)
+    }
+
+    @Test
+    fun presenceListKeepsRemovedItemsInPlaceWhileLeaving() {
+        var setItems: (List<String>) -> Unit = {}
+        val root = ui {
+            val (items, set) = useState(listOf("a", "b", "c", "d"))
+            setItems = set
+            div(className = "list") {
+                presenceList(items, key = { it }, exitMs = 100) { item, leaving ->
+                    div(className = classNames("row", "leaving" to leaving)) { +item }
+                }
+            }
+        }
+        fun rows() = root.document.body.querySelectorAll(".row").joinToString(" ") {
+            (it.children[0] as TextNode).data + if ("leaving" in it.classList) "-" else ""
+        }
+        assertEquals("a b c d", rows())
+
+        // b and d removed, e added at the front: b and d stay where they were, marked as leaving.
+        setItems(listOf("e", "a", "c")); root.frame(300f, 200f)
+        assertEquals("e a b- c d-", rows())
+        val leavingB = root.document.body.querySelectorAll(".row")[2]
+
+        now += 50; setItems(listOf("e", "a", "c", "f")); root.frame(300f, 200f)
+        assertEquals("e a b- c d- f", rows())
+        // The same element is kept (its exit animation keeps running).
+        assertTrue(leavingB === root.document.body.querySelectorAll(".row")[2])
+
+        now += 60; root.frame(300f, 200f)
+        assertEquals("e a c f", rows())
+
+        // An item that comes back during its exit is a normal item again and is not removed.
+        setItems(listOf("e", "c", "f")); root.frame(300f, 200f)
+        assertEquals("e a- c f", rows())
+        now += 50; setItems(listOf("e", "a", "c", "f")); root.frame(300f, 200f)
+        assertEquals("e a c f", rows())
+        now += 200; root.frame(300f, 200f)
+        assertEquals("e a c f", rows())
     }
 
     @Test

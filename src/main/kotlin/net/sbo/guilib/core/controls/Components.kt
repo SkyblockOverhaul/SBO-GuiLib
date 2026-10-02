@@ -272,3 +272,48 @@ internal val PresenceComponent = component<PresenceProps>("Presence") { p ->
     }
     if (p.visible || mounted) p.children(this, !p.visible)
 }
+
+internal data class PresenceListProps(
+    val items: List<Any?>,
+    val key: (Any?) -> Any?,
+    val exitMs: Long,
+    val children: NodeBuilder.(item: Any?, leaving: Boolean) -> Unit,
+)
+
+/** A rendered entry; [leftAt] is the time the item was removed from the list, or -1 while it is present. */
+internal class PresenceEntry(val key: Any?, val item: Any?, val leftAt: Long)
+
+/**
+ * Merges the previously rendered entries with the new [items]: present items in their new order, removed ones kept
+ * after the entry that preceded them before (so they leave from where they were) until [exitMs] passed.
+ */
+internal fun mergePresence(prev: List<PresenceEntry>, items: List<Any?>, key: (Any?) -> Any?, now: Long, exitMs: Long): List<PresenceEntry> {
+    val result = ArrayList<PresenceEntry>(items.size + prev.size)
+    val present = HashSet<Any?>()
+    for (item in items) {
+        val k = key(item)
+        if (present.add(k)) result += PresenceEntry(k, item, -1)
+    }
+    var insertAt = 0
+    for (e in prev) {
+        if (e.key in present) {
+            insertAt = result.indexOfFirst { it.key == e.key } + 1
+        } else {
+            val leftAt = if (e.leftAt >= 0) e.leftAt else now
+            if (now - leftAt < exitMs) result.add(insertAt++, PresenceEntry(e.key, e.item, leftAt))
+        }
+    }
+    return result
+}
+
+internal val PresenceListComponent = component<PresenceListProps>("PresenceList") { p ->
+    val now = useDocument().now()
+    val entries = useRef(emptyList<PresenceEntry>())
+    val merged = mergePresence(entries.current, p.items, p.key, now, p.exitMs)
+    entries.current = merged
+    // Re-render when the next leaving entry is due for removal.
+    val nextRemoval = merged.filter { it.leftAt >= 0 }.minOfOrNull { it.leftAt + p.exitMs }
+    val update = useForceUpdate()
+    useEffect(nextRemoval) { if (nextRemoval != null) setTimeout(maxOf(0L, nextRemoval - now)) { update() } }
+    for (e in merged) fragment(key = e.key) { p.children(this, e.item, e.leftAt >= 0) }
+}

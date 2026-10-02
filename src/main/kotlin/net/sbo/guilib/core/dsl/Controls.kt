@@ -4,6 +4,8 @@ import net.sbo.guilib.core.controls.ModalComponent
 import net.sbo.guilib.core.controls.ModalProps
 import net.sbo.guilib.core.controls.PresenceComponent
 import net.sbo.guilib.core.controls.PresenceProps
+import net.sbo.guilib.core.controls.PresenceListComponent
+import net.sbo.guilib.core.controls.PresenceListProps
 import net.sbo.guilib.core.controls.SelectComponent
 import net.sbo.guilib.core.controls.SelectOption
 import net.sbo.guilib.core.controls.SelectProps
@@ -437,6 +439,36 @@ fun NodeBuilder.modal(
  */
 fun NodeBuilder.presence(visible: Boolean, exitMs: Long, key: Any? = null, children: NodeBuilder.(leaving: Boolean) -> Unit) =
     PresenceComponent(PresenceProps(visible, exitMs, children), key)
+
+/**
+ * [presence] for every item of a list: items removed from [items] stay rendered at their old position with
+ * `leaving = true` for [exitMs], then they are removed. New items mount normally (their CSS `animation` plays):
+ *
+ * ```kotlin
+ * presenceList(parties, key = { it.id }, exitMs = 200) { party, leaving ->
+ *     div(className = classNames("row", "leaving" to leaving)) { +party.leader }
+ * }
+ * ```
+ * ```css
+ * .row { animation: row-in 200ms ease-out }
+ * .row.leaving { animation: row-out 200ms ease-in forwards; pointer-events: none }
+ * ```
+ * Items need a stable [key]. An item that comes back during its exit is a normal item again. The items are rendered
+ * directly into the parent (no wrapper element). Not for [sortableList] items.
+ */
+fun <T> NodeBuilder.presenceList(
+    items: List<T>,
+    key: (T) -> Any?,
+    exitMs: Long,
+    listKey: Any? = null,
+    children: NodeBuilder.(item: T, leaving: Boolean) -> Unit,
+) {
+    @Suppress("UNCHECKED_CAST")
+    PresenceListComponent(
+        PresenceListProps(items, key as (Any?) -> Any?, exitMs, children as NodeBuilder.(Any?, Boolean) -> Unit),
+        listKey,
+    )
+}
 
 /**
  * Drag-to-reorder list, controlled like React: [items] are rendered in order and dropping an item calls [onReorder]
