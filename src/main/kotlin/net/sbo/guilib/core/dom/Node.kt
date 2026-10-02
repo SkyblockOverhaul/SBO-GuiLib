@@ -141,11 +141,48 @@ class Element internal constructor(val tagName: String) : Node(), Selectable {
         }
 
     private val classes = LinkedHashSet<String>()
-    val classList: Set<String> get() = classes
+
+    /**
+     * The element's classes, changeable like the DOM's `classList` (`add`, `remove`, `toggle`, `replace`).
+     * Meant for elements GuiLib doesn't render from your props, above all [Document.body] (it also holds the portals,
+     * so a class there styles modals and tooltips too). On an element you render with `className`, the next render
+     * of that element sets its classes back, like React does.
+     */
+    val classList = ClassList()
+
+    inner class ClassList internal constructor() : AbstractSet<String>() {
+        override val size get() = classes.size
+        override fun iterator(): Iterator<String> = classes.toList().iterator()
+        override fun contains(element: String) = element in classes
+
+        fun add(vararg names: String) = change { names.forEach { classes += it } }
+        fun remove(vararg names: String) = change { names.forEach { classes -= it } }
+
+        /** Adds [name] if it is missing (or [force] is true), removes it otherwise; returns whether it is now set. */
+        fun toggle(name: String, force: Boolean? = null): Boolean {
+            val on = force ?: (name !in classes)
+            if (on) add(name) else remove(name)
+            return on
+        }
+
+        /** Replaces [old] with [new] in place; returns false (and changes nothing) if [old] isn't set. */
+        fun replace(old: String, new: String): Boolean {
+            if (old !in classes) return false
+            val next = classes.map { if (it == old) new else it }
+            change { classes.clear(); classes += next }
+            return true
+        }
+
+        private inline fun change(block: () -> Unit) {
+            val before = classes.toList()
+            block()
+            if (classes.toList() != before) styleChanged(true)
+        }
+    }
 
     var className: String
         get() = classes.joinToString(" ")
-        internal set(value) {
+        set(value) {
             val next = value.split(' ', '\t', '\n').filter { it.isNotEmpty() }
             if (next.toSet() != classes) {
                 classes.clear(); classes += next
@@ -153,9 +190,12 @@ class Element internal constructor(val tagName: String) : Node(), Selectable {
             }
         }
 
-    /** Inline `style` attribute text. */
+    /**
+     * Inline `style` attribute text. Settable like [classList] (same caveat: rendering the element with `style`
+     * sets it back); [setStyleProperty] changes a single property.
+     */
     var inlineStyle: String? = null
-        internal set(value) {
+        set(value) {
             if (field != value) {
                 field = value
                 inlineDeclarations = if (value.isNullOrBlank()) emptyList() else CssParser.parseDeclarations(value, "style attribute of ${describe()}")
@@ -165,6 +205,23 @@ class Element internal constructor(val tagName: String) : Node(), Selectable {
 
     internal var inlineDeclarations: List<Declaration> = emptyList()
         private set
+
+    /** Sets one inline property (`"font-family"`, `"--accent"`, …) like `style.setProperty`; `null` removes it. */
+    fun setStyleProperty(property: String, value: String?) {
+        val name = if (property.startsWith("--")) property else property.lowercase()
+        val rest = inlineDeclarations.filter { it.property != name }.map { it.toString() }
+        inlineStyle = (if (value == null) rest else rest + "$name: $value").joinToString("; ").ifEmpty { null }
+    }
+
+    fun removeStyleProperty(property: String) = setStyleProperty(property, null)
+
+    /** The inline value of [property] as written, or `null` if the inline style doesn't set it. */
+    fun getStyleProperty(property: String): String? {
+        val name = if (property.startsWith("--")) property else property.lowercase()
+        return inlineDeclarations.lastOrNull { it.property == name }?.let { d ->
+            d.value.joinToString("").trim() + if (d.important) " !important" else ""
+        }
+    }
 
     /** Other attributes (`disabled`, `checked`, `value`, `src`, `title`, `tabIndex`, …). */
     internal val attributes = HashMap<String, Any?>()

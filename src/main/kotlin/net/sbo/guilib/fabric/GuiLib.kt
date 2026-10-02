@@ -4,6 +4,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.Component
 import net.sbo.guilib.core.UiRoot
 import net.sbo.guilib.core.dom.Clipboard
+import net.sbo.guilib.core.dom.Document
 import net.sbo.guilib.core.dom.ComponentType
 import net.sbo.guilib.core.dom.ReplacedContent
 import net.sbo.guilib.core.dom.VComponent
@@ -58,6 +59,13 @@ object GuiLib {
         return mc.screen
         //#endif
     }
+
+    /**
+     * The document of the open GuiLib screen, or `null` if none is open. Lets code outside the UI change it, e.g.
+     * `GuiLib.currentDocument()?.body?.classList?.toggle("font-mc", enabled)` after a config change (on the render
+     * thread; use [runOnUi] from elsewhere). Inside components use `useDocument()` / `useBodyClass()`.
+     */
+    fun currentDocument(): Document? = (currentScreen() as? GuiLibScreen)?.root?.document
 
     /** Handles a chat click event the way vanilla screens do (used by [text]). */
     internal fun handleClickEvent(event: net.minecraft.network.chat.ClickEvent) {

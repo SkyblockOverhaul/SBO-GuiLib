@@ -226,6 +226,30 @@ class ComponentScope internal constructor(
     fun useDocument(): Document = document
 
     /**
+     * Puts [className] on the body while [enabled] and this component is mounted (e.g. a theme or font switch that
+     * also reaches modals and tooltips, without reopening the screen): `useBodyClass("font-mc", settings.mcFont)`.
+     */
+    fun useBodyClass(className: String, enabled: Boolean = true) {
+        useEffect(className, enabled) {
+            if (!enabled) return@useEffect
+            document.body.classList.add(className)
+            onCleanup { document.body.classList.remove(className) }
+        }
+    }
+
+    /**
+     * Sets an inline [property] of the body (`"font-family"`, a variable like `"--accent"`) while this component is
+     * mounted; `null` sets nothing. Inherited properties and variables reach every element, portals included.
+     */
+    fun useBodyStyle(property: String, value: String?) {
+        useEffect(property, value) {
+            if (value == null) return@useEffect
+            document.body.setStyleProperty(property, value)
+            onCleanup { document.body.removeStyleProperty(property) }
+        }
+    }
+
+    /**
      * Listens to [type] on the whole document while mounted (like `document.addEventListener` in a React effect).
      * Runs before element handlers; call `stopPropagation()`/`preventDefault()` to swallow the event.
      */

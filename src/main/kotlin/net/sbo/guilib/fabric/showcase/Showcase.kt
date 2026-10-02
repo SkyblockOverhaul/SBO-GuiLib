@@ -527,7 +527,11 @@ object Showcase {
     }
 
     private val TextDemo = component("TextDemo") {
+        // A whole-window font switch without reopening: a class on the body also reaches portals (modals, tooltips).
+        var mcFont by useState(false)
+        useBodyClass("showcase-mc-font", mcFont)
         h2 { +"Text" }
+        switch(checked = mcFont, onChange = { mcFont = it.checked }, label = "Minecraft font everywhere (useBodyClass)")
         p {
             +"Inline "
             span(style = "color: #ff7b72") { +"spans " }

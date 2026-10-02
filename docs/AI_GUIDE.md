@@ -64,6 +64,12 @@ body { display: flex; align-items: center; justify-content: center; }  /* body =
 | `createContext(default)`, `Ctx.Provider(value) { … }`, `useContext(Ctx)` | Like React context. |
 | `useDocument()` | The `Document` (viewport size, `focusedElement`, `addEventListener`). |
 | `useDocumentEvent("keydown") { e -> … }` | Global listener while mounted (runs before element handlers). |
+| `useBodyClass("font-mc", enabled)` | Puts a class on the body while mounted and `enabled` (theme / font switch without reopening; reaches portals too: modals, tooltips, toasts live under the body). |
+| `useBodyStyle("--accent", value)` | Sets an inline property or variable on the body while mounted (`null` = none). |
+
+Elements: `el.classList.add/remove/toggle(name, force?)/replace(old, new)`, `el.inlineStyle = "…"`, `el.setStyleProperty("font-family", "minecraft")`,
+`removeStyleProperty`, `getStyleProperty` (like the DOM). Use them on `useDocument().body` (or `GuiLib.currentDocument()?.body` from
+outside the UI, on the render thread); on an element you render with `className`/`style` the next render sets them back, like React.
 | `useForceUpdate()` | Escape hatch. |
 
 Rules of hooks apply: call hooks unconditionally at the top of the component (not inside `div { }` blocks, loops or ifs).
