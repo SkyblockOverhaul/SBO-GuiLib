@@ -654,7 +654,8 @@ object Showcase {
     private val ScrollDemo = component("ScrollDemo") {
         var selected by useState(-1)
         h2 { +"Scroll container" }
-        scroll(className = "list") {
+        p(className = "muted") { +"className = \"guilib-autohide\": the scrollbar fades out when you stop scrolling (CSS :scrolling)." }
+        scroll(className = "list guilib-autohide") {
             for (i in 1..50) {
                 div(key = i, className = classNames("list-row", "selected" to (i == selected)), onClick = { selected = i }) {
                     span { +"Row #$i" }

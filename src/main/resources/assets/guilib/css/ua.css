@@ -49,6 +49,14 @@ hr {
 }
 
 scroll { overflow: auto; }
+/* Opt-in: the scrollbar fades out 600 ms after scrolling stops and comes back while scrolling or hovering.
+   Colors come from --guilib-scrollbar-thumb / --guilib-scrollbar-track (a scrollbar-color of your own would win
+   over these rules and keep the scrollbar visible). */
+.guilib-autohide { scrollbar-color: transparent transparent; transition: scrollbar-color 300ms ease 600ms; }
+.guilib-autohide:scrolling, .guilib-autohide:hover {
+    scrollbar-color: var(--guilib-scrollbar-thumb, #ffffff80) var(--guilib-scrollbar-track, #00000020);
+    transition: scrollbar-color 120ms;
+}
 
 button {
     display: inline-flex;

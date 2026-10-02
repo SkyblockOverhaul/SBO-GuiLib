@@ -133,6 +133,11 @@ interface ReplacedContent {
  * [tagName], [id], [classList], [children], [getBoundingClientRect], [querySelector], [focus], [scrollTop].
  */
 class Element internal constructor(val tagName: String) : Node(), Selectable {
+    companion object {
+        /** How long `:scrolling` stays on after the last scroll position change. */
+        const val SCROLLING_MS = 150L
+    }
+
     var id: String? = null
         internal set(value) {
             if (field != value) {
@@ -415,16 +420,42 @@ class Element internal constructor(val tagName: String) : Node(), Selectable {
         set(value) {
             val v = value.coerceIn(0f, maxScrollTop)
             if (v != field) {
-                field = v; document?.invalidatePaint()
+                field = v; scrolled()
             }
         }
     var scrollLeft: Float = 0f
         set(value) {
             val v = value.coerceIn(0f, maxScrollLeft)
             if (v != field) {
-                field = v; document?.invalidatePaint()
+                field = v; scrolled()
             }
         }
+
+    private var clampingScroll = false
+    private var scrollingTimer: Cancelable? = null
+
+    /** Keeps the scroll position inside the content after a relayout; this doesn't count as scrolling. */
+    internal fun clampScroll() {
+        clampingScroll = true
+        try {
+            scrollTop = scrollTop
+            scrollLeft = scrollLeft
+        } finally {
+            clampingScroll = false
+        }
+    }
+
+    private fun scrolled() {
+        val doc = document ?: return
+        doc.invalidatePaint()
+        if (clampingScroll) return
+        setState(PseudoState.SCROLLING, true)
+        scrollingTimer?.cancel()
+        scrollingTimer = doc.setTimeout(SCROLLING_MS) {
+            scrollingTimer = null
+            setState(PseudoState.SCROLLING, false)
+        }
+    }
     val maxScrollTop get() = (box.scrollHeight - box.paddingBoxHeight).coerceAtLeast(0f)
     val maxScrollLeft get() = (box.scrollWidth - box.paddingBoxWidth).coerceAtLeast(0f)
 

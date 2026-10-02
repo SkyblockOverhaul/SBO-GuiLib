@@ -162,7 +162,7 @@ Invalid or unsupported CSS is **skipped with a warning** (`file:line:col`, "did 
 
 **Selectors:** `*`, `tag`, `.class`, `#id`, `[attr]`, `[attr=value]`, `[attr^=v]`, `[attr$=v]`, `[attr*=v]`, compounds
 (`button.primary:hover`), descendant (`a b`), child (`a > b`), `a + b`, `a ~ b`, lists (`a, b`);
-pseudo-classes `:hover :active :focus :focus-visible :focus-within :disabled :enabled :checked :first-child :last-child :only-child :root :not(…)`,
+pseudo-classes `:hover :active :focus :focus-visible :focus-within :disabled :enabled :checked :scrolling :first-child :last-child :only-child :root :not(…)`,
 `:nth-child() :nth-last-child() :nth-of-type() :nth-last-of-type()` (`odd`, `even`, `3`, `2n+1`, `-n+3`); `:nth-child(An+B of S)` / `:nth-last-child(… of S)` count only siblings matching the selector list S (e.g. zebra rows that skip hidden ones: `.row:nth-child(even of :not(.hidden))`).
 **Pseudo-elements:** `::before` and `::after` (also the old `:before`/`:after`), at the end of a selector (`.crumb + .crumb::before`, `.btn:hover::after`). They need `content`: strings and `attr(name)` (e.g. `attr(title)`), `content: ""` for decorative boxes, `none`/`normal` removes the box. The box is the first/last child of the element, inline by default, inherits from it, can be positioned, sized, transitioned and animated like any element. Clicks and hover on it go to the element. Inputs, textareas, images, items and `<br>` get none. No other pseudo-elements, no `url()`/counters/quotes in `content`.
 At-rules: `@keyframes` and `@media` (nestable): comma lists, `not`/`only`, `screen`/`all`/`print`, `and`/`or`; features `width` `height` `aspect-ratio` `orientation` in GUI px, `resolution` = Minecraft's GUI scale (`min-resolution: 3dppx` or `3x`), `hover` (hover), `pointer` (fine), `prefers-reduced-motion` (no-preference), `prefers-color-scheme` (dark); `min-`/`max-` prefixes and range syntax `(400px <= width < 640px)`. Styles update when the window size or GUI scale changes.
@@ -205,7 +205,9 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
 - Interaction: `cursor` (`auto default pointer text not-allowed crosshair move ns-resize ew-resize row-resize col-resize grab grabbing none`; `none` hides the system cursor, e.g. to draw your own at the mouse;
   while the left button is held on an element with `grab`/`grabbing`/`move`/a resize cursor, that cursor stays even when the mouse leaves it), `pointer-events`, `user-select` (parsed only)
 - Generated content: `content` (strings, `attr(name)`, `none`/`normal`; only on `::before` / `::after`)
-- Scrollbars: `scrollbar-width` (`auto thin none`), `scrollbar-color: <thumb> <track>`
+- Scrollbars: `scrollbar-width` (`auto thin none`), `scrollbar-color: <thumb> <track>` (animatable). Auto-hiding scrollbar:
+  add class `guilib-autohide` to the scroll container (fades out 600 ms after scrolling stops, back on scroll or hover);
+  set its colors with `--guilib-scrollbar-thumb` / `--guilib-scrollbar-track` (a plain `scrollbar-color` keeps it visible)
 
 `font-family`: `inter` (default, bundled), `minecraft` (vanilla font; alias `monospace`), or fonts registered with
 `FontManager.register("name", weight, italic, "modid:fonts/x.ttf")` or with `@font-face` in a stylesheet:
@@ -244,6 +246,9 @@ in one stylesheet works in every screen. Weights map to the nearest face (400/50
     Minecraft's font.
 17. `vertical-align: top` / `bottom` on `display: inline` elements act like `text-top` / `text-bottom` (aligned to the parent's text, not to the line box).
 18. Flex items have `min-width: auto` (content size) like the web — for ellipsis inside flex, set `min-width: 0`.
+19. **`:scrolling` is GuiLib-only** (browsers don't have it): it matches a scroll container while its scroll position changes
+    (wheel, dragging, `scrollTop = …`) and for 150 ms after the last change. Use it with `transition-delay` for
+    "fade out after X ms" effects; the opt-in class `guilib-autohide` is built on it.
 
 ## 7. Recipes
 
@@ -262,6 +267,7 @@ in one stylesheet works in every screen. Weights map to the nearest face (400/50
   with `.panel.leaving { animation: slide-out 200ms ease-in forwards }`.
 - **Grow on hover:** `.card { transition: transform 150ms ease-out } .card:hover { transform: scale(1.05) }`.
 - **Spinner:** `@keyframes spin { to { transform: rotate(360deg) } }` + `.spinner { animation: spin 1s linear infinite }`.
+- **Scrollbar that hides when idle:** `scroll(className = "list guilib-autohide")`; custom color: `.list { --guilib-scrollbar-thumb: #5b8def }`.
 - **Zebra rows:** `.row:nth-child(even) { background-color: #2b2d31 }`; with filtered-out rows still in the DOM: `.row:nth-child(even of :not(.hidden))`.
 - **Horizontal scroll row:** `display: flex; overflow-x: auto; overflow-y: hidden` with `flex-shrink: 0` on the children.
   The plain wheel scrolls it sideways (as does Shift + wheel or a trackpad).

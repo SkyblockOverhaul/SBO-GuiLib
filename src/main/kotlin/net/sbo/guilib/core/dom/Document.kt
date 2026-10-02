@@ -330,8 +330,7 @@ class Document(
     }
 
     private fun clampScroll(el: Element) {
-        el.scrollTop = el.scrollTop
-        el.scrollLeft = el.scrollLeft
+        el.clampScroll()
         for (c in el.children) if (c is Element) clampScroll(c)
     }
 

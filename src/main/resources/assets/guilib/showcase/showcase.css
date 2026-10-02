@@ -125,7 +125,8 @@ button.primary:hover { background-color: #6f9cf2; }
     background-color: var(--panel);
     border: 1px solid var(--border);
     border-radius: 3px;
-    scrollbar-color: var(--accent) transparent;
+    --guilib-scrollbar-thumb: var(--accent);
+    --guilib-scrollbar-track: transparent;
 }
 .list-row {
     display: flex;

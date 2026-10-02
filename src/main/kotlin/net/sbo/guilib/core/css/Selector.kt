@@ -4,7 +4,12 @@ package net.sbo.guilib.core.css
 enum class PseudoState(val css: String) {
     HOVER("hover"), ACTIVE("active"), FOCUS("focus"), FOCUS_WITHIN("focus-within"), DISABLED("disabled"), CHECKED("checked"),
     /** Focus that should show a focus ring: keyboard focus, text fields, or keys pressed after a click (like browsers). */
-    FOCUS_VISIBLE("focus-visible");
+    FOCUS_VISIBLE("focus-visible"),
+    /**
+     * GuiLib-specific (not in browsers): the element's scroll position is changing, and for [Element.SCROLLING_MS]
+     * after the last change. Meant for scrollbars that fade out when idle (`.guilib-autohide`).
+     */
+    SCROLLING("scrolling");
 
     val bit get() = 1 shl ordinal
 }
