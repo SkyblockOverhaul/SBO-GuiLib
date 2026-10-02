@@ -36,15 +36,15 @@ import net.sbo.guilib.core.event.UIEvent
 class SelectBuilder {
     internal val options = ArrayList<SelectOption>()
 
-    /** An entry: `option("easy") { +"Easy" }`. */
-    fun option(value: String, disabled: Boolean = false, label: NodeBuilder.() -> Unit) {
+    /** An entry: `option("easy") { +"Easy" }`. [title] is shown as a tooltip while hovering the entry. */
+    fun option(value: String, disabled: Boolean = false, title: String? = null, label: NodeBuilder.() -> Unit) {
         val text = NodeBuilder().apply(label).nodes.filterIsInstance<VText>().joinToString("") { it.text }
-        options += SelectOption(value, text, disabled)
+        options += SelectOption(value, text, disabled, title)
     }
 
-    /** An entry with a plain label: `option("easy", "Easy")`. */
-    fun option(value: String, label: String, disabled: Boolean = false) {
-        options += SelectOption(value, label, disabled)
+    /** An entry with a plain label: `option("easy", "Easy", title = "For new players")`. */
+    fun option(value: String, label: String, disabled: Boolean = false, title: String? = null) {
+        options += SelectOption(value, label, disabled, title)
     }
 }
 

@@ -15,7 +15,8 @@ import net.sbo.guilib.core.event.KeyboardEvent
 import net.sbo.guilib.core.event.UIEvent
 
 /** One entry of a `select`. [label] may contain `§` color codes. */
-data class SelectOption(val value: String, val label: String, val disabled: Boolean = false)
+/** An entry of a select, radio group, segmented control or chips; [title] is its hover text. */
+data class SelectOption(val value: String, val label: String, val disabled: Boolean = false, val title: String? = null)
 
 internal data class SelectProps(
     val value: String?,
@@ -167,6 +168,7 @@ internal val SelectComponent = component<SelectProps>("Select") { p ->
                     shown.forEachIndexed { i, o ->
                         div(
                             key = o.value,
+                            title = o.title,
                             className = classNames("guilib-option", "selected" to isSelected(o), "highlighted" to (i == highlighted), "disabled" to o.disabled),
                             onMouseEnter = { highlighted = i },
                             onClick = { choose(o) },

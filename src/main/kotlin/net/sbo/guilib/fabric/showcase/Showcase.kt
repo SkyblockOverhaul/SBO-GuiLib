@@ -179,9 +179,9 @@ object Showcase {
         div(className = "form-row") {
             span(className = "form-label") { +"Mode" }
             select(value = mode, onChange = { mode = it.value }) {
-                option("normal", "Normal")
-                option("hard", "Hard")
-                option("expert", "Expert (locked)", disabled = true)
+                option("normal", "Normal", title = "Standard mobs and loot")
+                option("hard", "Hard", title = "Stronger mobs, better loot")
+                option("expert", "Expert (locked)", disabled = true, title = "Finish Hard mode first")
             }
         }
         div(className = "form-row") { checkbox(checked = agree, onChange = { agree = it.checked }, label = "Show me in the party finder") }

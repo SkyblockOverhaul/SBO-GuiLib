@@ -425,4 +425,33 @@ class ControlsTest {
         assertNotNull(tip)
         assertEquals("Hello", (tip!!.children.single() as TextNode).data)
     }
+
+    @Test
+    fun selectOptionTitleShowsATooltipAboveTheMenu() {
+        val root = ui {
+            div {
+                select(value = "a", onChange = {}) {
+                    option("a", "Alpha", title = "The first one")
+                    option("b", "Beta")
+                    option("c", title = "Built from children") { +"Gamma" }
+                }
+            }
+        }
+        root.click(root.document.body.querySelector("select")!!)
+        val options = root.document.overlayRoot.querySelectorAll(".guilib-option")
+        assertEquals("The first one", options[0].getAttribute("title"))
+        assertNull(options[1].getAttribute("title"))
+        assertEquals("Built from children", options[2].getAttribute("title"))
+        val r = options[0].getBoundingClientRect()
+        root.input.mouseMove(r.x + 2f, r.y + 2f)
+        root.frame(300f, 200f)
+        now += 600
+        root.frame(300f, 200f)
+        root.frame(300f, 200f)
+        val tip = root.document.overlayRoot.querySelector(".guilib-tooltip")!!
+        assertEquals("The first one", (tip.children.single() as TextNode).data)
+        // The tooltip's portal comes after the menu's, so it is drawn on top of the open menu.
+        val portals = root.document.overlayRoot.children.filterIsInstance<Element>()
+        assertTrue(portals.indexOfFirst { it.querySelector(".guilib-tooltip") != null } > portals.indexOfFirst { it.querySelector(".guilib-select-menu") != null })
+    }
 }

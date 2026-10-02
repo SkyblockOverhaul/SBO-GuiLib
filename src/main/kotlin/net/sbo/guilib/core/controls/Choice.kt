@@ -83,6 +83,7 @@ internal val ChoiceComponent = component<ChoiceProps>("Choice") { p ->
             val attrs = HashMap<String, Any?>()
             attrs["tabindex"] = if (i == tabStop && !p.disabled) 0 else -1
             if (off) attrs["disabled"] = true
+            if (o.title != null) attrs["title"] = o.title
             val handlers = HashMap<String, (UIEvent) -> Unit>()
             handlers[EventType.CLICK] = { choose(i) }
             handlers[EventType.KEYDOWN] = { e ->
@@ -127,6 +128,7 @@ internal val ChipsComponent = component<ChipsProps>("Chips") { p ->
             val attrs = HashMap<String, Any?>()
             attrs["tabindex"] = 0
             if (off) attrs["disabled"] = true
+            if (o.title != null) attrs["title"] = o.title
             val handlers = HashMap<String, (UIEvent) -> Unit>()
             handlers[EventType.CLICK] = {
                 if (!off) {

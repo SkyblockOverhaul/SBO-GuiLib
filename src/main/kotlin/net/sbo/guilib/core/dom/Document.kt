@@ -63,6 +63,13 @@ class Document(
         return c
     }
 
+    /** Moves [container] above the other portals (it is painted last). */
+    internal fun bringPortalToFront(container: Element) {
+        if (portalContainers.lastOrNull() === container || !portalContainers.remove(container)) return
+        portalContainers += container
+        overlayRoot.setChildren(portalContainers.toList())
+    }
+
     internal fun closePortal(container: Element) {
         portalContainers.remove(container)
         overlayRoot.setChildren(portalContainers.toList())

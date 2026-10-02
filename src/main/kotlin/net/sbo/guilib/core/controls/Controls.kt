@@ -57,6 +57,7 @@ internal object Controls {
                 tip.inlineStyle = "position: fixed; left: ${input.mouseX + 8f}px; top: ${input.mouseY + 10f}px"
                 tip.setChildren(listOf(TextNode(e.getAttribute("title") as String)))
                 container.setChildren(listOf(tip))
+                doc.bringPortalToFront(container) // above menus and dropdowns opened after the tooltip layer
                 shown = true
             }
         }
