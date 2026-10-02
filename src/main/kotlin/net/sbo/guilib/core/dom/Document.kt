@@ -270,9 +270,10 @@ class Document(
 
     /**
      * Brings the tree up to date for a frame of the given size. Returns true if something visible changed.
-     * Must be called on the UI (render) thread.
+     * Must be called on the UI (render) thread. [animate] = false settles changes (e.g. hover after a layout) without
+     * advancing animations a second time in the same frame.
      */
-    fun update(viewportWidth: Float, viewportHeight: Float): Boolean {
+    fun update(viewportWidth: Float, viewportHeight: Float, animate: Boolean = true): Boolean {
         uiThread = Thread.currentThread()
         while (true) {
             val task = posted.poll() ?: break
@@ -298,7 +299,7 @@ class Document(
         }
         styleAndLayout()
         // Transitions/animations write their current values, then layout catches up within the same frame.
-        if (animator.isActive) {
+        if (animate && animator.isActive) {
             animator.tick(animationTime()) { el, props ->
                 if (props.any { !ComputedStyle.isPaintOnly(it) }) invalidateLayout() else invalidatePaint()
                 // Inherited values (e.g. color) must reach the children.

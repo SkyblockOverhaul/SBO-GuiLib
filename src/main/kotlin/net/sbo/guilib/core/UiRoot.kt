@@ -36,7 +36,7 @@ class UiRoot(measurer: TextMeasurer, stylesheets: List<Stylesheet> = emptyList()
             painted = true
             // Content may have moved under the mouse.
             input.refreshHover()
-            if (document.update(width, height)) {
+            if (document.update(width, height, animate = false)) {
                 painter.paint(document.body)
                 FrameStats.paint()
             }
