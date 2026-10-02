@@ -358,6 +358,38 @@ object Showcase {
                 ) { +"Preview" }
             }
         }
+        ThemeDemo()
+    }
+
+    /** All built-in control colors come from `--guilib-*` variables; the panel overrides them for its subtree. */
+    private val ThemeDemo = component("ThemeDemo") {
+        var theme by useState("default")
+        var mode by useState("normal")
+        var on by useState(true)
+        var level by useState(60f)
+        var tags by useState(listOf("lava"))
+        h3 { +"Theme variables" }
+        p(className = "muted") { +"Built-in controls take all colors from --guilib-* variables. This panel overrides them." }
+        segmented(value = theme, onChange = { theme = it }) {
+            option("default", "Default"); option("light", "Light"); option("emerald", "Emerald")
+        }
+        div(className = "theme-panel theme-$theme") {
+            div(className = "row") {
+                button { +"Button" }
+                input(placeholder = "Input")
+                select(value = mode, onChange = { mode = it.value }) {
+                    option("normal", "Normal")
+                    option("hard", "Hard")
+                }
+            }
+            div(className = "row") {
+                switch(checked = on, onChange = { on = it.checked }, label = "Switch")
+                slider(value = level, onChange = { level = it })
+            }
+            chips(values = tags, onChange = { tags = it }) {
+                option("trophy", "Trophy"); option("lava", "Lava"); option("water", "Water")
+            }
+        }
     }
 
     private val BoxesDemo = component("BoxesDemo") {

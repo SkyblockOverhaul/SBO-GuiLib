@@ -25,4 +25,4 @@ Key facts:
 ## Examples
 
 - [Showcase](src/main/kotlin/net/sbo/guilib/fabric/showcase/Showcase.kt) and [its CSS](src/main/resources/assets/guilib/showcase/showcase.css)
-- [Default styles](src/main/resources/assets/guilib/css/ua.css)
+- [Default styles](src/main/resources/assets/guilib/css/ua.css) – every color is a `--guilib-*` variable (theme = override them on `:root`)

@@ -10,7 +10,6 @@ import net.sbo.guilib.core.dsl.scroll
 import net.sbo.guilib.core.layout.FakeMeasurer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -68,7 +67,7 @@ class ScrollingStateTest {
 
         // Other scroll containers keep the normal, always visible scrollbar.
         val plain = root.document.body.querySelector(".plain")!!
-        assertNull(plain.style.scrollbarColor)
+        assertEquals(0x80FFFFFF.toInt() to 0x20000000, plain.style.scrollbarColor) // the theme colors from ua.css
         plain.scrollTop = 5f
         assertTrue(plain.hasState(PseudoState.SCROLLING))
     }

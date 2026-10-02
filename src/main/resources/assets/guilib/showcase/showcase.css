@@ -278,6 +278,56 @@ button.primary:hover { background-color: #6f9cf2; }
 
 .color-preview { width: 120px; height: 60px; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-weight: bold; text-shadow: 1px 1px #0008; }
 
+/* ---- theme variables ---- */
+/* Variables set on a subtree restyle its controls; the panel sets its own color, because body's
+   color: var(--guilib-text) was already resolved on body. */
+.theme-panel {
+    display: flex; flex-direction: column; gap: 6px; margin-top: 6px; padding: 8px; border-radius: 6px;
+    background-color: var(--guilib-surface); border: 1px solid var(--guilib-border-subtle); color: var(--guilib-text);
+}
+.theme-light {
+    --guilib-text: #1f2328;
+    --guilib-text-strong: #000000;
+    --guilib-text-muted: #59636e;
+    --guilib-text-subtle: #818b98;
+    --guilib-accent: #0969da;
+    --guilib-accent-soft: rgba(9, 105, 218, 0.15);
+    --guilib-surface: #f6f8fa;
+    --guilib-surface-2: #ffffff;
+    --guilib-surface-3: #ffffff;
+    --guilib-highlight: #e7ecf0;
+    --guilib-border: #d1d9e0;
+    --guilib-border-hover: #a8b3bd;
+    --guilib-border-strong: #818b98;
+    --guilib-border-subtle: #d1d9e0;
+    --guilib-focus: #0969da;
+    --guilib-button: #f0f2f4;
+    --guilib-button-hover: #e4e8eb;
+    --guilib-button-active: #d8dde1;
+    --guilib-button-border: #d1d9e0;
+    --guilib-track: #d1d9e0;
+    --guilib-track-border: #c0c8d0;
+    --guilib-tint: rgba(0, 0, 0, 0.05);
+    --guilib-tint-strong: rgba(0, 0, 0, 0.08);
+}
+.theme-emerald {
+    --guilib-accent: #2ecc71;
+    --guilib-accent-soft: rgba(46, 204, 113, 0.22);
+    --guilib-surface: #13251c;
+    --guilib-surface-2: #0c1a13;
+    --guilib-surface-3: #08120d;
+    --guilib-highlight: #1f3a2c;
+    --guilib-border: #2c5a42;
+    --guilib-border-hover: #3f7a5a;
+    --guilib-border-subtle: #234a36;
+    --guilib-button: #1d3d2c;
+    --guilib-button-hover: #265039;
+    --guilib-button-active: #142c20;
+    --guilib-button-border: #2f6247;
+    --guilib-track: #2c5a42;
+    --guilib-track-border: #3a6e53;
+}
+
 /* ---- rotate & skew ---- */
 @keyframes spin { to { transform: rotate(360deg); } }
 .rotate-row { gap: 10px; padding: 6px 0; }

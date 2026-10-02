@@ -261,6 +261,13 @@ in one stylesheet works in every screen. Weights map to the nearest face (400/50
 - **Scrollable list filling the rest:** parent `display: flex; flex-direction: column; height: …`, list `flex-grow: 1; min-height: 0; overflow: auto`.
 - **Ellipsis:** `white-space: nowrap; overflow: hidden; text-overflow: ellipsis` (+ `min-width: 0` in flex rows).
 - **Theme:** define `--vars` on `:root` in one CSS file, use `var(--x)` everywhere.
+- **Recolor the built-in controls:** every color in `ua.css` is a `--guilib-*` variable, so override variables instead of rules:
+  `:root { --guilib-accent: #e67e22; --guilib-surface-2: #fff; --guilib-text: #1f2328 }`. Groups: text (`--guilib-text`, `-strong`, `-secondary`, `-muted`, `-subtle`, `--guilib-link`),
+  accent (`--guilib-accent`, `-soft`, `--guilib-on-accent`, `-muted`, `--guilib-selection`), surfaces (`--guilib-surface`, `-2`, `-3`, `--guilib-highlight`, `--guilib-tint`, `-strong`, `--guilib-shade`, `--guilib-backdrop`),
+  borders (`--guilib-border`, `-hover`, `-strong`, `-subtle`, `--guilib-divider`, `--guilib-focus`), buttons (`--guilib-button`, `-hover`, `-active`, `-border`),
+  `--guilib-track`, `-border`, `--guilib-thumb`, status (`--guilib-success`, `--guilib-warning`, `--guilib-danger`, `--guilib-danger-text`), `--guilib-scrollbar-thumb` / `-track`,
+  `--guilib-picker-handle`, `--guilib-swatch-border` (defaults + comments at the top of `ua.css`). On a subtree, also set `color: var(--guilib-text)` there
+  (body's color is resolved on body). Menus, tooltips, select dropdowns, modals and toasts are portals under body: they follow `:root` / body classes, not the subtree.
 - **Close button:** `button(onClick = { GuiLib.close() })`.
 - **Async data:** `val commit = useAsync { fetchLatestCommit() }` → `+when { commit.error != null -> "unavailable"; commit.loading -> "loading…"; else -> commit.value!! }`; `button(onClick = { commit.reload() })`. Callback APIs: `usePromise { resolve, reject -> api.load(resolve, reject) }`. State setters are thread-safe too. Other work: `GuiLib.runOnUi { }`.
 - **Hover fade:** `.card { transition: background-color 150ms } .card:hover { background-color: #333 }`.
