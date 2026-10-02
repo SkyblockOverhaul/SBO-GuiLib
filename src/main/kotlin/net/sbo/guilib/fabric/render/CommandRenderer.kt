@@ -7,7 +7,10 @@ import net.minecraft.client.gui.components.PlayerFaceExtractor
 import net.minecraft.client.gui.navigation.ScreenRectangle
 import net.minecraft.client.gui.screens.inventory.InventoryScreen
 import net.minecraft.client.player.AbstractClientPlayer
+import net.minecraft.client.gui.render.TextureSetup
 import net.minecraft.client.renderer.RenderPipelines
+import net.minecraft.client.renderer.state.gui.ColoredRectangleRenderState
+import net.minecraft.client.renderer.state.gui.GuiElementRenderState
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.component.ResolvableProfile
@@ -37,12 +40,23 @@ object CommandRenderer {
 
     /**
      * Keeps our paint order intact on top of Minecraft's GUI batching:
-     * - vanilla text and items are drawn after all quads of their layer, so a quad following them needs a new layer;
-     * - quads inside a layer are sorted by scissor/pipeline/texture, so a quad overlapping an earlier quad with a
-     *   different batch key needs a new layer too.
+     * - our own elements go straight into the current layer ([add]); Minecraft's `addGuiElement` would compare each
+     *   new element with every element of the layers above it (quadratic, the main cost of big screens);
+     * - quads inside a layer are sorted (stably) by scissor/pipeline/texture, so a quad overlapping an earlier quad
+     *   with a different batch key needs a new layer;
+     * - content Minecraft places itself (its font, items, entities, images) can land in any layer, so before our next
+     *   element we move to a new layer on top of everything ([onTop]).
      */
-    private var layerHasOverlay = false
+    private var onTop = false
     private val layerQuads = ArrayList<Quad>()
+
+    /** Adds one of our elements to the current layer (after [beforeQuad] chose it). */
+    private fun add(ctx: GuiGraphicsExtractor, state: GuiElementRenderState) = ctx.guiRenderState.current.addGuiElement(state)
+
+    /** Minecraft placed something itself: our next element starts a new layer above everything. */
+    private fun vanillaDrew() {
+        onTop = false
+    }
 
     private class Quad(val key: Any, val x0: Float, val y0: Float, val x1: Float, val y1: Float)
 
@@ -55,10 +69,15 @@ object CommandRenderer {
         val x1 = sr?.right ?: lx1
         val y1 = sr?.bottom ?: ly1
         val key = kind to ctx.scissorStack.peek()
-        val conflict = layerHasOverlay || layerQuads.any { it.key != key && it.x0 < x1 && x0 < it.x1 && it.y0 < y1 && y0 < it.y1 }
-        if (conflict) {
-            ctx.guiRenderState.up()
-            layerHasOverlay = false
+        val rs = ctx.guiRenderState
+        if (!onTop) {
+            // The top layer of the current stratum, then a fresh one above it.
+            while (rs.current.up != null) rs.up()
+            rs.up()
+            onTop = true
+            layerQuads.clear()
+        } else if (layerQuads.any { it.key != key && it.x0 < x1 && x0 < it.x1 && it.y0 < y1 && y0 < it.y1 }) {
+            rs.up()
             layerQuads.clear()
         }
         layerQuads += Quad(key, x0, y0, x1, y1)
@@ -74,7 +93,7 @@ object CommandRenderer {
     fun draw(ctx: GuiGraphicsExtractor, commands: List<PaintCommand>, mouseX: Int = 0, mouseY: Int = 0) {
         this.mouseX = mouseX
         this.mouseY = mouseY
-        layerHasOverlay = false
+        onTop = false
         layerQuads.clear()
         transform = null
         val pose = ctx.pose()
@@ -86,20 +105,21 @@ object CommandRenderer {
                 is PaintCommand.Image -> drawImage(ctx, cmd)
                 is PaintCommand.Gradient -> if (cmd.mesh.triangleCount > 0 && cmd.width > 0f && cmd.height > 0f) {
                     beforeQuad(ctx, "rounded", cmd.x, cmd.y, cmd.x + cmd.width, cmd.y + cmd.height)
-                    ctx.guiRenderState.addGuiElement(
+                    add(
+                        ctx,
                         GradientMeshState(Matrix3x2f(ctx.pose()), cmd.mesh, cmd.x, cmd.y, cmd.width, cmd.height, cmd.radii, ctx.scissorStack.peek()),
                     )
                 }
                 is PaintCommand.Shadow -> if (cmd.width > 0f && cmd.height > 0f) {
                     val a = cmd.bounds
                     beforeQuad(ctx, "shadow", a.x, a.y, a.right, a.bottom)
-                    ctx.guiRenderState.addGuiElement(ShadowState(Matrix3x2f(ctx.pose()), cmd, ctx.scissorStack.peek()))
+                    add(ctx, ShadowState(Matrix3x2f(ctx.pose()), cmd, ctx.scissorStack.peek()))
                 }
                 is PaintCommand.Text -> drawText(ctx, cmd)
                 is PaintCommand.Replaced -> {
                     // Items and entities are drawn after the layer's quads; a player head is a plain textured quad.
                     drawReplaced(ctx, cmd)
-                    if (cmd.element.tagName != "player-head") layerHasOverlay = true
+                    vanillaDrew()
                 }
                 is PaintCommand.PushClip -> {
                     // Clip rects are in screen coordinates, whatever transform is active.
@@ -148,17 +168,26 @@ object CommandRenderer {
         val br = r(b.borders[1])
         val bb = r(b.borders[2])
         val bl = r(b.borders[3])
-        if (Colors.alpha(b.background) != 0) ctx.fill(x0 + bl, y0 + bt, x1 - br, y1 - bb, b.background)
-        if (bt > 0) ctx.fill(x0, y0, x1, y0 + bt, b.borderColors[0])
-        if (bb > 0) ctx.fill(x0, y1 - bb, x1, y1, b.borderColors[2])
-        if (bl > 0) ctx.fill(x0, y0 + bt, x0 + bl, y1 - bb, b.borderColors[3])
-        if (br > 0) ctx.fill(x1 - br, y0 + bt, x1, y1 - bb, b.borderColors[1])
+        val pose = Matrix3x2f(ctx.pose())
+        val scissor = ctx.scissorStack.peek()
+        // Exactly what `ctx.fill` builds (it swaps the corners the same way), added to the current layer.
+        fun fill(fx0: Int, fy0: Int, fx1: Int, fy1: Int, color: Int) = add(
+            ctx,
+            ColoredRectangleRenderState(
+                RenderPipelines.GUI, TextureSetup.noTexture(), pose,
+                maxOf(fx0, fx1), maxOf(fy0, fy1), minOf(fx0, fx1), minOf(fy0, fy1), color, color, scissor,
+            ),
+        )
+        if (Colors.alpha(b.background) != 0) fill(x0 + bl, y0 + bt, x1 - br, y1 - bb, b.background)
+        if (bt > 0) fill(x0, y0, x1, y0 + bt, b.borderColors[0])
+        if (bb > 0) fill(x0, y1 - bb, x1, y1, b.borderColors[2])
+        if (bl > 0) fill(x0, y0 + bt, x0 + bl, y1 - bb, b.borderColors[3])
+        if (br > 0) fill(x1 - br, y0 + bt, x1, y1 - bb, b.borderColors[1])
     }
 
     private fun drawRoundedBox(ctx: GuiGraphicsExtractor, b: PaintCommand.Box) {
         val pose = Matrix3x2f(ctx.pose())
         val scissor = ctx.scissorStack.peek()
-        val state = ctx.guiRenderState
         val bw = b.borders[0]
         val bc = b.borderColors[0]
         val uniform = (0 until 4).all { b.borders[it] == bw && (bw == 0f || b.borderColors[it] == bc) }
@@ -166,10 +195,10 @@ object CommandRenderer {
         if (uniform) {
             // One SDF pass for the background inside the border, one for the border ring.
             if (Colors.alpha(b.background) != 0) {
-                state.addGuiElement(RoundedRectState(pose, b.x, b.y, b.width, b.height, b.background, b.radii, bw, scissor))
+                add(ctx, RoundedRectState(pose, b.x, b.y, b.width, b.height, b.background, b.radii, bw, scissor))
             }
             if (bw > 0f && Colors.alpha(bc) != 0) {
-                state.addGuiElement(RoundedRectState(pose, b.x, b.y, b.width, b.height, bc, b.radii, -bw, scissor))
+                add(ctx, RoundedRectState(pose, b.x, b.y, b.width, b.height, bc, b.radii, -bw, scissor))
             }
             return
         }
@@ -178,7 +207,7 @@ object CommandRenderer {
         // then one straight strip per side. Strips stop where a rounded corner begins so they never stick out of it;
         // sides between square corners (e.g. a header's border-bottom) are exact.
         if (Colors.alpha(b.background) != 0) {
-            state.addGuiElement(RoundedRectState(pose, b.x, b.y, b.width, b.height, b.background, b.radii, 0f, scissor))
+            add(ctx, RoundedRectState(pose, b.x, b.y, b.width, b.height, b.background, b.radii, 0f, scissor))
         }
         val (tl, tr, br, bl) = b.radii.toList()
         val x0 = b.x
@@ -188,7 +217,7 @@ object CommandRenderer {
         fun strip(side: Int, sx0: Float, sy0: Float, sx1: Float, sy1: Float) {
             val c = b.borderColors[side]
             if (b.borders[side] <= 0f || Colors.alpha(c) == 0 || sx1 <= sx0 || sy1 <= sy0) return
-            state.addGuiElement(RoundedRectState(pose, sx0, sy0, sx1 - sx0, sy1 - sy0, c, NO_RADII, 0f, scissor))
+            add(ctx, RoundedRectState(pose, sx0, sy0, sx1 - sx0, sy1 - sy0, c, NO_RADII, 0f, scissor))
         }
         strip(0, x0 + tl, y0, x1 - tr, y0 + b.borders[0])
         strip(2, x0 + bl, y1 - b.borders[2], x1 - br, y1)
@@ -240,7 +269,7 @@ object CommandRenderer {
         if (scale != 1f) pose.scale(scale, scale)
         ctx.text(font, VanillaFont.sequence(text, t.style), 0, 0, t.color, t.style.shadow != null)
         pose.popMatrix()
-        layerHasOverlay = true
+        vanillaDrew()
         return VanillaFont.width(text, t.style)
     }
 
@@ -273,7 +302,7 @@ object CommandRenderer {
         )
         for (p in run.pages.indices) {
             beforeQuad(ctx, run.pages[p].id, x, y, x1, y1)
-            ctx.guiRenderState.addGuiElement(TextRunState(pose, run.pages[p], run.quads[p], color, scissor, bounds, linear, penX / scale, baseline / scale))
+            add(ctx, TextRunState(pose, run.pages[p], run.quads[p], color, scissor, bounds, linear, penX / scale, baseline / scale))
         }
         return advance
     }
@@ -384,6 +413,7 @@ object CommandRenderer {
         val color = Colors.withOpacity(Colors.WHITE, img.alpha)
         ctx.blit(RenderPipelines.GUI_TEXTURED, tex.id, 0, 0, u, v, regionW, regionH, regionW, regionH, tex.width, tex.height, color)
         pose.popMatrix()
+        vanillaDrew()
     }
 
     // ---- replaced content --------------------------------------------------------------------------------------
