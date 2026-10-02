@@ -47,6 +47,18 @@ internal object GifDecoder {
     /** Upper bound for all frames together (pixels); longer animations are cut off to keep memory in check. */
     const val MAX_TOTAL_PIXELS = 32L * 1024 * 1024
 
+    /**
+     * The logical screen size from the GIF header (bytes 6-9, little endian), without decoding anything, or `null` if
+     * [bytes] isn't a GIF or the header has no size (then only [decode] knows it).
+     */
+    fun screenSize(bytes: ByteArray): Pair<Int, Int>? {
+        if (bytes.size < 10 || bytes[0] != 'G'.code.toByte() || bytes[1] != 'I'.code.toByte() || bytes[2] != 'F'.code.toByte()) return null
+        fun u16(i: Int) = (bytes[i].toInt() and 0xFF) or ((bytes[i + 1].toInt() and 0xFF) shl 8)
+        val w = u16(6)
+        val h = u16(8)
+        return if (w > 0 && h > 0) w to h else null
+    }
+
     fun decode(input: InputStream, maxTotalPixels: Long = MAX_TOTAL_PIXELS, onTruncated: (Int) -> Unit = {}): Gif {
         val stream = ImageIO.createImageInputStream(input) ?: throw IllegalArgumentException("cannot read GIF")
         stream.use {

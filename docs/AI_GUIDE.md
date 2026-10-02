@@ -226,7 +226,7 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
 14. Not supported (yet): 3D transforms (a `transform` containing them is ignored),
     `:nth-child(… of S)`, pseudo-elements other than `::before`/`::after`, float, subgrid, named grid lines (`[name]` is ignored).
     Grid: `auto-fit` behaves like `auto-fill` (empty tracks aren't collapsed); items can't be placed before line 1.
-15. Images: `src` is a resource location (`"modid:textures/x.png"`), PNG, SVG or GIF only; no URLs yet. Animated GIFs loop like in a browser (all images with the same `src` play in sync); very long GIFs are cut off after ~32M pixels of frames.
+15. Images: `src` is a resource location (`"modid:textures/x.png"`), PNG, SVG or GIF only; no URLs yet. Animated GIFs loop like in a browser (all images with the same `src` play in sync); they are decoded in the background, so a big GIF stays empty for a moment instead of freezing the game (its size is known right away, layout doesn't jump); very long GIFs are cut off after ~32M pixels of frames.
 16. Text has no kerning; `text-align: justify` behaves like `left`. No right-to-left or complex-script shaping: Arabic/Hebrew
     render as unconnected letters in left-to-right order. Characters missing from the font (CJK, emoji, …) fall back to
     Minecraft's font.

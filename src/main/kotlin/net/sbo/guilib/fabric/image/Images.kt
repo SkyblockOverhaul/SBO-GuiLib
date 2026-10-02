@@ -12,7 +12,11 @@ import net.sbo.guilib.core.Log
 import net.sbo.guilib.core.dom.ReplacedContent
 import java.awt.RenderingHints
 import java.awt.image.BufferedImage
+import java.io.ByteArrayInputStream
 import java.io.DataInputStream
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 import kotlin.math.ceil
 
 /**
@@ -32,35 +36,60 @@ object Images {
     ) : ReplacedContent
 
     /**
-     * A decoded GIF. Frames are uploaded on first draw; all `<img>`s showing the same GIF play in sync from the moment
-     * it was first loaded (like browsers do for one image resource).
+     * A GIF decoded on a background thread (decoding big GIFs takes long enough to freeze the game). Until it is ready
+     * nothing is drawn, like a loading image in a browser. Each frame is uploaded to the GPU when it is first shown,
+     * so the uploads are spread over the first play. All `<img>`s showing the same GIF play in sync from the moment it
+     * was ready (like browsers do for one image resource).
      */
-    class AnimatedGif internal constructor(private var decoded: GifDecoder.Gif?) {
-        private val timing = decoded!!.timing
-        private val start = System.nanoTime()
-        internal var textures: List<Texture>? = null
+    class AnimatedGif internal constructor(private val src: String, private val pending: CompletableFuture<Frames>) {
+        /** Decoded frames as native images, built off-thread; an entry becomes `null` once uploaded. */
+        internal class Frames(val timing: GifDecoder.Timing, val width: Int, val height: Int, val images: Array<NativeImage?>)
+
+        private var frames: Frames? = null
+        private var textures: Array<Texture?> = emptyArray()
+        private var start = -1L
+        private var failed = false
+        private var disposed = false
+        private val serial = gifCounter++
 
         fun frame(): Texture? {
-            val tex = textures ?: upload() ?: return null
-            return tex[timing.frameAt((System.nanoTime() - start) / 1_000_000)]
+            if (disposed || failed) return null
+            val f = frames ?: run {
+                if (!pending.isDone) return null
+                try {
+                    pending.join().also { frames = it; textures = arrayOfNulls(it.images.size) }
+                } catch (e: Exception) {
+                    failed = true
+                    Log.warnOnce("GuiLib: failed to load image '$src': ${e.cause ?: e}")
+                    return null
+                }
+            }
+            if (start < 0) start = System.nanoTime()
+            val i = f.timing.frameAt((System.nanoTime() - start) / 1_000_000)
+            textures[i]?.let { return it }
+            val native = f.images[i] ?: return null
+            f.images[i] = null // the texture owns the pixels from now on
+            val id = Identifier.fromNamespaceAndPath("guilib", "dynamic/gif_${serial}_$i")
+            Minecraft.getInstance().textureManager.register(id, DynamicTexture({ "GuiLib GIF $id" }, native))
+            return Texture(id, f.width, f.height).also { textures[i] = it }
         }
 
-        private fun upload(): List<Texture>? {
-            val d = decoded ?: return null
-            decoded = null // the pixels live in the textures from now on
-            val serial = gifCounter++
-            return d.frames.mapIndexed { i, f ->
-                val native = NativeImage(d.width, d.height, false)
-                for (y in 0 until d.height) for (x in 0 until d.width) native.setPixel(x, y, f.argb[y * d.width + x])
-                val id = Identifier.fromNamespaceAndPath("guilib", "dynamic/gif_${serial}_$i")
-                Minecraft.getInstance().textureManager.register(id, DynamicTexture({ "GuiLib GIF $id" }, native))
-                Texture(id, d.width, d.height)
-            }.also { textures = it }
+        /** Releases the uploaded textures and frees frames that were never shown (also if decoding finishes later). */
+        internal fun dispose() {
+            disposed = true
+            textures.forEach { it?.let { t -> Minecraft.getInstance().textureManager.release(t.id) } }
+            textures = emptyArray()
+            pending.thenAccept { f -> f.images.forEachIndexed { i, img -> img?.close(); f.images[i] = null } }
         }
     }
 
     /** A drawable texture region: the texture and its size in texels. */
     class Texture(val id: Identifier, val width: Int, val height: Int)
+
+    /** Decodes GIFs off the render thread; one daemon thread is enough (they rarely load at the same time). */
+    private val decoder: ExecutorService = Executors.newSingleThreadExecutor { r ->
+        Thread(r, "GuiLib GIF decoder").apply { isDaemon = true; priority = Thread.MIN_PRIORITY }
+    }
 
     private val entries = HashMap<String, Entry?>()
     private val svgTextures = LinkedHashMap<String, Texture>()
@@ -87,10 +116,16 @@ object Images {
                 val size = doc.size()
                 Entry(src, size.width, size.height, doc, null)
             } else if (id.path.endsWith(".gif", ignoreCase = true)) {
-                val gif = resource.get().open().use { input ->
-                    GifDecoder.decode(input) { kept -> Log.warnOnce("GuiLib: GIF '$src' is too large, only its first $kept frames are shown") }
+                // Only the header is read here (the natural size for layout); the frames are decoded in the background.
+                val bytes = resource.get().open().use { it.readAllBytes() }
+                val decode = { decodeFrames(src, bytes) }
+                val size = GifDecoder.screenSize(bytes)
+                if (size == null) {
+                    val frames = decode() // no size in the header: decode now to know it
+                    Entry(src, frames.width.toFloat(), frames.height.toFloat(), null, null, AnimatedGif(src, CompletableFuture.completedFuture(frames)))
+                } else {
+                    Entry(src, size.first.toFloat(), size.second.toFloat(), null, null, AnimatedGif(src, CompletableFuture.supplyAsync(decode, decoder)))
                 }
-                Entry(src, gif.width.toFloat(), gif.height.toFloat(), null, null, AnimatedGif(gif))
             } else {
                 // Read the PNG header for the natural size; the texture itself is loaded lazily by the TextureManager.
                 val (w, h) = resource.get().open().use { pngSize(DataInputStream(it)) }
@@ -100,6 +135,27 @@ object Images {
             Log.warnOnce("GuiLib: failed to load image '$src': $e")
             null
         }
+    }
+
+    /** Decodes a GIF and copies its frames into native images (no GPU work, so it can run on any thread). */
+    private fun decodeFrames(src: String, bytes: ByteArray): AnimatedGif.Frames {
+        val gif = GifDecoder.decode(ByteArrayInputStream(bytes)) { kept ->
+            Log.warnOnce("GuiLib: GIF '$src' is too large, only its first $kept frames are shown")
+        }
+        val w = gif.width
+        val h = gif.height
+        val images = arrayOfNulls<NativeImage>(gif.frames.size)
+        try {
+            gif.frames.forEachIndexed { i, f ->
+                val native = NativeImage(w, h, false)
+                images[i] = native
+                for (y in 0 until h) for (x in 0 until w) native.setPixel(x, y, f.argb[y * w + x])
+            }
+        } catch (e: Throwable) {
+            images.forEach { it?.close() }
+            throw e
+        }
+        return AnimatedGif.Frames(gif.timing, w, h, images)
     }
 
     private fun pngSize(input: DataInputStream): Pair<Int, Int> {
@@ -154,7 +210,7 @@ object Images {
 
     /** Drops cached metadata (e.g. after a resource reload). */
     fun clear() {
-        entries.values.forEach { e -> e?.gif?.textures?.forEach { Minecraft.getInstance().textureManager.release(it.id) } }
+        entries.values.forEach { e -> e?.gif?.dispose() }
         entries.clear()
         svgTextures.values.forEach { Minecraft.getInstance().textureManager.release(it.id) }
         svgTextures.clear()

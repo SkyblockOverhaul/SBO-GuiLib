@@ -122,4 +122,12 @@ class GifDecoderTest {
         assertEquals(3, g.frames.size)
         assertEquals(3, cut)
     }
+
+    @Test
+    fun screenSizeIsReadFromTheHeaderWithoutDecoding() {
+        val bytes = gif(37, 5, listOf(F(0, 0, 2, 2, RED)))
+        assertEquals(37 to 5, GifDecoder.screenSize(bytes))
+        assertEquals(null, GifDecoder.screenSize(byteArrayOf(1, 2, 3))) // not a GIF
+        assertEquals(null, GifDecoder.screenSize("GIF89a".toByteArray() + byteArrayOf(0, 0, 0, 0))) // 0×0 screen
+    }
 }
