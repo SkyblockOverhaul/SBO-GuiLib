@@ -150,14 +150,21 @@ internal class TextAreaControl(val el: Element) : EditableControl {
         return 0
     }
 
+    /** x of index [i] in [line], relative to the line's content box (includes the `text-align` shift). */
     private fun xIn(line: Int, i: Int): Float {
         val l = lines[line]
-        return measure(text.substring(l.start, i.coerceIn(l.start, l.end)))
+        return lineShift(line) + measure(text.substring(l.start, i.coerceIn(l.start, l.end)))
     }
 
-    /** Index in [line] closest to x (relative to the line's text start). */
-    private fun indexInLine(line: Int, x: Float): Int {
+    private fun lineShift(line: Int): Float {
         val l = lines[line]
+        return alignShift(el, el.box.contentWidth, measure(text.substring(l.start, l.end)))
+    }
+
+    /** Index in [line] closest to x (relative to the line's content box). */
+    private fun indexInLine(line: Int, visualX: Float): Int {
+        val l = lines[line]
+        val x = visualX - lineShift(line)
         val chars = breaker(text)
         var best = l.start
         var bestDist = Float.MAX_VALUE

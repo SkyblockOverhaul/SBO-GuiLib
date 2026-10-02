@@ -1,6 +1,7 @@
 package net.sbo.guilib.core.controls
 
 import net.sbo.guilib.core.css.PseudoState
+import net.sbo.guilib.core.css.TextAlign
 import net.sbo.guilib.core.dom.Document
 import net.sbo.guilib.core.dom.Element
 import net.sbo.guilib.core.dom.TextNode
@@ -105,11 +106,13 @@ internal class InputControl(val el: Element) : EditableControl {
         val top = (b.paragraphs.firstOrNull()?.y ?: b.contentY) - b.border.top + (line?.y ?: 0f)
         val height = line?.height ?: b.contentHeight
         val shown = displayText()
-        val caretX = b.padding.left + measure(shown.substring(0, caret.coerceIn(0, shown.length)))
+        val shift = alignShift()
+        val rel = measure(shown.substring(0, caret.coerceIn(0, shown.length)))
+        val caretX = b.padding.left + shift + rel
 
-        // Scroll horizontally so the caret stays visible.
+        // Scroll horizontally so the caret stays visible (aligned text fits, so it never scrolls).
         val visibleW = b.contentWidth
-        val rel = caretX - b.padding.left
+        if (shift > 0f) el.scrollLeft = 0f
         if (rel - el.scrollLeft > visibleW - 1f) el.scrollLeft = rel - visibleW + 1f
         if (rel < el.scrollLeft) el.scrollLeft = rel
 
@@ -117,13 +120,16 @@ internal class InputControl(val el: Element) : EditableControl {
         val blinkOn = ((now - blinkStart) / 500L) % 2L == 0L
         setStyle(caretEl, "left: ${caretX}px; top: ${top}px; height: ${height}px; visibility: ${if (focused && blinkOn && !hasSelection) "visible" else "hidden"}")
         if (hasSelection && focused) {
-            val x0 = b.padding.left + measure(shown.substring(0, selStart))
-            val x1 = b.padding.left + measure(shown.substring(0, selEnd))
+            val x0 = b.padding.left + shift + measure(shown.substring(0, selStart))
+            val x1 = b.padding.left + shift + measure(shown.substring(0, selEnd))
             setStyle(selectionEl, "display: block; left: ${x0}px; top: ${top}px; width: ${x1 - x0}px; height: ${height}px")
         } else {
             setStyle(selectionEl, "display: none")
         }
     }
+
+    /** Where `text-align` puts the typed text (an empty field counts as zero width, so the caret sits in the middle). */
+    private fun alignShift() = alignShift(el, el.box.contentWidth, measure(displayText()))
 
     private fun setStyle(e: Element, css: String) {
         if (e.inlineStyle != css) e.inlineStyle = css
@@ -203,7 +209,7 @@ internal class InputControl(val el: Element) : EditableControl {
         val r = el.getBoundingClientRect()
         // The client rect includes transforms; text is measured untransformed.
         val scale = if (el.box.width > 0f) r.width / el.box.width else 1f
-        val x = (clientX - r.x) / scale - el.box.border.left - el.box.padding.left + el.scrollLeft
+        val x = (clientX - r.x) / scale - el.box.border.left - el.box.padding.left - alignShift() + el.scrollLeft
         val shown = displayText()
         var best = 0
         var bestDist = Float.MAX_VALUE
@@ -315,4 +321,11 @@ internal class InputControl(val el: Element) : EditableControl {
         dragging = false
         anchor = caret
     }
+}
+
+/** Offset of a line [width] wide inside [available] for [el]'s `text-align`; like the layout, never negative. */
+internal fun alignShift(el: Element, available: Float, width: Float): Float = when (el.style.textAlign) {
+    TextAlign.LEFT -> 0f
+    TextAlign.CENTER -> ((available - width) / 2f).coerceAtLeast(0f)
+    TextAlign.RIGHT -> (available - width).coerceAtLeast(0f)
 }

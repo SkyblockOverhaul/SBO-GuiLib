@@ -168,6 +168,14 @@ object Showcase {
             input(type = "password", value = password, onChange = { password = it.value })
         }
         div(className = "form-row") {
+            span(className = "form-label") { +"Aligned" }
+            div(className = "row") {
+                input(placeholder = "center", style = "text-align: center; width: 80px")
+                input(placeholder = "right", style = "text-align: right; width: 80px")
+                textarea(placeholder = "centered", rows = 3, style = "text-align: center; width: 90px")
+            }
+        }
+        div(className = "form-row") {
             span(className = "form-label") { +"Mode" }
             select(value = mode, onChange = { mode = it.value }) {
                 option("normal", "Normal")
