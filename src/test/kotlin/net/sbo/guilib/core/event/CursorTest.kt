@@ -18,6 +18,7 @@ class CursorTest {
         .grab:active { cursor: grabbing }
         .link { cursor: pointer }
         .resize { cursor: col-resize }
+        .hidden { cursor: none }
     """.trimIndent()
 
     private fun ui(): UiRoot {
@@ -26,6 +27,7 @@ class CursorTest {
             div(className = "link") {}
             div(className = "resize") {}
             div {}
+            div(className = "hidden") {}
         }
         val root = UiRoot(FakeMeasurer, listOf(Stylesheet.parse(css, "t", Origin.USER_AGENT)))
         root.render(VComponent(app, Unit, null))
@@ -59,5 +61,12 @@ class CursorTest {
         root.input.mouseDown(5f, 15f, 0); root.frame(100f, 100f)
         root.input.mouseMove(5f, 35f); root.frame(100f, 100f)
         assertEquals(Cursor.AUTO, root.input.cursor)
+    }
+
+    @Test
+    fun noneHidesTheCursor() {
+        val root = ui()
+        root.input.mouseMove(5f, 45f); root.frame(100f, 100f)
+        assertEquals(Cursor.NONE, root.input.cursor)
     }
 }

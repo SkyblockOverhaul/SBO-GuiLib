@@ -360,3 +360,11 @@ button.small { padding: 0 4px; }
 .tip-chip::after { content: attr(title); color: #ffd166; }
 .quote { position: relative; padding: 4px 8px 4px 14px; background-color: var(--panel); border-radius: 3px; }
 .quote::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: 2px; background: linear-gradient(to bottom, var(--accent), #b07bf5); }
+
+/* cursor: none + a crosshair drawn by the UI */
+.cursor-area {
+    position: relative; height: 70px; border-radius: 6px; background-color: #2b2d31; border: 1px dashed #4e5058; cursor: none;
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+.crosshair { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border: 2px solid #f0b232; border-radius: 50%; }
+.crosshair::after { content: ""; position: absolute; left: 4px; top: 4px; width: 2px; height: 2px; background-color: #f0b232; }

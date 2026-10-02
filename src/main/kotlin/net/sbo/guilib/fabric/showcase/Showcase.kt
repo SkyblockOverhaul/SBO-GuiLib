@@ -7,6 +7,7 @@ import net.minecraft.network.chat.HoverEvent
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.sbo.guilib.core.css.Colors
+import net.sbo.guilib.core.dom.Element
 import net.sbo.guilib.core.dom.component
 import net.sbo.guilib.core.dsl.b
 import net.sbo.guilib.core.dsl.button
@@ -111,6 +112,22 @@ object Showcase {
             button(onClick = { e -> e.stopPropagation(); log = (log + "stopped").takeLast(4) }) { +"stopPropagation" }
         }
         p(className = "muted") { +"Log: ${log.joinToString(" → ")}" }
+        CustomCursorDemo()
+    }
+
+    /** `cursor: none` hides the system cursor; the box draws its own crosshair at the mouse instead. */
+    private val CustomCursorDemo = component("CustomCursorDemo") {
+        val box = useRef<Element?>(null)
+        var at by useState<Pair<Float, Float>?>(null)
+        h3 { +"cursor: none" }
+        div(
+            className = "cursor-area", ref = box,
+            onMouseMove = { e -> box.current?.getBoundingClientRect()?.let { r -> at = (e.clientX - r.x) to (e.clientY - r.y) } },
+            onMouseLeave = { at = null },
+        ) {
+            span(className = "muted") { +"Move the mouse here" }
+            at?.let { (x, y) -> div(className = "crosshair", style = "left: ${x}px; top: ${y}px") }
+        }
     }
 
     private val FormsDemo = component("FormsDemo") {

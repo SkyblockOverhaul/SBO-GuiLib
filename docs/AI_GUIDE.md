@@ -193,7 +193,7 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
   `box-shadow`: `none` or a comma list of `[inset] <x> <y> [<blur> [<spread>]] [<color>]` (first = top; color defaults to `currentColor`).
   Real Gaussian blur, follows `border-radius`; outer shadows are never drawn under the box (fine with translucent backgrounds),
   inset shadows sit inside the padding box. Transitions between shadow lists work (`inset` must match per position).
-- Interaction: `cursor` (`auto default pointer text not-allowed crosshair move ns-resize ew-resize row-resize col-resize grab grabbing`;
+- Interaction: `cursor` (`auto default pointer text not-allowed crosshair move ns-resize ew-resize row-resize col-resize grab grabbing none`; `none` hides the system cursor, e.g. to draw your own at the mouse;
   while the left button is held on an element with `grab`/`grabbing`/`move`/a resize cursor, that cursor stays even when the mouse leaves it), `pointer-events`, `user-select` (parsed only)
 - Generated content: `content` (strings, `attr(name)`, `none`/`normal`; only on `::before` / `::after`)
 - Scrollbars: `scrollbar-width` (`auto thin none`), `scrollbar-color: <thumb> <track>`

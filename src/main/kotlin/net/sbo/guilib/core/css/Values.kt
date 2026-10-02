@@ -91,7 +91,7 @@ sealed interface ContentPart {
 }
 enum class FontStyle { NORMAL, ITALIC }
 enum class ObjectFit { FILL, CONTAIN, COVER, NONE, SCALE_DOWN }
-enum class Cursor { AUTO, DEFAULT, POINTER, TEXT, NOT_ALLOWED, CROSSHAIR, MOVE, NS_RESIZE, EW_RESIZE, ROW_RESIZE, COL_RESIZE, GRAB, GRABBING }
+enum class Cursor { AUTO, DEFAULT, POINTER, TEXT, NOT_ALLOWED, CROSSHAIR, MOVE, NS_RESIZE, EW_RESIZE, ROW_RESIZE, COL_RESIZE, GRAB, GRABBING, NONE }
 enum class UserSelect { AUTO, NONE, TEXT }
 
 data class TextDecoration(val underline: Boolean = false, val lineThrough: Boolean = false) {

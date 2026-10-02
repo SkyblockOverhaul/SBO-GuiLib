@@ -19,6 +19,7 @@ import kotlin.math.roundToInt
 /**
  * Maps CSS cursors to Minecraft cursor types. GLFW only has a handful of standard cursors, so the hand cursors
  * (`grab`, `grabbing`) are created from bundled SVGs (`assets/guilib/cursors/`), sized for the window's content scale.
+ * `none` is a fully transparent cursor (hiding it through GLFW's input mode would fight Minecraft's mouse handling).
  */
 internal object Cursors {
     private val custom = HashMap<String, CursorType>()
@@ -33,6 +34,7 @@ internal object Cursors {
         Cursor.EW_RESIZE, Cursor.COL_RESIZE -> CursorTypes.RESIZE_EW
         Cursor.GRAB -> custom("grab")
         Cursor.GRABBING -> custom("grabbing")
+        Cursor.NONE -> custom.getOrPut("none") { createInvisible() ?: CursorTypes.ARROW }
         Cursor.AUTO, Cursor.DEFAULT -> null
     }
 
@@ -58,24 +60,38 @@ internal object Cursors {
         g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE)
         svg.render(null, g, ViewBox(0f, 0f, size.toFloat(), size.toFloat()))
         g.dispose()
-        val pixels = MemoryUtil.memAlloc(size * size * 4)
+        cursorFrom(name, img)
+    } catch (e: Exception) {
+        Log.warnOnce("GuiLib: could not create the '$name' cursor, using the move cursor instead: $e")
+        null
+    }
+
+    /** `cursor: none`: a 1×1 transparent cursor. */
+    private fun createInvisible(): CursorType? = try {
+        cursorFrom("none", BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB))
+    } catch (e: Exception) {
+        Log.warnOnce("GuiLib: could not create an invisible cursor for 'cursor: none': $e")
+        null
+    }
+
+    /** Creates a GLFW cursor from [img] with the hotspot in its middle. */
+    private fun cursorFrom(name: String, img: BufferedImage): CursorType {
+        val (w, h) = img.width to img.height
+        val pixels = MemoryUtil.memAlloc(w * h * 4)
         try {
-            for (y in 0 until size) for (x in 0 until size) {
+            for (y in 0 until h) for (x in 0 until w) {
                 val argb = img.getRGB(x, y)
                 pixels.put((argb shr 16).toByte()).put((argb shr 8).toByte()).put(argb.toByte()).put((argb ushr 24).toByte())
             }
             pixels.flip()
             val handle = GLFWImage.malloc().use { image ->
-                image.set(size, size, pixels)
-                GLFW.glfwCreateCursor(image, size / 2, size / 2)
+                image.set(w, h, pixels)
+                GLFW.glfwCreateCursor(image, w / 2, h / 2)
             }
             if (handle == 0L) error("glfwCreateCursor failed")
-            CursorType("guilib_$name", handle)
+            return CursorType("guilib_$name", handle)
         } finally {
             MemoryUtil.memFree(pixels)
         }
-    } catch (e: Exception) {
-        Log.warnOnce("GuiLib: could not create the '$name' cursor, using the move cursor instead: $e")
-        null
     }
 }

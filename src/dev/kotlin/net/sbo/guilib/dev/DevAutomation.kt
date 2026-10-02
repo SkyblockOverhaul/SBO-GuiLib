@@ -189,7 +189,9 @@ object DevAutomation : ClientModInitializer {
         val screen = GuiLib.currentScreen() as? GuiLibScreen ?: return
         val el = selector?.let { screen.root.document.body.querySelector(it) } ?: return
         val r = el.getBoundingClientRect()
-        screen.root.input.mouseMove(r.x + r.width / 2f, r.y + r.height / 2f)
+        pointerX = r.x + r.width / 2f
+        pointerY = r.y + r.height / 2f
+        screen.root.input.mouseMove(pointerX, pointerY) // later move: steps start here
     }
 
     private fun shot(name: String) {
