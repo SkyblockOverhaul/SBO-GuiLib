@@ -351,6 +351,7 @@ select:disabled { opacity: 0.5; cursor: not-allowed; }
 .guilib-sortable.handle .guilib-sortable-item { cursor: default; }
 .guilib-sortable-item:focus-visible { box-shadow: 0 0 0 1px #5b8def; border-radius: 2px; }
 .guilib-sortable-item.dragging.away { visibility: hidden; }
+.guilib-sortable-item.leaving { pointer-events: none; cursor: default; }
 .guilib-sortable-ghost { opacity: 0.9; cursor: grabbing; }
 .guilib-drag-handle { cursor: grab; }
 .guilib-sortable-item:active, .guilib-drag-handle:active { cursor: grabbing; }

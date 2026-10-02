@@ -197,13 +197,13 @@ class SortableTest {
     private var right = listOf("x", "y", "z")
 
     /** Two lists in one group side by side: left at x 0..40, right at x 100..140 (items 10 high, gap 2). */
-    private fun groups(): UiRoot {
+    private fun groups(exitMs: Long = 0): UiRoot {
         val app = component("G") {
             var l by useState(left)
             var r by useState(right)
             div(className = "row") {
-                sortableList(l, key = { it }, onReorder = { l = it; left = it }, group = "g", className = "left") { item, _ -> span { +item } }
-                sortableList(r, key = { it }, onReorder = { r = it; right = it }, group = "g", className = "right") { item, _ -> span { +item } }
+                sortableList(l, key = { it }, onReorder = { l = it; left = it }, group = "g", className = "left", exitMs = exitMs) { item, _ -> span { +item } }
+                sortableList(r, key = { it }, onReorder = { r = it; right = it }, group = "g", className = "right", exitMs = exitMs) { item, _ -> span { +item } }
             }
         }
         val css = "$ua .row { display: flex; gap: 60px } .guilib-sortable { min-height: 20px } .guilib-sortable-item.dragging.away { visibility: hidden }"
@@ -241,5 +241,58 @@ class SortableTest {
         root.input.mouseUp(60f, 80f, 0); root.frame(300f, 200f)
         assertEquals(listOf("a", "b"), left)
         assertEquals(listOf("x", "y", "z"), right)
+    }
+
+    /** A list with exit animations; `remove` drops an item like a ✕ button would. */
+    private fun exiting(): Pair<UiRoot, (String) -> Unit> {
+        var remove: (String) -> Unit = {}
+        val app = component("E") {
+            var items by useState(order)
+            remove = { x -> items = items - x; order = items }
+            sortableList(items, key = { it }, onReorder = { items = it; order = it }, exitMs = 200) { item, _ -> span { +item } }
+        }
+        val root = UiRoot(FakeMeasurer, listOf(Stylesheet.parse(ua, "ua", Origin.USER_AGENT)), clock = { now })
+        root.render(VComponent(app, Unit, null))
+        root.frame(300f, 200f)
+        return root to { x: String -> remove(x) }
+    }
+
+    private fun text(n: net.sbo.guilib.core.dom.Node): String =
+        when (n) {
+            is net.sbo.guilib.core.dom.TextNode -> n.data
+            is net.sbo.guilib.core.dom.Element -> n.children.joinToString("") { text(it) }
+        }
+
+    private fun UiRoot.texts() = items().map { text(it) }
+
+    @Test
+    fun removedItemsStayInPlaceWhileTheyLeave() {
+        val (root, remove) = exiting()
+        remove("b"); root.frame(300f, 200f)
+        // "b" is still rendered at its old slot, marked as leaving; the others keep their positions.
+        assertEquals(listOf("a", "b", "c", "d"), root.texts())
+        assertTrue(root.items()[1].classList.contains("leaving"))
+        assertTrue(root.items().filter { text(it) != "b" }.none { it.classList.contains("leaving") })
+        // Pressing on a leaving item starts no drag.
+        root.drag(1f, 17f, 1f, 41f)
+        root.input.mouseUp(1f, 41f, 0); root.frame(300f, 200f)
+        assertEquals(listOf("a", "c", "d"), order)
+        now += 200; root.frame(300f, 200f); root.frame(300f, 200f)
+        assertEquals(listOf("a", "c", "d"), root.texts())
+        // Afterwards dragging works on the remaining items: "a" past "c" (now at y 12..22).
+        root.drag(1f, 5f, 1f, 19f)
+        root.input.mouseUp(1f, 19f, 0); root.frame(300f, 200f)
+        assertEquals(listOf("c", "a", "d"), order)
+    }
+
+    @Test
+    fun itemsDraggedIntoAnotherListOfTheGroupDontLeave() {
+        val root = groups(exitMs = 200)
+        root.input.mouseDown(5f, 5f, 0); root.frame(300f, 200f)
+        root.input.mouseMove(20f, 5f); root.frame(300f, 200f)
+        root.input.mouseMove(110f, 13f); root.frame(300f, 200f)
+        root.input.mouseUp(110f, 13f, 0); root.frame(300f, 200f)
+        assertEquals(listOf("b"), left)
+        assertEquals(listOf("b"), root.document.body.querySelectorAll(".left .guilib-sortable-item").map { text(it) })
     }
 }

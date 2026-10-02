@@ -23,6 +23,7 @@ internal data class SortableProps(
     val className: String?,
     val itemClassName: String?,
     val group: String?,
+    val exitMs: Long,
     val children: NodeBuilder.(item: Any?, dragging: Boolean) -> Unit,
 )
 
@@ -55,8 +56,9 @@ internal class SortableGroups {
  * exchange items: outside its list the dragged item follows the mouse as a ghost in a portal and the list under the
  * mouse opens a gap. Dragging near the edge of a scroll container scrolls it. Alt + arrow keys move the focused item.
  * Styled with `.guilib-sortable` (`.horizontal`, `.sorting` while a drag is active, `.receiving` while a foreign item
- * hovers it), `.guilib-sortable-item` (`.dragging`, `.away` while it is dragged outside, `.guilib-sortable-ghost`)
- * and `.guilib-drag-handle`.
+ * hovers it), `.guilib-sortable-item` (`.dragging`, `.away` while it is dragged outside, `.guilib-sortable-ghost`,
+ * `.leaving` while a removed item plays its exit) and `.guilib-drag-handle`. With `exitMs` > 0 removed items stay at
+ * their old position for that long (like presenceList); no drag starts meanwhile.
  */
 internal val SortableComponent = component<SortableProps>("Sortable") { p ->
     /**
@@ -89,6 +91,19 @@ internal val SortableComponent = component<SortableProps>("Sortable") { p ->
     val self = useRef<SortableHandle?>(null)
     if (self.current == null) self.current = SortableHandle({ listRef.current }, { latest.current }, rerender)
     val me = self.current!!
+
+    // Removed items stay rendered while they leave; items dragged into another list of the group leave at once.
+    val now = doc.now()
+    val entries = useRef(emptyList<PresenceEntry>())
+    val movedAway = useRef(HashSet<Any?>())
+    val merged = if (p.exitMs > 0) {
+        val prev = entries.current.filter { it.key !in movedAway.current }
+        mergePresence(prev, p.items, p.key, now, p.exitMs)
+    } else p.items.map { PresenceEntry(p.key(it), it, -1) }
+    movedAway.current.clear()
+    entries.current = merged
+    val nextRemoval = merged.filter { it.leftAt >= 0 }.minOfOrNull { it.leftAt + p.exitMs }
+    useEffect(nextRemoval) { if (nextRemoval != null) setTimeout(maxOf(0L, nextRemoval - now)) { rerender() } }
 
     useEffect(p.group) {
         val g = p.group ?: return@useEffect
@@ -151,7 +166,7 @@ internal val SortableComponent = component<SortableProps>("Sortable") { p ->
     fun targetRects(h: SortableHandle): List<Rect>? {
         val list = h.element() ?: return null
         val o = list.getBoundingClientRect()
-        return list.children.filterIsInstance<Element>().map { val r = it.getBoundingClientRect(); Rect(r.x - o.x, r.y - o.y, r.width, r.height) }
+        return list.children.filterIsInstance<Element>().filterNot { it.classList.contains("leaving") }.map { val r = it.getBoundingClientRect(); Rect(r.x - o.x, r.y - o.y, r.width, r.height) }
     }
 
     fun insertIndex(h: SortableHandle, rects: List<Rect>, mx: Float, my: Float): Int {
@@ -290,6 +305,7 @@ internal val SortableComponent = component<SortableProps>("Sortable") { p ->
             val dest = t.target.props()
             val into = dest.items.toMutableList()
             into.add(t.index.coerceIn(0, into.size), item)
+            movedAway.current += d.key
             p.onReorder?.invoke(p.items.filterIndexed { i, _ -> i != d.from })
             dest.onReorder?.invoke(into)
         } else if (d.target != d.from) {
@@ -367,7 +383,15 @@ internal val SortableComponent = component<SortableProps>("Sortable") { p ->
         ),
         ref = listRef,
     ) {
-        p.items.forEachIndexed { i, item ->
+        var i = -1
+        for (entry in merged) {
+            val item = entry.item
+            if (entry.leftAt >= 0) {
+                div(className = classNames("guilib-sortable-item", "leaving", p.itemClassName), key = entry.key) { p.children(this, item, false) }
+                continue
+            }
+            i++
+            val index = i
             val shift = when {
                 incoming != null -> if (i >= incoming.index) incoming.size else 0f
                 d == null -> 0f
@@ -383,7 +407,7 @@ internal val SortableComponent = component<SortableProps>("Sortable") { p ->
                 style = if (d != null || incoming != null) shiftStyle(shift) else null,
                 key = p.key(item),
                 tabIndex = 0,
-                onKeyDown = { e -> keyMove(e, i) },
+                onKeyDown = { e -> keyMove(e, index) },
                 onMouseDown = { e ->
                     if (e.button == 0 && (!p.handle || isHandle(e.target, e.currentTarget))) {
                         val list = listRef.current
@@ -393,8 +417,8 @@ internal val SortableComponent = component<SortableProps>("Sortable") { p ->
                             // Item boxes relative to the list (no item is transformed between drags).
                             val local = rects.map { Rect(it.x - origin.x, it.y - origin.y, it.width, it.height) }
                             drag.current = Drag(
-                                i, p.key(item), e.clientX - origin.x, e.clientY - origin.y, local,
-                                e.clientX - rects[i].x, e.clientY - rects[i].y,
+                                index, p.key(item), e.clientX - origin.x, e.clientY - origin.y, local,
+                                e.clientX - rects[index].x, e.clientY - rects[index].y,
                             ).also { it.clientX = e.clientX; it.clientY = e.clientY }
                         }
                     }

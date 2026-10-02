@@ -454,7 +454,7 @@ fun NodeBuilder.presence(visible: Boolean, exitMs: Long, key: Any? = null, child
  * .row.leaving { animation: row-out 200ms ease-in forwards; pointer-events: none }
  * ```
  * Items need a stable [key]. An item that comes back during its exit is a normal item again. The items are rendered
- * directly into the parent (no wrapper element). Not for [sortableList] items.
+ * directly into the parent (no wrapper element). For [sortableList] use its `exitMs` instead.
  */
 fun <T> NodeBuilder.presenceList(
     items: List<T>,
@@ -492,8 +492,12 @@ fun <T> NodeBuilder.presenceList(
  * item and the target's [onReorder] with it. Dropping elsewhere cancels. Give empty lists a `min-height` so they can
  * receive items.
  *
+ * With [exitMs] > 0 items removed from [items] stay at their old position for that long with the item class `.leaving`
+ * (not clickable, no drag starts meanwhile), like [presenceList]: give `.leaving` an exit animation in CSS. Items
+ * dragged into another list of the [group] move without an exit.
+ *
  * Styled with `.guilib-sortable` (`.horizontal`, `.handle`, `.sorting`, `.receiving`), `.guilib-sortable-item`
- * (`.dragging`, `.away` while outside its list, `.guilib-sortable-ghost`).
+ * (`.dragging`, `.away` while outside its list, `.guilib-sortable-ghost`, `.leaving`).
  */
 fun <T> NodeBuilder.sortableList(
     items: List<T>,
@@ -505,12 +509,13 @@ fun <T> NodeBuilder.sortableList(
     itemClassName: String? = null,
     listKey: Any? = null,
     group: String? = null,
+    exitMs: Long = 0,
     children: NodeBuilder.(item: T, dragging: Boolean) -> Unit,
 ) {
     @Suppress("UNCHECKED_CAST")
     SortableComponent(
         SortableProps(
-            items, key as (Any?) -> Any?, onReorder as ((List<Any?>) -> Unit)?, horizontal, handle, className, itemClassName, group,
+            items, key as (Any?) -> Any?, onReorder as ((List<Any?>) -> Unit)?, horizontal, handle, className, itemClassName, group, exitMs,
             children as NodeBuilder.(Any?, Boolean) -> Unit,
         ),
         listKey,

@@ -326,6 +326,15 @@ button.primary:hover { background-color: #6f9cf2; }
 .kanban-list .dragging .kanban-card { border-color: var(--accent); background-color: #3a4a6b; }
 .guilib-sortable-ghost .kanban-card { box-shadow: 0 4px 10px #000a; }
 .sort-list { gap: 2px; margin-bottom: 6px; }
+/* sortableList(exitMs = 220): new rows slide in, removed rows slide out and collapse (also eating the 2px gap). */
+.sort-list .guilib-sortable-item { animation: sort-in 180ms ease-out; }
+.sort-list .guilib-sortable-item.leaving { overflow: hidden; animation: sort-out 220ms ease-in forwards; }
+@keyframes sort-in { from { opacity: 0; transform: translateX(-12px); } }
+@keyframes sort-out {
+    from { max-height: 40px; }
+    60% { opacity: 0; transform: translateX(16px); max-height: 40px; }
+    to { opacity: 0; transform: translateX(16px); max-height: 0; margin-bottom: -2px; }
+}
 .sort-row {
     display: flex;
     align-items: center;

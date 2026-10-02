@@ -651,8 +651,8 @@ object Showcase {
                 span(className = "task") { +task }
             }
         }
-        h3 { +"With handle" }
-        sortableList(tasks, key = { it }, onReorder = { tasks = it }, handle = true, className = "sort-list") { task, _ ->
+        h3 { +"With handle (removed rows animate out)" }
+        sortableList(tasks, key = { it }, onReorder = { tasks = it }, handle = true, className = "sort-list", exitMs = 220) { task, _ ->
             div(className = "sort-row") {
                 span(className = "guilib-drag-handle grip") { +"⠿" }
                 span(className = "task") { +task }
