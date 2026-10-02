@@ -26,6 +26,9 @@ object GlyphAtlas {
     private data class Key(val font: TrueTypeFont, val px: Int, val codepoint: Int)
 
     private val pages = ArrayList<Page>()
+    /** Changes whenever the atlas is cleared, so caches of glyph positions know they are stale. */
+    var generation = 0
+        private set
     private val glyphs = HashMap<Key, Glyph>()
 
     fun glyph(font: TrueTypeFont, px: Int, codepoint: Int): Glyph = glyphs.getOrPut(Key(font, px, codepoint)) {
@@ -82,5 +85,6 @@ object GlyphAtlas {
         pages.forEach { Minecraft.getInstance().textureManager.release(it.id) }
         pages.clear()
         glyphs.clear()
+        generation++
     }
 }

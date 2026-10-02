@@ -256,27 +256,13 @@ object CommandRenderer {
         val px = (basePx * oversample).roundToInt().coerceAtLeast(1)
         val scale = gui * px / basePx
         val metrics = font.metrics(px)
-        var penX = (x * scale).roundToInt().toFloat()
-        val startX = penX
+        // Glyph positions are whole physical pixels from the (rounded) pen start, so the run can be reused anywhere.
+        val penX = (x * scale).roundToInt().toFloat()
         val baseline = (y * scale + metrics.ascent).roundToInt().toFloat()
         val linear = xf != null
-        val byPage = LinkedHashMap<GlyphAtlas.Page, FloatArrayBuilder>()
-        var i = 0
-        while (i < text.length) {
-            val cp = text.codePointAt(i)
-            i += Character.charCount(cp)
-            val g = GlyphAtlas.glyph(font, px, cp)
-            if (g.page != null) {
-                val gx = penX + g.left
-                val gy = baseline - g.top
-                byPage.getOrPut(g.page) { FloatArrayBuilder() }.add(
-                    gx / scale, gy / scale, (gx + g.width) / scale, (gy + g.height) / scale, g.u0, g.v0, g.u1, g.v1,
-                )
-            }
-            penX += font.advance(cp, px)
-        }
-        val advance = (penX - startX) / scale
-        if (byPage.isEmpty()) return advance
+        val run = glyphRun(text, font, px, scale)
+        val advance = run.advancePx / scale
+        if (run.pages.isEmpty()) return advance
         val x1 = x + advance
         val y1 = y + metrics.lineHeight / scale
         val pose = Matrix3x2f(ctx.pose())
@@ -285,11 +271,48 @@ object CommandRenderer {
             floor(x).toInt(), floor(y).toInt(),
             (ceil(x1) - floor(x)).toInt().coerceAtLeast(1), (ceil(y1) - floor(y)).toInt().coerceAtLeast(1),
         )
-        for ((page, quads) in byPage) {
-            beforeQuad(ctx, page.id, x, y, x1, y1)
-            ctx.guiRenderState.addGuiElement(TextRunState(pose, page, quads.toArray(), color, scissor, bounds, linear))
+        for (p in run.pages.indices) {
+            beforeQuad(ctx, run.pages[p].id, x, y, x1, y1)
+            ctx.guiRenderState.addGuiElement(TextRunState(pose, run.pages[p], run.quads[p], color, scissor, bounds, linear, penX / scale, baseline / scale))
         }
         return advance
+    }
+
+    /** Glyph quads of [text] per atlas page, relative to the pen start and baseline (GUI px), and the advance (physical px). */
+    private class GlyphRun(val pages: Array<GlyphAtlas.Page>, val quads: Array<FloatArray>, val advancePx: Float)
+
+    private data class RunKey(val text: String, val font: TrueTypeFont, val px: Int, val scale: Float)
+
+    /** Runs drawn recently: unchanged text is not laid out glyph by glyph again every frame. */
+    private val glyphRuns = object : LinkedHashMap<RunKey, GlyphRun>(256, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<RunKey, GlyphRun>?) = size > 2048
+    }
+    private var glyphRunsGeneration = -1
+
+    private fun glyphRun(text: String, font: TrueTypeFont, px: Int, scale: Float): GlyphRun {
+        if (glyphRunsGeneration != GlyphAtlas.generation) {
+            glyphRuns.clear()
+            glyphRunsGeneration = GlyphAtlas.generation
+        }
+        return glyphRuns.getOrPut(RunKey(text, font, px, scale)) {
+            val byPage = LinkedHashMap<GlyphAtlas.Page, FloatArrayBuilder>()
+            var pen = 0f
+            var i = 0
+            while (i < text.length) {
+                val cp = text.codePointAt(i)
+                i += Character.charCount(cp)
+                val g = GlyphAtlas.glyph(font, px, cp)
+                if (g.page != null) {
+                    val gx = pen + g.left
+                    val gy = -g.top.toFloat()
+                    byPage.getOrPut(g.page) { FloatArrayBuilder() }.add(
+                        gx / scale, gy / scale, (gx + g.width) / scale, (gy + g.height) / scale, g.u0, g.v0, g.u1, g.v1,
+                    )
+                }
+                pen += font.advance(cp, px)
+            }
+            GlyphRun(byPage.keys.toTypedArray(), byPage.values.map { it.toArray() }.toTypedArray(), pen)
+        }
     }
 
     private class FloatArrayBuilder {

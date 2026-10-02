@@ -110,8 +110,19 @@ object FontManager : TextMeasurer {
     fun pixelSize(style: TextStyle): Int = (style.fontSize * guiScale()).roundToInt().coerceAtLeast(1)
 
     /** Splits [text] into runs of the style's font and Minecraft-font fallbacks for missing glyphs. */
+    private data class SegmentKey(val text: String, val font: TrueTypeFont)
+
+    /** Splits of recently drawn texts (the font's glyph coverage doesn't change). */
+    private val segmentCache = object : LinkedHashMap<SegmentKey, List<Segment>>(256, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<SegmentKey, List<Segment>>?) = size > 2048
+    }
+
     fun segments(text: String, style: TextStyle): List<Segment> {
         val font = fontFor(style) ?: return listOf(Segment(text, null))
+        return segmentCache.getOrPut(SegmentKey(text, font)) { split(text, font) }
+    }
+
+    private fun split(text: String, font: TrueTypeFont): List<Segment> {
         val out = ArrayList<Segment>()
         val sb = StringBuilder()
         var current: TrueTypeFont? = font
@@ -169,6 +180,7 @@ object FontManager : TextMeasurer {
 
     fun clearCaches() {
         widthCache.clear()
+        segmentCache.clear()
         GlyphAtlas.clear()
         loaded.values.forEach { it?.close() }
         loaded.clear()

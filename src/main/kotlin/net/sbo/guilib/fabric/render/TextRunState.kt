@@ -15,20 +15,23 @@ import org.joml.Matrix3x2f
 class TextRunState(
     private val pose: Matrix3x2f,
     private val page: GlyphAtlas.Page,
-    /** x0, y0, x1, y1, u0, v0, u1, v1 per glyph (GUI coordinates). */
+    /** x0, y0, x1, y1, u0, v0, u1, v1 per glyph (GUI coordinates relative to [ox], [oy]). Shared: never modified. */
     private val quads: FloatArray,
     private val color: Int,
     private val scissor: ScreenRectangle?,
     bounds: ScreenRectangle,
     /** Sample the atlas with linear filtering (oversampled glyphs drawn through a rotation/skew). */
     private val linear: Boolean = false,
+    /** Position of the run (pen start, baseline) the quads are relative to. */
+    private val ox: Float = 0f,
+    private val oy: Float = 0f,
 ) : GuiElementRenderState {
     private val bounds: ScreenRectangle? = bounds.transformMaxBounds(pose).let { if (scissor != null) scissor.intersection(it) else it }
 
     override fun buildVertices(consumer: VertexConsumer) {
         var i = 0
         while (i < quads.size) {
-            val x0 = quads[i]; val y0 = quads[i + 1]; val x1 = quads[i + 2]; val y1 = quads[i + 3]
+            val x0 = ox + quads[i]; val y0 = oy + quads[i + 1]; val x1 = ox + quads[i + 2]; val y1 = oy + quads[i + 3]
             val u0 = quads[i + 4]; val v0 = quads[i + 5]; val u1 = quads[i + 6]; val v1 = quads[i + 7]
             consumer.addVertexWith2DPose(pose, x0, y0).setUv(u0, v0).setColor(color)
             consumer.addVertexWith2DPose(pose, x0, y1).setUv(u0, v1).setColor(color)
