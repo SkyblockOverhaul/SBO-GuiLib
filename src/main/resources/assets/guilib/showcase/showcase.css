@@ -365,6 +365,12 @@ button.small { padding: 0 4px; }
 .tab-strip { gap: 3px; flex-shrink: 0; }
 .tab-strip .chip { flex-shrink: 0; white-space: nowrap; }
 .hour:nth-child(even) { background-color: var(--panel-2); }
+.member-list { max-width: 260px; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; margin-top: 4px; }
+.member { display: flex; justify-content: space-between; padding: 3px 6px; }
+.member.off span:first-child { color: var(--muted); }
+.hide-off .member.off { display: none; }
+.member-list:not(.hide-off) .member:nth-child(even),
+.hide-off .member:nth-child(even of :not(.off)) { background-color: var(--panel-2); }
 .party-row { display: inline-block; }
 .party-head { margin-right: 4px; }
 

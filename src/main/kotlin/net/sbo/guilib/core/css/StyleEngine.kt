@@ -60,6 +60,17 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
     var usesStructural = false
         private set
 
+    /**
+     * True if an element's classes can change whether its siblings match (`.a + .b`, `:nth-child(odd of .a)`), so a
+     * class change restyles the siblings too.
+     */
+    var siblingsDependOnClasses = false
+        private set
+
+    /** Like [siblingsDependOnClasses] for interactive states (`.a:hover + .b`, `:nth-child(odd of :not(:disabled))`). */
+    var siblingsDependOnState = false
+        private set
+
     /** Bumped whenever the stylesheets change, so callers can invalidate cached styles. */
     var generation = 0
         private set
@@ -84,6 +95,8 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
         pseudoRules.clear()
         dependsOnAncestorState = false
         usesStructural = false
+        siblingsDependOnClasses = false
+        siblingsDependOnState = false
         var order = 0
         for (sheet in stylesheets) {
             for (rule in sheet.rules) {
@@ -92,6 +105,12 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
                     if (selector.compounds.dropLast(1).any { c -> c.parts.any(::involvesState) }) dependsOnAncestorState = true
                     if (selector.combinators.any { it == Combinator.NEXT_SIBLING || it == Combinator.SUBSEQUENT_SIBLING } ||
                         selector.compounds.any { c -> c.parts.any(::involvesStructure) }) usesStructural = true
+                    if (dependsOnSiblings(selector)) {
+                        siblingsDependOnClasses = true
+                        if (selector.compounds.dropLast(1).any { c -> c.parts.any(::involvesState) } ||
+                            selector.compounds.any { c -> c.parts.any { it is SimpleSelector.NthChild && it.of != null && involvesState(it) } }
+                        ) siblingsDependOnState = true
+                    }
                     val pseudo = selector.pseudoElement
                     (if (pseudo == null) elementRules else pseudoRules.getOrPut(pseudo) { RuleIndex() }).add(ir)
                 }
@@ -105,6 +124,17 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
         is SimpleSelector.State -> true
         is SimpleSelector.Structural -> s.kind == "enabled"
         is SimpleSelector.Not -> s.inner.any { c -> c.parts.any(::involvesState) }
+        is SimpleSelector.NthChild -> s.of?.any { sel -> sel.compounds.any { c -> c.parts.any(::involvesState) } } ?: false
+        else -> false
+    }
+
+    private fun dependsOnSiblings(selector: Selector): Boolean =
+        selector.combinators.any { it == Combinator.NEXT_SIBLING || it == Combinator.SUBSEQUENT_SIBLING } ||
+            selector.compounds.any { c -> c.parts.any(::hasOfSelector) }
+
+    private fun hasOfSelector(s: SimpleSelector): Boolean = when (s) {
+        is SimpleSelector.NthChild -> s.of != null
+        is SimpleSelector.Not -> s.inner.any { c -> c.parts.any(::hasOfSelector) }
         else -> false
     }
 

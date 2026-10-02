@@ -122,6 +122,8 @@ class Document(
 
     internal val styleEngineDependsOnAncestorState get() = styleEngine.dependsOnAncestorState
     internal val styleEngineUsesStructural get() = styleEngine.usesStructural
+    internal val styleEngineSiblingsDependOnClasses get() = styleEngine.siblingsDependOnClasses
+    internal val styleEngineSiblingsDependOnState get() = styleEngine.siblingsDependOnState
     internal val styleEngineHasPseudoElements get() = styleEngine.hasPseudoElements
 
     init {

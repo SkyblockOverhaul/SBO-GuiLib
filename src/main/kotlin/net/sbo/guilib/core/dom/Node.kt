@@ -176,7 +176,7 @@ class Element internal constructor(val tagName: String) : Node(), Selectable {
         private inline fun change(block: () -> Unit) {
             val before = classes.toList()
             block()
-            if (classes.toList() != before) styleChanged(true)
+            if (classes.toList() != before) classesChanged()
         }
     }
 
@@ -186,7 +186,7 @@ class Element internal constructor(val tagName: String) : Node(), Selectable {
             val next = value.split(' ', '\t', '\n').filter { it.isNotEmpty() }
             if (next.toSet() != classes) {
                 classes.clear(); classes += next
-                styleChanged(true)
+                classesChanged()
             }
         }
 
@@ -318,6 +318,17 @@ class Element internal constructor(val tagName: String) : Node(), Selectable {
         if (next == stateBits) return
         stateBits = next
         styleChanged(document?.styleEngineDependsOnAncestorState ?: true)
+        if (document?.styleEngineSiblingsDependOnState == true) siblingsChanged()
+    }
+
+    private fun classesChanged() {
+        styleChanged(true)
+        if (document?.styleEngineSiblingsDependOnClasses == true) siblingsChanged()
+    }
+
+    /** Restyles the siblings: `.a + .b` or `:nth-child(odd of .a)` may now match differently. */
+    private fun siblingsChanged() {
+        for (n in parent?.children ?: return) if (n !== this && n is Element) n.styleChanged(true)
     }
 
     /** Marks this element (and with [subtree] its descendants) for style recalculation. */

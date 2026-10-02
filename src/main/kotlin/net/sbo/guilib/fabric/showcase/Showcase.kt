@@ -404,6 +404,21 @@ object Showcase {
             }
             div(className = "quote") { +"Generated content, styled like real elements." }
         }
+        NthOfDemo()
+    }
+
+    private val NthOfDemo = component("NthOfDemo") {
+        var hideOffline by useState(false)
+        h3 { +":nth-child(even of :not(.off))" }
+        switch(checked = hideOffline, onChange = { hideOffline = it.checked }, label = "Hide offline members (the stripes stay even)")
+        div(className = classNames("member-list", "hide-off" to hideOffline)) {
+            for ((name, online) in MEMBERS) {
+                div(key = name, className = classNames("member", "off" to !online)) {
+                    span { +name }
+                    span(className = "muted") { +if (online) "online" else "offline" }
+                }
+            }
+        }
     }
 
     private val ImagesDemo = component("ImagesDemo") {
@@ -722,6 +737,8 @@ object Showcase {
             }
         }
     }
+
+    private val MEMBERS = listOf("Saotzuri" to true, "Rin" to false, "Mika" to true, "Tobi" to false, "Ayla" to true, "Jonas" to true)
 
     private val HOTBAR = listOf(
         Items.DIAMOND_SWORD, Items.BOW, Items.GOLDEN_APPLE, Items.ENDER_PEARL, Items.COMPASS, Items.CLOCK, Items.MAP,

@@ -59,14 +59,21 @@ sealed interface SimpleSelector {
 
     /**
      * `:nth-child(An+B)` and friends: matches if the element's 1-based position among its siblings (counted from the
-     * end for [fromEnd], only siblings with the same tag for [ofType]) is `a·n + b` for some n ≥ 0.
+     * end for [fromEnd], only siblings with the same tag for [ofType], only siblings matching [of] for
+     * `:nth-child(An+B of S)`) is `a·n + b` for some n ≥ 0. With [of] the element itself must match it too.
      */
-    data class NthChild(val a: Int, val b: Int, val fromEnd: Boolean, val ofType: Boolean) : SimpleSelector {
+    data class NthChild(val a: Int, val b: Int, val fromEnd: Boolean, val ofType: Boolean, val of: List<Selector>? = null) : SimpleSelector {
         override fun matches(el: Selectable): Boolean {
+            if (of != null && of.none { it.matches(el) }) return false
             var index = 1
             var s = if (fromEnd) el.styleNextSibling else el.stylePreviousSibling
             while (s != null) {
-                if (!ofType || s.styleTag.equals(el.styleTag, ignoreCase = true)) index++
+                val counts = when {
+                    of != null -> s.let { sib -> of.any { it.matches(sib) } }
+                    ofType -> s.styleTag.equals(el.styleTag, ignoreCase = true)
+                    else -> true
+                }
+                if (counts) index++
                 s = if (fromEnd) s.styleNextSibling else s.stylePreviousSibling
             }
             if (a == 0) return index == b
@@ -76,7 +83,7 @@ sealed interface SimpleSelector {
 
         val name get() = (if (fromEnd) "nth-last-" else "nth-") + (if (ofType) "of-type" else "child")
 
-        override fun toString() = ":$name(${a}n${if (b >= 0) "+" else ""}$b)"
+        override fun toString() = ":$name(${a}n${if (b >= 0) "+" else ""}$b${of?.let { " of " + it.joinToString(", ") } ?: ""})"
     }
 
     /** `[name]`, `[name=value]`, `[name^=value]`, `[name$=value]`, `[name*=value]`. */
@@ -122,8 +129,10 @@ data class Compound(val parts: List<SimpleSelector>) {
     private companion object {
         fun specificityOf(s: SimpleSelector): Int = when (s) {
             is SimpleSelector.Id -> Selector.ID_WEIGHT
-            is SimpleSelector.Class, is SimpleSelector.State, is SimpleSelector.Structural, is SimpleSelector.NthChild,
+            is SimpleSelector.Class, is SimpleSelector.State, is SimpleSelector.Structural,
             is SimpleSelector.Attribute -> Selector.CLASS_WEIGHT
+            // Like the web: `:nth-child(An+B of S)` adds the most specific selector in S.
+            is SimpleSelector.NthChild -> Selector.CLASS_WEIGHT + (s.of?.maxOf { it.specificity } ?: 0)
             is SimpleSelector.Type -> 1
             SimpleSelector.Universal -> 0
             is SimpleSelector.Not -> s.inner.maxOf { it.specificity }
@@ -309,6 +318,19 @@ object SelectorParser {
         return Selector(compounds, combinators, pseudo)
     }
 
+    /** Index of the `)` closing a function whose arguments start at [from], or `null`. */
+    private fun closingParen(tokens: List<Token>, from: Int): Int? {
+        var depth = 1
+        for (j in from until tokens.size) {
+            when (tokens[j].type) {
+                TokenType.FUNCTION, TokenType.LPAREN -> depth++
+                TokenType.RPAREN -> if (--depth == 0) return j
+                else -> {}
+            }
+        }
+        return null
+    }
+
     /** Parses one compound starting at [start]; returns it and the index after it. */
     private fun parseCompound(tokens: List<Token>, start: Int): Pair<Compound, Int> {
         val parts = ArrayList<SimpleSelector>()
@@ -343,22 +365,23 @@ object SelectorParser {
                             i += 2
                         }
                         n.type == TokenType.FUNCTION && n.text.lowercase() in NTH -> {
-                            val close = (i + 2 until tokens.size).firstOrNull { tokens[it].type == TokenType.RPAREN }
-                                ?: throw Fail("unclosed ':${n.text}('", n)
-                            val (a, b) = parseAnPlusB(tokens.subList(i + 2, close)) ?: throw Fail("invalid argument for ':${n.text}()'", n)
+                            val close = closingParen(tokens, i + 2) ?: throw Fail("unclosed ':${n.text}('", n)
+                            val args = tokens.subList(i + 2, close)
                             val name = n.text.lowercase()
-                            parts += SimpleSelector.NthChild(a, b, fromEnd = "-last-" in name, ofType = name.endsWith("of-type"))
+                            // `An+B of S`: only :nth-child / :nth-last-child take a selector list.
+                            val ofAt = args.indexOfFirst { it.type == TokenType.IDENT && it.text.equals("of", ignoreCase = true) }
+                            val of = if (ofAt < 0) null else {
+                                if (name.endsWith("of-type")) throw Fail("':$name()' doesn't take 'of S'", args[ofAt])
+                                splitTopLevel(args.subList(ofAt + 1, args.size)).map { part ->
+                                    parseComplex(part).also { if (it.pseudoElement != null) throw Fail("pseudo-elements aren't allowed in ':$name(… of S)'", n) }
+                                }
+                            }
+                            val (a, b) = parseAnPlusB(if (ofAt < 0) args else args.subList(0, ofAt)) ?: throw Fail("invalid argument for ':${n.text}()'", n)
+                            parts += SimpleSelector.NthChild(a, b, fromEnd = "-last-" in name, ofType = name.endsWith("of-type"), of = of)
                             i = close + 1
                         }
                         n.type == TokenType.FUNCTION && n.text.equals("not", ignoreCase = true) -> {
-                            var depth = 1
-                            var j = i + 2
-                            while (j < tokens.size && depth > 0) {
-                                if (tokens[j].type == TokenType.FUNCTION || tokens[j].type == TokenType.LPAREN) depth++
-                                if (tokens[j].type == TokenType.RPAREN) depth--
-                                j++
-                            }
-                            if (depth != 0) throw Fail("unclosed ':not('", n)
+                            val j = (closingParen(tokens, i + 2) ?: throw Fail("unclosed ':not('", n)) + 1
                             val inner = splitTopLevel(tokens.subList(i + 2, j - 1)).map { part ->
                                 val trimmed = part.dropWhile { it.type == TokenType.WHITESPACE }.dropLastWhile { it.type == TokenType.WHITESPACE }
                                 val (c, end) = parseCompound(trimmed, 0)

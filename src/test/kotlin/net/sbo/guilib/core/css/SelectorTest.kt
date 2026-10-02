@@ -105,10 +105,30 @@ class SelectorTest {
     }
 
     @Test
+    fun matchesNthChildOfSelector() {
+        val list = FakeElement("ul")
+        // positions 1..6; "x" marks the rows S matches
+        val kids = listOf("x", "", "x", "x", "", "x").map { list.add(FakeElement("li", classes = it)) }
+        fun matching(selector: String) = kids.indices.filter { sel(selector).matches(kids[it]) }.map { it + 1 }
+        assertEquals(listOf(1, 4), matching(":nth-child(odd of .x)")) // .x rows are 1, 3, 4, 6 → 1st and 3rd
+        assertEquals(listOf(3, 6), matching(":nth-child(even of .x)"))
+        assertEquals(listOf(6), matching(":nth-last-child(1 of .x)"))
+        assertEquals(listOf(2), matching(":nth-child(1 of :not(.x))"))
+        assertEquals(listOf(1, 2), matching(":nth-child(-n+2 of li.x, li:not(.x))")) // a selector list
+        assertEquals(listOf(4), matching(":nth-child(2 of ul > .x:not(:first-child))")) // complex selectors
+        assertEquals(listOf(1, 5), matching(":not(:nth-child(even of .x)):nth-child(odd)")) // odd minus row 3
+        assertEquals(2_000, sel(":nth-child(odd of .x)").specificity)
+        assertEquals(1_000_000 + 1_000, sel(":nth-child(odd of .x, #y)").specificity)
+        assertEquals(":nth-child(2n+1 of .x, li)", sel(":nth-child(odd of .x, li)").toString())
+    }
+
+    @Test
     fun rejectsUnsupportedSyntax() {
         assertThrows(IllegalArgumentException::class.java) { Selector.parse("a::selection") }
         assertThrows(IllegalArgumentException::class.java) { Selector.parse("a:nth-child(foo)") }
-        assertThrows(IllegalArgumentException::class.java) { Selector.parse("a:nth-child(2n+1 of .x)") }
+        assertThrows(IllegalArgumentException::class.java) { Selector.parse("a:nth-of-type(2n+1 of .x)") }
+        assertThrows(IllegalArgumentException::class.java) { Selector.parse("a:nth-child(2n+1 of)") }
+        assertThrows(IllegalArgumentException::class.java) { Selector.parse("a:nth-child(odd of .x::before)") }
         assertThrows(IllegalArgumentException::class.java) { Selector.parse("> a") }
         assertThrows(IllegalArgumentException::class.java) { Selector.parse("a >") }
         assertThrows(IllegalArgumentException::class.java) { Selector.parse(".a.") }

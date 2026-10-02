@@ -163,7 +163,7 @@ Invalid or unsupported CSS is **skipped with a warning** (`file:line:col`, "did 
 **Selectors:** `*`, `tag`, `.class`, `#id`, `[attr]`, `[attr=value]`, `[attr^=v]`, `[attr$=v]`, `[attr*=v]`, compounds
 (`button.primary:hover`), descendant (`a b`), child (`a > b`), `a + b`, `a ~ b`, lists (`a, b`);
 pseudo-classes `:hover :active :focus :focus-visible :focus-within :disabled :enabled :checked :first-child :last-child :only-child :root :not(…)`,
-`:nth-child() :nth-last-child() :nth-of-type() :nth-last-of-type()` (`odd`, `even`, `3`, `2n+1`, `-n+3`; not the `of S` form).
+`:nth-child() :nth-last-child() :nth-of-type() :nth-last-of-type()` (`odd`, `even`, `3`, `2n+1`, `-n+3`); `:nth-child(An+B of S)` / `:nth-last-child(… of S)` count only siblings matching the selector list S (e.g. zebra rows that skip hidden ones: `.row:nth-child(even of :not(.hidden))`).
 **Pseudo-elements:** `::before` and `::after` (also the old `:before`/`:after`), at the end of a selector (`.crumb + .crumb::before`, `.btn:hover::after`). They need `content`: strings and `attr(name)` (e.g. `attr(title)`), `content: ""` for decorative boxes, `none`/`normal` removes the box. The box is the first/last child of the element, inline by default, inherits from it, can be positioned, sized, transitioned and animated like any element. Clicks and hover on it go to the element. Inputs, textareas, images, items and `<br>` get none. No other pseudo-elements, no `url()`/counters/quotes in `content`.
 At-rules: `@keyframes` and `@media` (nestable): comma lists, `not`/`only`, `screen`/`all`/`print`, `and`/`or`; features `width` `height` `aspect-ratio` `orientation` in GUI px, `resolution` = Minecraft's GUI scale (`min-resolution: 3dppx` or `3x`), `hover` (hover), `pointer` (fine), `prefers-reduced-motion` (no-preference), `prefers-color-scheme` (dark); `min-`/`max-` prefixes and range syntax `(400px <= width < 640px)`. Styles update when the window size or GUI scale changes.
 `@supports` (nestable with `@media`): `(property: value)` is true when GuiLib knows the property and can parse the value (custom properties and `var()` values count), `selector(…)` when it can parse the selector, plus `not` / `and` / `or` and parentheses; decided once when the sheet loads. Use it for fallbacks: `@supports not (display: contents) { … }`. `@font-face` (see fonts below).
@@ -236,7 +236,7 @@ in one stylesheet works in every screen. Weights map to the nearest face (400/50
 12. `border-width` default (`medium`) is 1px; like the web, a border without `border-style` draws nothing.
 13. Every positioned element (`relative/absolute/fixed`) is its own paint layer; `z-index` orders layers among siblings in the same layer. Use `portal { }` for things that must be on top of everything. `position: fixed` elements ignore their ancestors' `transform`.
 14. Not supported (yet): 3D transforms (a `transform` containing them is ignored),
-    `:nth-child(… of S)`, pseudo-elements other than `::before`/`::after`, float, subgrid, named grid lines (`[name]` is ignored).
+    pseudo-elements other than `::before`/`::after`, float, subgrid, named grid lines (`[name]` is ignored).
     Grid: `auto-fit` behaves like `auto-fill` (empty tracks aren't collapsed); items can't be placed before line 1.
 15. Images: `src` is a resource location (`"modid:textures/x.png"`), PNG, SVG or GIF only; no URLs yet. Animated GIFs loop like in a browser (all images with the same `src` play in sync); they are decoded in the background, so a big GIF stays empty for a moment instead of freezing the game (its size is known right away, layout doesn't jump); very long GIFs are cut off after ~32M pixels of frames. SVGs are rasterized at their exact on-screen pixel size (a few ms each, cached per size; JSVG is warmed up in the background at startup).
 16. Text has no kerning; `text-align: justify` behaves like `left`. No right-to-left or complex-script shaping: Arabic/Hebrew
@@ -262,7 +262,7 @@ in one stylesheet works in every screen. Weights map to the nearest face (400/50
   with `.panel.leaving { animation: slide-out 200ms ease-in forwards }`.
 - **Grow on hover:** `.card { transition: transform 150ms ease-out } .card:hover { transform: scale(1.05) }`.
 - **Spinner:** `@keyframes spin { to { transform: rotate(360deg) } }` + `.spinner { animation: spin 1s linear infinite }`.
-- **Zebra rows:** `.row:nth-child(even) { background-color: #2b2d31 }`.
+- **Zebra rows:** `.row:nth-child(even) { background-color: #2b2d31 }`; with filtered-out rows still in the DOM: `.row:nth-child(even of :not(.hidden))`.
 - **Horizontal scroll row:** `display: flex; overflow-x: auto; overflow-y: hidden` with `flex-shrink: 0` on the children.
   The plain wheel scrolls it sideways (as does Shift + wheel or a trackpad).
 - **Translated UI:** `val t = useTranslation(); h1 { +t("mymod.gui.title") }` with `assets/mymod/lang/en_us.json`.
