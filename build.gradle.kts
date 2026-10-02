@@ -30,8 +30,10 @@ val devSourceSet: SourceSet = sourceSets.create("dev") {
 kotlin.sourceSets.named("dev") { kotlin.setSrcDirs(listOf(rootProject.file("src/dev/kotlin"))) }
 
 loom {
-    // Identical for all MC versions, so the root copy is used directly.
-    accessWidenerPath = rootProject.file("src/main/resources/guilib.classtweaker")
+    // A version that needs different entries (26.3: RenderPipeline moved to com.mojang.renderpearl) has its own copy in
+    // versions/<mc>/src/main/resources, which also replaces the root copy in that version's jar.
+    accessWidenerPath = file("src/main/resources/guilib.classtweaker").takeIf { it.exists() }
+        ?: rootProject.file("src/main/resources/guilib.classtweaker")
 
     runs.configureEach {
         generateRunConfig.set(true)
@@ -164,7 +166,15 @@ publishing {
     }
 }
 
-// The preprocessor of the 26.2 node reads the 26.1.2 classpath; order the tasks so parallel builds don't race (same as SBO).
-tasks.findByName("preprocessCode")?.dependsOn(":26.1.2-fabric:compileKotlin")
-tasks.findByName("preprocessTestCode")?.dependsOn(":26.1.2-fabric:compileTestKotlin")
-tasks.findByName("preprocessDevCode")?.dependsOn(":26.1.2-fabric:compileDevKotlin")
+// The preprocessor of a node reads the classpath of the node it is linked to (26.3 → 26.2 → 26.1.2);
+// order the tasks so parallel builds don't race (same as SBO).
+private val preprocessSource: String? = when (mcProject) {
+    "26.3-fabric" -> ":26.2-fabric"
+    "26.2-fabric" -> ":26.1.2-fabric"
+    else -> null
+}
+preprocessSource?.let { source ->
+    tasks.findByName("preprocessCode")?.dependsOn("$source:compileKotlin")
+    tasks.findByName("preprocessTestCode")?.dependsOn("$source:compileTestKotlin")
+    tasks.findByName("preprocessDevCode")?.dependsOn("$source:compileDevKotlin")
+}

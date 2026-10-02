@@ -170,7 +170,7 @@ object DevAutomation : ClientModInitializer {
             // so the screen's own coordinate mapping (useScreenScale) is part of the test.
             "mcclick" -> find(arg)?.getBoundingClientRect()?.let { r ->
                 val (x, y) = toMinecraft(screen, r.x + r.width / 2f, r.y + r.height / 2f)
-                val event = net.minecraft.client.input.MouseButtonEvent(x, y, net.minecraft.client.input.MouseButtonInfo(0, 0))
+                val event = net.minecraft.client.input.MouseButtonEvent(x, y, net.minecraft.client.input.MouseButtonInfo(net.sbo.guilib.fabric.input.Keys.MOUSE_LEFT, 0))
                 screen.mouseClicked(event, false)
                 screen.mouseReleased(event)
             }

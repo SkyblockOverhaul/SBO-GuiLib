@@ -1,8 +1,13 @@
 package net.sbo.guilib.fabric.render
 
+//#if MC >= 26.3
+//$$ import com.mojang.renderpearl.api.pipeline.RenderPipeline
+//$$ import com.mojang.renderpearl.api.textures.FilterMode
+//#else
 import com.mojang.blaze3d.pipeline.RenderPipeline
-import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.blaze3d.textures.FilterMode
+//#endif
+import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.blaze3d.vertex.VertexConsumer
 import net.minecraft.client.gui.navigation.ScreenRectangle
 import net.minecraft.client.gui.render.TextureSetup

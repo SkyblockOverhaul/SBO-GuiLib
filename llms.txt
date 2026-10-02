@@ -1,6 +1,6 @@
 # GuiLib
 
-> Web-style UI library for Minecraft Fabric mods (MC 26.1.x / 26.2, Kotlin): React-like function components and hooks
+> Web-style UI library for Minecraft Fabric mods (MC 26.1.x / 26.2 / 26.3, Kotlin): React-like function components and hooks
 > in a Kotlin DSL with HTML tag names, styled with real CSS files (cascade, specificity, flexbox, variables, :hover …).
 > Write it like React + CSS; px are GUI pixels and the default font-size is 8px.
 

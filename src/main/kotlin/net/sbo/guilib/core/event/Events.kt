@@ -70,7 +70,7 @@ class WheelEvent(clientX: Float, clientY: Float, val deltaX: Float, val deltaY: 
 
 /**
  * `keydown` / `keyup`. [key] follows the DOM naming (`"a"`, `"Enter"`, `"Escape"`, `"ArrowUp"`, `"Backspace"`, `"Tab"` …),
- * [keyCode] is the raw GLFW key code.
+ * [keyCode] is Minecraft's raw key code: the GLFW key code up to MC 26.2, the SDL scancode (physical key) from 26.3 on.
  */
 class KeyboardEvent(type: String, val key: String, val keyCode: Int, val modifiers: Modifiers = Modifiers.NONE, val repeat: Boolean = false) :
     UIEvent(type) {

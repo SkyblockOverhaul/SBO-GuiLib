@@ -18,7 +18,6 @@ import net.sbo.guilib.fabric.input.Cursors
 import net.sbo.guilib.fabric.input.Keys
 import net.sbo.guilib.fabric.render.CommandRenderer
 import net.sbo.guilib.fabric.resources.Stylesheets
-import org.lwjgl.glfw.GLFW
 
 /**
  * A Minecraft [Screen] hosting a GuiLib UI. Usually created through [GuiLib.open].
@@ -153,11 +152,11 @@ open class GuiLibScreen(
     }
 
     override fun mouseClicked(click: MouseButtonEvent, doubled: Boolean): Boolean = scaled {
-        root.input.mouseDown(docX(click.x()), docY(click.y()), domButton(click.button()), Keys.modifiers(click.modifiers()))
+        root.input.mouseDown(docX(click.x()), docY(click.y()), Keys.domButton(click.button()), Keys.modifiers(click.modifiers()))
     }
 
     override fun mouseReleased(click: MouseButtonEvent): Boolean = scaled {
-        root.input.mouseUp(docX(click.x()), docY(click.y()), domButton(click.button()), Keys.modifiers(click.modifiers()))
+        root.input.mouseUp(docX(click.x()), docY(click.y()), Keys.domButton(click.button()), Keys.modifiers(click.modifiers()))
     }
 
     override fun mouseDragged(click: MouseButtonEvent, deltaX: Double, deltaY: Double): Boolean = scaled {
@@ -174,14 +173,14 @@ open class GuiLibScreen(
 
     override fun keyPressed(keyInput: KeyEvent): Boolean {
         val mods = Keys.modifiers(keyInput.modifiers())
-        val key = Keys.keyName(keyInput.key(), keyInput.scancode(), mods)
+        val key = Keys.keyName(keyInput, mods)
         if (scaled { root.input.keyDown(key, keyInput.key(), mods) }) return true
         return super.keyPressed(keyInput) // Escape closes the screen
     }
 
     override fun keyReleased(keyInput: KeyEvent): Boolean = scaled {
         val mods = Keys.modifiers(keyInput.modifiers())
-        root.input.keyUp(Keys.keyName(keyInput.key(), keyInput.scancode(), mods), keyInput.key(), mods)
+        root.input.keyUp(Keys.keyName(keyInput, mods), keyInput.key(), mods)
     }
 
     override fun charTyped(input: CharacterEvent): Boolean = scaled { root.input.charTyped(input.codepointAsString()) }
@@ -193,13 +192,6 @@ open class GuiLibScreen(
         mounted = false
         Stylesheets.unwatch(this)
         super.removed()
-    }
-
-    private fun domButton(glfw: Int) = when (glfw) {
-        GLFW.GLFW_MOUSE_BUTTON_LEFT -> 0
-        GLFW.GLFW_MOUSE_BUTTON_MIDDLE -> 1
-        GLFW.GLFW_MOUSE_BUTTON_RIGHT -> 2
-        else -> glfw
     }
 
     companion object {

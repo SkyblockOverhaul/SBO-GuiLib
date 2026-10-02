@@ -1,13 +1,20 @@
 package net.sbo.guilib.fabric.render
 
-import com.mojang.blaze3d.pipeline.RenderPipeline
-import com.mojang.blaze3d.vertex.VertexFormat
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.resources.Identifier
-//#if MC >= 26.2
+//#if MC >= 26.3
+//$$ import com.mojang.renderpearl.api.GpuFormat
+//$$ import com.mojang.renderpearl.api.pipeline.PrimitiveTopology
+//$$ import com.mojang.renderpearl.api.pipeline.RenderPipeline
+//$$ import com.mojang.renderpearl.api.vertex.VertexFormat
+//#elseif MC >= 26.2
 //$$ import com.mojang.blaze3d.GpuFormat
 //$$ import com.mojang.blaze3d.PrimitiveTopology
+//$$ import com.mojang.blaze3d.pipeline.RenderPipeline
+//$$ import com.mojang.blaze3d.vertex.VertexFormat
 //#else
+import com.mojang.blaze3d.pipeline.RenderPipeline
+import com.mojang.blaze3d.vertex.VertexFormat
 import com.mojang.blaze3d.vertex.VertexFormatElement
 //#endif
 

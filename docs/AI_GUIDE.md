@@ -1,6 +1,6 @@
 # GuiLib — Reference for AI models (and humans in a hurry)
 
-GuiLib builds Minecraft (Fabric, MC 26.1.x / 26.2) screens the way you build web UIs:
+GuiLib builds Minecraft (Fabric, MC 26.1.x / 26.2 / 26.3) screens the way you build web UIs:
 **React-style function components in a Kotlin DSL + real CSS files**. If you know React and CSS, write what you
 would write there; this page lists the exact API and **every place where GuiLib differs from the web**.
 
@@ -149,7 +149,7 @@ deepest element to `body`. `mouseenter/mouseleave`, `focus/blur`, `scroll` don't
 - `WheelEvent`: `deltaX/deltaY` (px; positive = down). Default action scrolls the nearest scroll container. Shift + wheel
   scrolls sideways. Unlike the web, a container that can only scroll horizontally (`overflow-x: auto; overflow-y: hidden`)
   also scrolls sideways with the plain wheel; once it reaches its end, the wheel scrolls the next container up.
-- `KeyboardEvent`: `key` uses DOM names (`"a"`, `"Enter"`, `"Escape"`, `"ArrowUp"`, `"Tab"`, `"Backspace"`, `" "`), `keyCode` = GLFW code.
+- `KeyboardEvent`: `key` uses DOM names (`"a"`, `"Enter"`, `"Escape"`, `"ArrowUp"`, `"Tab"`, `"Backspace"`, `" "`), `keyCode` = Minecraft's raw key code (GLFW key code up to 26.2, SDL scancode from 26.3 on) - prefer `key`.
 - `preventDefault()` on `mousedown` stops focusing, on `wheel` stops scrolling, on `keydown` `Escape` keeps the screen open.
 - Focus: inputs/buttons/selects and elements with `tabIndex` are focusable; Tab / Shift+Tab move focus.
 - The first Escape blurs a focused input, the next closes the screen (unless something called `preventDefault()`).

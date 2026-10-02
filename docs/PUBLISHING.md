@@ -22,7 +22,7 @@ Releases go to a **static Maven repository**: the public GitHub repo
    both MC versions, runs the tests, publishes into a checkout of the Maven repo and pushes it.
    GitHub Pages updates about a minute later.
 
-Published artifacts: `net.sbo:guilib-26.1.2-fabric:<version>` and `net.sbo:guilib-26.2-fabric:<version>`
+Published artifacts: `net.sbo:guilib-26.1.2-fabric:<version>`, `net.sbo:guilib-26.2-fabric:<version>` and `net.sbo:guilib-26.3-fabric:<version>`
 (jar, sources, POM with license information).
 
 ## Testing locally
