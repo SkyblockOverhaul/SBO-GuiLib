@@ -69,6 +69,8 @@ internal val SortableComponent = component<SortableProps>("Sortable") { p ->
         val from: Int, val key: Any?, val startX: Float, val startY: Float, val rects: List<Rect>,
         /** Mouse offset inside the dragged item and its size, for the ghost. */
         val grabX: Float, val grabY: Float,
+        /** The dragged item's margin box size along the list, and the list's gap between margin boxes. */
+        val outerSize: Float, val gap: Float,
     ) {
         var active = false
         var target = from
@@ -119,16 +121,12 @@ internal val SortableComponent = component<SortableProps>("Sortable") { p ->
     fun end(r: Rect) = if (p.horizontal) r.right else r.bottom
     fun center(r: Rect) = (start(r) + end(r)) / 2f
 
-    /** Distance the other items move to fill the gap: the dragged item's size plus the gap between items. */
-    fun slot(d: Drag): Float {
-        val r = d.rects[d.from]
-        val gap = when {
-            d.from + 1 < d.rects.size -> start(d.rects[d.from + 1]) - end(r)
-            d.from > 0 -> start(r) - end(d.rects[d.from - 1])
-            else -> 0f
-        }
-        return end(r) - start(r) + gap
-    }
+    /**
+     * Distance the other items move to fill the gap: the dragged item's margin box plus the list's gap. Margins travel
+     * with their item when the list reflows, so the space between two boxes is not used (it holds the neighbour's
+     * margin too).
+     */
+    fun slot(d: Drag): Float = d.outerSize + d.gap
 
     fun transfer(): SortableTransfer? = p.group?.let { g -> groups.transfers[g]?.takeIf { it.source === me } }
 
@@ -162,11 +160,58 @@ internal val SortableComponent = component<SortableProps>("Sortable") { p ->
         return r
     }
 
-    /** Index where an item would be inserted into [h]'s list at the mouse, and that list's item boxes (list-relative). */
+    /** The item boxes of [h]'s list (list-relative). */
     fun targetRects(h: SortableHandle): List<Rect>? {
         val list = h.element() ?: return null
         val o = list.getBoundingClientRect()
         return list.children.filterIsInstance<Element>().filterNot { it.classList.contains("leaving") }.map { val r = it.getBoundingClientRect(); Rect(r.x - o.x, r.y - o.y, r.width, r.height) }
+    }
+
+    /** Margins of [el] before and after it along the list. */
+    fun margins(el: Element, horizontal: Boolean) =
+        if (horizontal) el.box.margin.left to el.box.margin.right else el.box.margin.top to el.box.margin.bottom
+
+    /** The list's own gap: the space between the margin boxes of its first two items (`null` with fewer items). */
+    fun listGap(list: Element, horizontal: Boolean): Float? {
+        val items = list.children.filterIsInstance<Element>().filterNot { it.classList.contains("leaving") }
+        if (items.size < 2) return null
+        val a = items[0].getBoundingClientRect()
+        val b = items[1].getBoundingClientRect()
+        val between = if (horizontal) b.x - a.right else b.y - a.bottom
+        return (between - margins(items[0], horizontal).second - margins(items[1], horizontal).first).coerceAtLeast(0f)
+    }
+
+    fun contains(ancestor: Element, el: Element): Boolean {
+        var e: Element? = el
+        while (e != null) {
+            if (e === ancestor) return true
+            e = e.parent
+        }
+        return false
+    }
+
+    /**
+     * Where [h] accepts a dragged item when the mouse is over no list: its largest ancestor that holds no other list
+     * of the group (e.g. a kanban column), so empty or short lists don't need a min-height to receive.
+     */
+    fun dropZone(h: SortableHandle, others: List<Element>): Element? {
+        var z = h.element() ?: return null
+        while (true) {
+            val up = z.parent ?: return z
+            if (up.parent == null || up === doc.body || others.any { contains(up, it) }) return z
+            z = up
+        }
+    }
+
+    /** The list of the group under the mouse: a list box first, else a list's [dropZone]. */
+    fun listAt(g: String, mx: Float, my: Float): SortableHandle? {
+        val lists = groups.lists[g] ?: return null
+        lists.firstOrNull { h -> h.element()?.let { visibleRect(it) }?.contains(mx, my) == true }?.let { return it }
+        val els = lists.mapNotNull { it.element() }
+        return lists.firstOrNull { h ->
+            val el = h.element() ?: return@firstOrNull false
+            dropZone(h, els.filter { it !== el })?.let { visibleRect(it) }?.contains(mx, my) == true
+        }
     }
 
     fun insertIndex(h: SortableHandle, rects: List<Rect>, mx: Float, my: Float): Int {
@@ -184,9 +229,8 @@ internal val SortableComponent = component<SortableProps>("Sortable") { p ->
         val my = d.clientY
         val g = p.group
         if (g != null) {
-            val inside = visibleRect(list).contains(mx, my)
-            if (!inside) {
-                val over = groups.lists[g]?.firstOrNull { h -> h !== me && h.element()?.let { visibleRect(it) }?.contains(mx, my) == true }
+            val over = listAt(g, mx, my)
+            if (over !== me) {
                 d.outside = true
                 if (over == null) setTransfer(null)
                 else {
@@ -195,11 +239,14 @@ internal val SortableComponent = component<SortableProps>("Sortable") { p ->
                         val rects = targetRects(over) ?: return
                         val r = d.rects[d.from]
                         val horizontal = over.props().horizontal
-                        val gap = if (rects.size >= 2) {
-                            if (horizontal) rects[1].x - rects[0].right else rects[1].y - rects[0].bottom
-                        } else slot(d) - (end(r) - start(r))
-                        val size = (if (horizontal) r.width else r.height) + gap.coerceAtLeast(0f)
-                        setTransfer(SortableTransfer(me, size, over, rects, insertIndex(over, rects, mx, my)))
+                        val gap = over.element()?.let { listGap(it, horizontal) } ?: d.gap
+                        // The item keeps its margins (taken along the other list's axis) when it moves over.
+                        val outer = if (horizontal == p.horizontal) d.outerSize else {
+                            val el = listRef.current?.children?.filterIsInstance<Element>()?.getOrNull(d.from)
+                            val (m0, m1) = el?.let { margins(it, horizontal) } ?: (0f to 0f)
+                            (if (horizontal) r.width else r.height) + m0 + m1
+                        }
+                        setTransfer(SortableTransfer(me, outer + gap, over, rects, insertIndex(over, rects, mx, my)))
                     } else {
                         val i = insertIndex(over, cur.rects, mx, my)
                         if (i != cur.index) {
@@ -416,9 +463,11 @@ internal val SortableComponent = component<SortableProps>("Sortable") { p ->
                         if (origin != null && rects != null && rects.size == p.items.size) {
                             // Item boxes relative to the list (no item is transformed between drags).
                             val local = rects.map { Rect(it.x - origin.x, it.y - origin.y, it.width, it.height) }
+                            val (m0, m1) = margins(list.children.filterIsInstance<Element>()[index], p.horizontal)
                             drag.current = Drag(
                                 index, p.key(item), e.clientX - origin.x, e.clientY - origin.y, local,
                                 e.clientX - rects[index].x, e.clientY - rects[index].y,
+                                end(local[index]) - start(local[index]) + m0 + m1, listGap(list, p.horizontal) ?: 0f,
                             ).also { it.clientX = e.clientX; it.clientY = e.clientY }
                         }
                     }

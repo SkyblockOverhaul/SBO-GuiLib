@@ -295,4 +295,89 @@ class SortableTest {
         assertEquals(listOf("b"), left)
         assertEquals(listOf("b"), root.document.body.querySelectorAll(".left .guilib-sortable-item").map { text(it) })
     }
+
+    private fun ty(el: net.sbo.guilib.core.dom.Element) = (el.style.transform.single() as TransformFn.Translate).y.resolve(0f)!!
+
+    /** "b" has a 10px margin-top: a 0..10, b 22..32, c 34..44, d 46..56 (gap 2). */
+    private fun marginUi(): UiRoot {
+        val app = component("M") {
+            var items by useState(order)
+            sortableList(items, key = { it }, onReorder = { items = it; order = it }) { item, _ -> span { +item } }
+        }
+        val css = "$ua .guilib-sortable-item:nth-child(2) { margin-top: 10px }"
+        val root = UiRoot(FakeMeasurer, listOf(Stylesheet.parse(css, "ua", Origin.USER_AGENT)), clock = { now })
+        root.render(VComponent(app, Unit, null))
+        root.frame(300f, 200f)
+        return root
+    }
+
+    @Test
+    fun itemsWithTheirOwnMarginsShiftByTheDraggedItemsMarginBox() {
+        // Dragging "b" (margin box 12..32) below "c": "c" moves up by b's margin box + gap = 22, not by the 12 between b and c.
+        var root = marginUi()
+        root.drag(5f, 27f, 5f, 27f + 14f)
+        assertEquals(-22f, ty(root.items()[2]), 0.01f)
+        assertEquals(0f, ty(root.items()[3]), 0.01f)
+        root.input.mouseUp(5f, 41f, 0); root.frame(300f, 200f)
+        assertEquals(listOf("a", "c", "b", "d"), order)
+
+        // Dragging "a" below "b": "b" moves up by a's size + gap = 12, its own margin travels with it.
+        order = listOf("a", "b", "c", "d")
+        root = marginUi()
+        root.drag(5f, 5f, 5f, 5f + 24f)
+        assertEquals(-12f, ty(root.items()[1]), 0.01f)
+    }
+
+    /** Kanban-like columns (0..60 and 100..160, 150 high) with a header; the lists have no min-height. */
+    private fun columns(): UiRoot {
+        val app = component("K") {
+            var l by useState(left)
+            var r by useState(right)
+            div(className = "row") {
+                div(className = "col") {
+                    div(className = "head") { +"Left" }
+                    sortableList(l, key = { it }, onReorder = { l = it; left = it }, group = "g") { item, _ -> span { +item } }
+                }
+                div(className = "col") {
+                    div(className = "head") { +"Right" }
+                    sortableList(r, key = { it }, onReorder = { r = it; right = it }, group = "g") { item, _ -> span { +item } }
+                }
+            }
+        }
+        val css = "$ua .row { display: flex; gap: 40px } .col { width: 60px; height: 150px } .head { height: 10px } .guilib-sortable-item.dragging.away { visibility: hidden }"
+        val root = UiRoot(FakeMeasurer, listOf(Stylesheet.parse(css, "ua", Origin.USER_AGENT)), clock = { now })
+        root.render(VComponent(app, Unit, null))
+        root.frame(300f, 200f)
+        return root
+    }
+
+    @Test
+    fun anEmptyListReceivesDropsAnywhereInItsColumn() {
+        right = emptyList()
+        val root = columns()
+        root.input.mouseDown(5f, 15f, 0); root.frame(300f, 200f) // "a" (y 10..20)
+        root.input.mouseMove(30f, 15f); root.frame(300f, 200f)
+        root.input.mouseMove(120f, 80f); root.frame(300f, 200f) // empty space in the right column
+        assertTrue(root.document.body.querySelectorAll(".guilib-sortable")[1].classList.contains("receiving"))
+        root.input.mouseUp(120f, 80f, 0); root.frame(300f, 200f)
+        assertEquals(listOf("b"), left)
+        assertEquals(listOf("a"), right)
+    }
+
+    @Test
+    fun droppingBelowAShortListInItsColumnAppends() {
+        val root = columns()
+        root.input.mouseDown(5f, 15f, 0); root.frame(300f, 200f)
+        root.input.mouseMove(30f, 15f); root.frame(300f, 200f)
+        root.input.mouseMove(120f, 120f); root.frame(300f, 200f)
+        root.input.mouseUp(120f, 120f, 0); root.frame(300f, 200f)
+        assertEquals(listOf("x", "y", "z", "a"), right)
+        // Inside its own column but below the list, the item stays in its list (no ghost) and goes to the end.
+        root.input.mouseDown(5f, 15f, 0); root.frame(300f, 200f) // "b"
+        root.input.mouseMove(5f, 30f); root.frame(300f, 200f)
+        root.input.mouseMove(5f, 120f); root.frame(300f, 200f)
+        assertTrue(root.document.body.querySelectorAll(".guilib-sortable-ghost").isEmpty())
+        root.input.mouseUp(5f, 120f, 0); root.frame(300f, 200f)
+        assertEquals(listOf("b"), left)
+    }
 }

@@ -678,7 +678,7 @@ object Showcase {
         KanbanDemo()
     }
 
-    /** Lists sharing a group exchange items; the long column scrolls while dragging near its edges. */
+    /** Lists sharing a group exchange items (anywhere in a column, even below a short or empty list); the long column scrolls while dragging near its edges. */
     private val KanbanDemo = component("KanbanDemo") {
         var todo by useState((1..12).map { "Burrow #$it" })
         var doing by useState(listOf("Inquisitor", "Minos Champion"))
