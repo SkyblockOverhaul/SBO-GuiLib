@@ -268,6 +268,7 @@ button.primary:hover { background-color: #6f9cf2; }
 .g-footer { grid-area: footer; text-align: center; }
 
 .grid-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 3px; }
+.grid-tiles.fit { grid-template-columns: repeat(auto-fit, minmax(50px, 1fr)); margin-top: 3px; }
 .tile { padding: 6px 0; text-align: center; background-color: var(--panel); border: 1px solid var(--border); border-radius: 3px; }
 .tile.wide { grid-column: span 2; background: linear-gradient(to right, #5b8def, #b16cea); }
 

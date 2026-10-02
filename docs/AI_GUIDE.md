@@ -239,7 +239,7 @@ in one stylesheet works in every screen. Weights map to the nearest face (400/50
 13. Every positioned element (`relative/absolute/fixed`) is its own paint layer; `z-index` orders layers among siblings in the same layer. Use `portal { }` for things that must be on top of everything. `position: fixed` elements ignore their ancestors' `transform`.
 14. Not supported (yet): 3D transforms (a `transform` containing them is ignored),
     pseudo-elements other than `::before`/`::after`, float, subgrid, named grid lines (`[name]` is ignored).
-    Grid: `auto-fit` behaves like `auto-fill` (empty tracks aren't collapsed); items can't be placed before line 1.
+    Grid: items can't be placed before line 1.
 15. Images: `src` is a resource location (`"modid:textures/x.png"`), PNG, SVG or GIF only; no URLs yet. Animated GIFs loop like in a browser (all images with the same `src` play in sync); they are decoded in the background, so a big GIF stays empty for a moment instead of freezing the game (its size is known right away, layout doesn't jump); very long GIFs are cut off after ~32M pixels of frames. SVGs are rasterized at their exact on-screen pixel size (a few ms each, cached per size; JSVG is warmed up in the background at startup).
 16. Text has no kerning; `text-align: justify` behaves like `left`. No right-to-left or complex-script shaping: Arabic/Hebrew
     render as unconnected letters in left-to-right order. Characters missing from the font (CJK, emoji, …) fall back to
@@ -276,7 +276,8 @@ in one stylesheet works in every screen. Weights map to the nearest face (400/50
 - **Copy button:** `val clipboard = useClipboard(); val toast = useToast()` → `button(onClick = { clipboard.set(note); toast.success("Copied") }) { +"Copy note" }`.
 - **Player in a list:** `div(className = "row") { playerHead(name, style = "margin-right: 4px"); +name }`.
 - **Reorderable list:** `sortableList(tasks, key = { it.id }, onReorder = { tasks = it }) { task, _ -> div { +task.name } }`.
-- **Responsive tiles:** `display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 4px`.
+- **Responsive tiles:** `display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 4px`
+  (`auto-fit` instead collapses the empty columns, so a few tiles stretch over the whole row).
 - **Sidebar + content:** `display: grid; grid-template-columns: 80px 1fr` (or `grid-template-areas`).
 - **Keyboard shortcut for the whole screen:** `useDocumentEvent("keydown") { e -> if ((e as KeyboardEvent).key == "r") refresh() }`.
 

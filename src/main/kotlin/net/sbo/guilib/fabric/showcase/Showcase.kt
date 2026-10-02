@@ -506,6 +506,13 @@ object Showcase {
             for (i in 1..7) div(key = i, className = "tile") { +"#$i" }
             div(key = "wide", className = "tile wide") { +"span 2" }
         }
+        p(className = "muted") { +"Two tiles: auto-fill keeps the empty columns, auto-fit collapses them so the tiles stretch" }
+        div(className = "grid-tiles") {
+            for (i in 1..2) div(key = i, className = "tile") { +"fill #$i" }
+        }
+        div(className = "grid-tiles fit") {
+            for (i in 1..2) div(key = i, className = "tile") { +"fit #$i" }
+        }
     }
 
     /** align-content moves the lines of a wrapping flex container that is taller than its lines. */

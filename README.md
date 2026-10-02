@@ -39,7 +39,7 @@ UIs can be written quickly and correctly. Differences from the web are documente
   `:hover :active :focus :disabled :checked :not() :nth-child()` …, `::before` / `::after`; specificity, `!important`, inheritance, custom properties
   (`var(--accent)`), `px % em rem vw vh`, `@media` queries (screen size, GUI scale). Unknown properties/values log a warning with file and line — no crashes.
 - **Layout:** box model, block flow, inline text, **flexbox** (grow/shrink/basis, wrap, gap, alignment, auto margins,
-  order), **CSS grid** (`fr`, `minmax()`, `repeat(auto-fill, …)`, spans, template areas, auto-placement),
+  order), **CSS grid** (`fr`, `minmax()`, `repeat(auto-fill | auto-fit, …)`, spans, template areas, auto-placement),
   relative/absolute/fixed positioning, `z-index`, scroll containers with clipping and scrollbars, `calc()`/`min()`/`max()`/`clamp()`.
 - **Animation:** CSS `transition` and `@keyframes` + `animation` (easing, delays, iterations, alternate, fill modes) for
   colors, sizes, opacity, gradients, `transform` (translate, scale, rotate, skew) and more; `presence { }` and `presenceList(items) { }` for exit animations.

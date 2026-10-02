@@ -337,6 +337,29 @@ class LayoutTest {
     }
 
     @Test
+    fun gridAutoFitCollapsesEmptyRepeatedTracks() {
+        // Two items, room for 4 columns of 20px: auto-fill keeps 4 tracks, auto-fit drops the empty ones → items stretch.
+        val fill = Array(2) { div("height: 10px") }
+        val fit = Array(2) { div("height: 10px") }
+        layout(div("",
+            div("display: grid; gap: 4px; grid-template-columns: repeat(auto-fill, minmax(20px, 1fr))", *fill),
+            div("display: grid; gap: 4px; grid-template-columns: repeat(auto-fit, minmax(20px, 1fr))", *fit),
+        ))
+        assertEquals(22f, fill[0].box.width, 0.01f) // (100 - 3 gaps) / 4 … 4 columns: 4*20 + 3*4 = 92 ≤ 100
+        assertBox(fit[0], 0f, 10f, 48f, 10f) // (100 - 1 gap) / 2
+        assertBox(fit[1], 52f, 10f, 48f, 10f)
+
+        // Fixed tracks around the repeat stay; an item placed in a later column keeps its column.
+        val a = div("height: 10px")
+        val b = div("height: 10px; grid-column: 5")
+        layout(div("", div("display: grid; grid-template-columns: 10px repeat(auto-fit, 20px) 10px; justify-content: start", a, b)))
+        // 100px: 10 + 4×20 + 10 → 4 repeated columns (lines 2..5); a takes column 1 (10px), b column 5 (a repeated one);
+        // columns 2..4 are empty and collapse, so b sits right after a.
+        assertBox(a, 0f, 0f, 10f, 10f)
+        assertBox(b, 10f, 0f, 20f, 10f)
+    }
+
+    @Test
     fun gridAlignmentAndColumnFlow() {
         val a = div("width: 10px; height: 10px")
         val b = div("width: 10px; height: 10px; justify-self: end; align-self: end")
