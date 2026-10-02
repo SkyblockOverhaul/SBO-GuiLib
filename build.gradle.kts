@@ -49,6 +49,8 @@ loom {
         source(devSourceSet)
         project.findProperty("guilib.dev.shots")?.let { vmArg("-Dguilib.dev.shots=$it") }
         project.properties.filterKeys { it.startsWith("guilib.dev.") && it != "guilib.dev.shots" }.forEach { (k, v) -> vmArg("-D$k=$v") }
+        // Profiling: -Pguilib.dev.jfr=<file.jfr> records a Java Flight Recording until the game exits.
+        project.findProperty("guilib.dev.jfr")?.let { vmArg("-XX:StartFlightRecording=filename=$it,settings=profile,dumponexit=true") }
     }
 }
 

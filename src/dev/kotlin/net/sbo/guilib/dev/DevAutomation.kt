@@ -47,6 +47,8 @@ object DevAutomation : ClientModInitializer {
                 // "call:com.example.MyGui.open" opens any screen via a static/object method instead of a showcase section.
                 if (s.startsWith("call:")) callOpen(s.removePrefix("call:").substringBefore('#')) else Showcase.open(s.substringBefore('#'))
             }
+            // Frame statistics per section (logged before its final screenshot), for profiling.
+            steps += Step(1) { statsStart = System.nanoTime(); net.sbo.guilib.core.FrameStats.reset() }
             steps += Step(20) { hover(System.getProperty("guilib.dev.hover.$s")) }
             // Optional script: -Pguilib.dev.script.Forms="click:input;type:Steve;click:select"
             // "shot" captures one tick after the previous step (to catch animations mid-way).
@@ -57,7 +59,10 @@ object DevAutomation : ClientModInitializer {
                     else -> steps += Step(8) { runAction(action) }
                 }
             }
-            steps += Step(10) { shot("guilib-${i + 1}-${s.substringAfterLast('.').lowercase().replace('#', '-')}.png") }
+            steps += Step(10) {
+                logStats(s)
+                shot("guilib-${i + 1}-${s.substringAfterLast('.').lowercase().replace('#', '-')}.png")
+            }
         }
         steps += Step(20) { Minecraft.getInstance().stop() }
 
@@ -90,6 +95,27 @@ object DevAutomation : ClientModInitializer {
                 Log.error("GuiLib dev automation step failed: ${e.stackTraceToString().lineSequence().take(12).joinToString("\n")}")
             }
             wait = steps.firstOrNull()?.ticks ?: 0
+        }
+    }
+
+    private var statsStart = 0L
+
+    private fun logStats(section: String) {
+        val st = net.sbo.guilib.core.FrameStats
+        val secs = (System.nanoTime() - statsStart) / 1e9
+        val f = st.frames.coerceAtLeast(1)
+        Log.info(
+            String.format(
+                java.util.Locale.ROOT,
+                "GuiLib stats %-12s %5.0f fps | update %.3f ms + draw %.3f ms per frame | per s: %.1f styles, %.1f layouts, %.1f paints",
+                section, st.frames / secs, st.updateNanos / 1e6 / f, st.drawNanos / 1e6 / f, st.styles / secs, st.layouts / secs, st.paints / secs,
+            ),
+        )
+        // -Dguilib.dev.heap=true: heap in use after a full GC (dev only, the GC itself causes a hitch), to spot leaks.
+        if (System.getProperty("guilib.dev.heap") == "true") {
+            val rt = Runtime.getRuntime()
+            System.gc()
+            Log.info(String.format(java.util.Locale.ROOT, "GuiLib heap %-12s %.1f MB used after GC", section, (rt.totalMemory() - rt.freeMemory()) / 1048576.0))
         }
     }
 

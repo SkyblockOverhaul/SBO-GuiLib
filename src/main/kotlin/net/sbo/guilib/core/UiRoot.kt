@@ -32,10 +32,14 @@ class UiRoot(measurer: TextMeasurer, stylesheets: List<Stylesheet> = emptyList()
         val changed = document.update(width, height)
         if (changed || !painted) {
             painter.paint(document.body)
+            FrameStats.paint()
             painted = true
             // Content may have moved under the mouse.
             input.refreshHover()
-            if (document.update(width, height)) painter.paint(document.body)
+            if (document.update(width, height)) {
+                painter.paint(document.body)
+                FrameStats.paint()
+            }
         }
         return painter.commands
     }

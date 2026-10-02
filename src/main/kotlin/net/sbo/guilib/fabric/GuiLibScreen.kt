@@ -1,5 +1,6 @@
 package net.sbo.guilib.fabric
 
+import net.sbo.guilib.core.FrameStats
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.CharacterEvent
@@ -106,17 +107,22 @@ open class GuiLibScreen(
         root.document.resolution = s
         if (mounted && Translator.current() !== translator) renderContent()
         scaled {
+            val t0 = System.nanoTime()
             if (root.document.scale == null) {
                 val commands = root.frame(width.toFloat(), height.toFloat())
+                val t1 = System.nanoTime()
                 CommandRenderer.draw(ctx, commands, mouseX, mouseY)
+                FrameStats.frame(t1 - t0, System.nanoTime() - t1)
             } else {
                 val k = s / mcScale
                 val commands = root.frame(minecraft.window.width / s, minecraft.window.height / s)
+                val t1 = System.nanoTime()
                 val pose = ctx.pose()
                 pose.pushMatrix()
                 pose.scale(k, k)
                 CommandRenderer.draw(ctx, commands, (mouseX / k).toInt(), (mouseY / k).toInt())
                 pose.popMatrix()
+                FrameStats.frame(t1 - t0, System.nanoTime() - t1)
             }
         }
         Cursors.of(root.input.cursor)?.let(ctx::requestCursor)

@@ -323,6 +323,7 @@ class Document(
     private fun styleAndLayout() {
         if (styleDirty) recalcStyles()
         if (layoutDirty) {
+            net.sbo.guilib.core.FrameStats.layout()
             layoutEngine.layout(body, viewportWidth, viewportHeight)
             layoutDirty = false
             clampScroll(body)
@@ -336,6 +337,7 @@ class Document(
 
     private fun recalcStyles() {
         styleDirty = false
+        net.sbo.guilib.core.FrameStats.style()
         val rootStyle = styleEngine.compute(body, body.inlineDeclarations, null, StyleContext(viewportWidth, viewportHeight, resolution = resolution))
         val ctx = StyleContext(viewportWidth, viewportHeight, rootStyle.fontSize, resolution)
         recalc(body, null, force = false, ctx)
