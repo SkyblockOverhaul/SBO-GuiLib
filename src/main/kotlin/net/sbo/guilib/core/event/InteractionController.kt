@@ -50,6 +50,10 @@ class InteractionController(private val doc: Document, private val hitTest: (Flo
         return null
     }
 
+    /** The `stack` of the hovered `item(…, tooltip = true)` icon, whose Minecraft tooltip the backend shows. */
+    fun hoveredItemTooltip(): Any? =
+        hovered?.takeIf { it.tagName == "item" && it.getAttribute("tooltip") == true }?.getAttribute("stack")
+
     /**
      * Cursor requested by the hovered element's `cursor` property. While the left button is held on an element with a
      * drag cursor (`grab`, `grabbing`, `move`, resize cursors) that cursor stays, even when the mouse leaves it.

@@ -713,7 +713,7 @@ object Showcase {
         }
         div(className = "row") {
             for (stack in stacks) {
-                div(className = "item-slot", title = stack.hoverName.string) { item(stack) }
+                div(className = "item-slot") { item(stack, tooltip = true) } // Minecraft's own item tooltip
             }
             div(className = "item-slot big") { item(ItemStack(Items.ENDER_EYE), style = "width: 32px; height: 32px") }
         }

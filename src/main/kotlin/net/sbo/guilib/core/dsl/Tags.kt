@@ -1448,7 +1448,7 @@ fun NodeBuilder.img(
     element("img", key, id, className, style, ref, attrs, handlers, null)
 }
 
-/** Minecraft item icon (16×16 by default). `stack` is a `net.minecraft.world.item.ItemStack`. (Not an HTML tag.) */
+/** Minecraft item icon (16×16 by default). `stack` is a `net.minecraft.world.item.ItemStack`; `tooltip = true` shows Minecraft's item tooltip while the icon is hovered. (Not an HTML tag.) */
 fun NodeBuilder.item(
     stack: Any,
     className: String? = null,
@@ -1459,6 +1459,7 @@ fun NodeBuilder.item(
     ref: Ref<Element?>? = null,
     tabIndex: Int? = null,
     decorations: Boolean = true,
+    tooltip: Boolean = false,
     onClick: ((MouseEvent) -> Unit)? = null,
     onDoubleClick: ((MouseEvent) -> Unit)? = null,
     onContextMenu: ((MouseEvent) -> Unit)? = null,
@@ -1479,6 +1480,7 @@ fun NodeBuilder.item(
     if (tabIndex != null) attrs["tabindex"] = tabIndex
     attrs["stack"] = stack
     if (decorations) attrs["decorations"] = true
+    if (tooltip) attrs["tooltip"] = true
     val handlers = HashMap<String, (UIEvent) -> Unit>()
     handlers.on("click", onClick)
     handlers.on("dblclick", onDoubleClick)

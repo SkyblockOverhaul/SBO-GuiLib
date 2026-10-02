@@ -8,6 +8,7 @@ import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.HoverEvent
+import net.minecraft.world.item.ItemStack
 import net.sbo.guilib.core.UiRoot
 import net.sbo.guilib.core.dom.VNode
 import net.sbo.guilib.core.dom.VProvider
@@ -78,8 +79,15 @@ open class GuiLibScreen(
         hoverTooltip(ctx, mouseX, mouseY)
     }
 
-    /** Item / entity tooltips of hovered chat text ([text]), drawn by Minecraft on top of everything like in chat. */
+    /**
+     * Item / entity tooltips of hovered chat text ([text]) and of `item(…, tooltip = true)` icons, drawn by Minecraft
+     * on top of everything like in chat and inventories.
+     */
     private fun hoverTooltip(ctx: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
+        (root.input.hoveredItemTooltip() as? ItemStack)?.takeUnless { it.isEmpty }?.let {
+            ctx.setTooltipForNextFrame(font, it, mouseX, mouseY)
+            return
+        }
         when (val hover = root.input.hoveredAttribute(MC_HOVER_ATTR)) {
             is HoverEvent.ShowItem -> ctx.setTooltipForNextFrame(font, hover.item().create(), mouseX, mouseY)
             is HoverEvent.ShowEntity -> if (minecraft.options.advancedItemTooltips) {

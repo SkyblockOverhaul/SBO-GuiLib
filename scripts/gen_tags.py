@@ -45,7 +45,11 @@ SELECT = [
 ]
 OPTION = [("value", "String", None, "value"), ("disabled", "Boolean", "false", "disabled")]
 IMG = [("src", "String", None, "src"), ("alt", "String?", "null", "alt")]
-ITEM = [("stack", "Any", None, "stack"), ("decorations", "Boolean", "true", "decorations")]
+ITEM = [
+    ("stack", "Any", None, "stack"),
+    ("decorations", "Boolean", "true", "decorations"),
+    ("tooltip", "Boolean", "false", "tooltip"),
+]
 ENTITY = [
     ("entity", "Any", None, "entity"),
     ("followMouse", "Boolean", "false", "followmouse"),
@@ -88,7 +92,7 @@ TAGS = {
     "br": ("Line break inside text.", [], False),
     "hr": ("Horizontal rule.", [], False),
     "img": ("Image: `src` is a resource location (`\"modid:textures/x.png\"`); PNG, SVG and (animated) GIF are supported.", IMG, False),
-    "item": ("Minecraft item icon (16×16 by default). `stack` is a `net.minecraft.world.item.ItemStack`. (Not an HTML tag.)", ITEM, False),
+    "item": ("Minecraft item icon (16×16 by default). `stack` is a `net.minecraft.world.item.ItemStack`; `tooltip = true` shows Minecraft's item tooltip while the icon is hovered. (Not an HTML tag.)", ITEM, False),
     "entity": ("Minecraft entity model (48×72 by default), scaled to fit the box. `entity` is a `net.minecraft.world.entity.LivingEntity`, e.g. `FakePlayer.of(\"Notch\")`. `followMouse` turns it towards the cursor; otherwise it looks at its center offset by `lookX`/`lookY` px. `scale` multiplies the fitted size. (Not an HTML tag.)", ENTITY, False),
     "player-head": ("Minecraft player face (16×16 by default), like in the tab list. `player` is a name (`String`), a `UUID`, a `GameProfile`, a `ResolvableProfile` or an `AbstractClientPlayer`; the skin loads in the background (default skin until then) and works without a world. `hat = false` hides the hat layer. (Not an HTML tag.)", PLAYER_HEAD, False),
     "input": ("Form input. `type`: `text`, `password`, `number`, `checkbox`. Controlled like React: pass `value`/`checked` and update them in `onInput`/`onChange`.", INPUT, False),
