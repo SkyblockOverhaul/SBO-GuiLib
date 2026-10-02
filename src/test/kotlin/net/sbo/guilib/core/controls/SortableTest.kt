@@ -34,11 +34,17 @@ class SortableTest {
         .guilib-sortable.sorting .guilib-sortable-item.dragging { transition: none; position: relative; z-index: 10 }
     """.trimIndent()
 
+    /** The showcase's entry animation (`.sort-list`): its `from` frame has a transform without the drag offset. */
+    private val entry = """
+        .guilib-sortable-item { animation: sort-in 180ms ease-out }
+        @keyframes sort-in { from { opacity: 0; transform: translateX(-12px) } }
+    """.trimIndent()
+
     private var order = listOf("a", "b", "c", "d")
     private var clicks = 0
     private var now = 0L
 
-    private fun ui(horizontal: Boolean = false, handle: Boolean = false, scrolled: Boolean = false, animated: Boolean = false): UiRoot {
+    private fun ui(horizontal: Boolean = false, handle: Boolean = false, scrolled: Boolean = false, animated: Boolean = false, extraCss: String = ""): UiRoot {
         val app = component("T") {
             var items by useState(order)
             fun list(b: net.sbo.guilib.core.dsl.NodeBuilder) = b.sortableList(
@@ -49,7 +55,7 @@ class SortableTest {
             }
             if (scrolled) div(className = "s") { list(this) } else list(this)
         }
-        val root = UiRoot(FakeMeasurer, listOf(Stylesheet.parse(if (animated) "$ua\n$transitions" else ua, "ua", Origin.USER_AGENT)), clock = { now })
+        val root = UiRoot(FakeMeasurer, listOf(Stylesheet.parse((if (animated) "$ua\n$transitions" else ua) + "\n" + extraCss, "ua", Origin.USER_AGENT)), clock = { now })
         root.render(VComponent(app, Unit, null))
         root.frame(300f, 200f)
         return root
@@ -379,5 +385,25 @@ class SortableTest {
         assertTrue(root.document.body.querySelectorAll(".guilib-sortable-ghost").isEmpty())
         root.input.mouseUp(5f, 120f, 0); root.frame(300f, 200f)
         assertEquals(listOf("b"), left)
+    }
+
+    @Test
+    fun theDraggedItemFollowsTheMouseWithAnEntryAnimation() {
+        // Regression (bug report from play): items with an entry animation jumped back to their old position again
+        // and again while being dragged, because every move restyled them and replayed the finished animation.
+        val root = ui(animated = true, extraCss = entry)
+        now = 500L; root.frame(300f, 200f) // entry animations done
+        root.input.mouseDown(5f, 5f, 0)
+        for (step in 1..6) {
+            now += 16L
+            root.input.mouseMove(5f, 5f + step * 4f); root.frame(300f, 200f)
+            val dragged = root.items()[0]
+            val t = dragged.style.transform.single() as TransformFn.Translate
+            assertEquals(0f, t.x.resolve(0f)!!, 0.01f, "step $step")
+            assertEquals(step * 4f, t.y.resolve(0f)!!, 0.01f, "step $step")
+            assertEquals(1f, dragged.style.opacity, 0.01f, "step $step")
+        }
+        root.input.mouseUp(5f, 29f, 0); root.frame(300f, 200f)
+        assertEquals(listOf("b", "c", "a", "d"), order)
     }
 }

@@ -154,4 +154,38 @@ class AnimationTest {
         assertTrue(d.el(".box").style.width is Dim.Calc)
         assertEquals(50f, d.el(".box").box.width, 0.5f) // halfway between 0px and 50% of 200px
     }
+
+    @Test
+    fun aFinishedAnimationDoesNotReplayWhenTheElementIsRestyled() {
+        // Regression: a sortable item with an entry animation jumped back to its old place on every mouse move while
+        // dragging, because each new inline transform restyled it and restarted the finished animation.
+        lateinit var setShift: (Int) -> Unit
+        lateinit var setAnimated: (Boolean) -> Unit
+        val d = doc(".box { width: 10px; height: 10px } .box.anim { animation: grow 100ms linear } @keyframes grow { from { width: 50px } }") {
+            val (shift, s) = useState(0)
+            val (animated, a) = useState(true)
+            setShift = s
+            setAnimated = a
+            div(className = classNames("box", "anim" to animated), style = "transform: translateY(${shift}px)")
+        }
+        val box = d.el(".box")
+        d.at(50)
+        assertEquals(30f, box.box.width, 0.5f)
+        d.at(200)
+        assertEquals(10f, box.box.width, 0.01f)
+        // Restyles (inline style changes) don't start it again.
+        for (t in 1..5) {
+            setShift(t * 3)
+            d.at(200L + t * 16)
+            assertEquals(10f, box.box.width, 0.01f, "restyle $t")
+            assertNull(box.animatedStyle, "restyle $t")
+        }
+        // Removing the name and adding it back plays it again, like in browsers.
+        setAnimated(false)
+        d.at(300)
+        setAnimated(true)
+        d.at(300)
+        d.at(350)
+        assertEquals(30f, box.box.width, 0.5f)
+    }
 }

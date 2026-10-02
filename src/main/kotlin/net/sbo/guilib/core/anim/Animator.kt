@@ -39,11 +39,17 @@ internal class Animator(private val engine: StyleEngine) {
     }
 
     private val states = IdentityHashMap<Element, State>()
+    /**
+     * Names of keyframe animations that already ran to the end on an element. Like in browsers they don't start again
+     * while the element keeps the name, however often it is restyled (hover, inline style changes …).
+     */
+    private val finished = IdentityHashMap<Element, MutableSet<String>>()
 
     val isActive get() = states.isNotEmpty()
 
     fun remove(el: Element) {
         states.remove(el)
+        finished.remove(el)
         el.animatedStyle = null
     }
 
@@ -72,11 +78,18 @@ internal class Animator(private val engine: StyleEngine) {
 
         // ---- keyframe animations: start new names, stop removed ones, refresh frames ----
         val specs = next.animations
+        val done = finished[el]
+        if (done != null) {
+            // A removed name may play again when it comes back.
+            done.retainAll(specs.map { it.name }.toSet())
+            if (done.isEmpty()) finished.remove(el)
+        }
         if (specs.isNotEmpty() || state?.animations?.isNotEmpty() == true) {
             if (state == null) state = State().also { states[el] = it }
             val names = specs.map { it.name }.toSet()
             state.animations.keys.retainAll(names)
             for (spec in specs) {
+                if (done != null && spec.name in done && spec.name !in state.animations) continue
                 val keyframes = engine.keyframes(spec.name) ?: continue
                 val running = state.animations.getOrPut(spec.name) { Running(spec, now) }
                 running.spec = spec
@@ -115,7 +128,10 @@ internal class Animator(private val engine: StyleEngine) {
             val anims = state.animations.values.iterator()
             while (anims.hasNext()) {
                 val a = anims.next()
-                if (!applyAnimation(a, now, overrides)) anims.remove()
+                if (!applyAnimation(a, now, overrides)) {
+                    anims.remove()
+                    finished.getOrPut(el) { HashSet() } += a.spec.name
+                }
             }
 
             val trans = state.transitions.entries.iterator()

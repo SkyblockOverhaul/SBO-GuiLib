@@ -184,7 +184,7 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
   `grid-template-areas grid-area grid-row grid-column grid-row-start/-end grid-column-start/-end` (line numbers, negative lines, `span n`, area names),
   `grid-auto-rows grid-auto-columns grid-auto-flow` (`row column dense`), `justify-items justify-self place-items place-self`, `justify-content`/`align-content` (distribute columns/rows), `gap`/`grid-gap`
 - Animation: `transition` (+ `-property -duration -timing-function -delay`), `animation` (+ `-name -duration -timing-function -delay
-  -iteration-count -direction -fill-mode -play-state`) with `@keyframes`; easing `linear ease ease-in ease-out ease-in-out cubic-bezier() steps()`.
+  -iteration-count -direction -fill-mode -play-state`) with `@keyframes`; easing `linear ease ease-in ease-out ease-in-out cubic-bezier() steps()`. Like in browsers an animation plays once per element while it keeps the name (restyles such as hover don't replay it); remove the name and add it back to play it again.
   Animatable: colors, lengths (also px ↔ % via calc), numbers (`opacity`, `flex-grow`, `font-size` …), radii, `line-height`,
   `text-shadow`, `letter-spacing`, `box-shadow`, scrollbar colors, gradient stop colors, `visibility`, `transform`, `transform-origin`; other values switch at 50%
   in keyframes and don't transition.
