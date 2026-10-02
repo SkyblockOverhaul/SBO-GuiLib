@@ -72,6 +72,9 @@ enum class Overflow { VISIBLE, HIDDEN, SCROLL, AUTO;
     val scrolls get() = this == SCROLL || this == AUTO
 }
 enum class TextAlign { LEFT, CENTER, RIGHT }
+
+/** `vertical-align` keywords; a length/percentage is stored as a [Dim] instead (raises the box by that amount). */
+enum class VerticalAlign { BASELINE, SUB, SUPER, TEXT_TOP, TEXT_BOTTOM, MIDDLE, TOP, BOTTOM }
 enum class WhiteSpace { NORMAL, NOWRAP, PRE, PRE_WRAP }
 enum class TextOverflow { CLIP, ELLIPSIS }
 enum class Visibility { VISIBLE, HIDDEN }

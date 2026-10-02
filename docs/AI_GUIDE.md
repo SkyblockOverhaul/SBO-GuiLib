@@ -170,6 +170,7 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
 - Box: `width height min-width min-height max-width max-height box-sizing margin(-*) padding(-*)`
 - Border: `border border-(top|right|bottom|left) border-width border-style border-color border-*-width/-style/-color border-radius border-*-radius` (styles `solid`; `dashed/dotted` draw solid)
 - Layout: `display` (`block inline inline-block flex inline-flex grid inline-grid none`), `position` (`static relative absolute fixed`), `top right bottom left inset z-index overflow overflow-x overflow-y`
+- Inline: `vertical-align` (`baseline sub super text-top text-bottom middle top bottom`, a length, or a % of the line height) for `inline-block` / `inline-flex` / `img` / `item` boxes; text in inline elements always sits on the baseline
 - Flexbox: `flex flex-direction flex-wrap flex-flow flex-grow flex-shrink flex-basis justify-content align-items align-self place-items gap row-gap column-gap order`
 - Grid: `grid-template-columns grid-template-rows` (`px % fr auto min-content max-content minmax() repeat(n | auto-fill | auto-fit, …)`),
   `grid-template-areas grid-area grid-row grid-column grid-row-start/-end grid-column-start/-end` (line numbers, negative lines, `span n`, area names),
@@ -223,13 +224,13 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
 12. `border-width` default (`medium`) is 1px; like the web, a border without `border-style` draws nothing.
 13. Every positioned element (`relative/absolute/fixed`) is its own paint layer; `z-index` orders layers among siblings in the same layer. Use `portal { }` for things that must be on top of everything. `position: fixed` elements ignore their ancestors' `transform`.
 14. Not supported (yet): 3D transforms (a `transform` containing them is ignored), `repeating-*-gradient`, `conic-gradient`,
-    `:nth-child(… of S)`, pseudo-elements other than `::before`/`::after`, float, `align-content`, `vertical-align`, subgrid, named grid lines (`[name]` is ignored).
+    `:nth-child(… of S)`, pseudo-elements other than `::before`/`::after`, float, `align-content`, `vertical-align` on text (no `sub`/`sup` text shifting), subgrid, named grid lines (`[name]` is ignored).
     Grid: `auto-fit` behaves like `auto-fill` (empty tracks aren't collapsed); items can't be placed before line 1.
 15. Images: `src` is a resource location (`"modid:textures/x.png"`), PNG, SVG or GIF only; no URLs yet. Animated GIFs loop like in a browser (all images with the same `src` play in sync); very long GIFs are cut off after ~32M pixels of frames.
 16. Text has no kerning; `text-align: justify` behaves like `left`. No right-to-left or complex-script shaping: Arabic/Hebrew
     render as unconnected letters in left-to-right order. Characters missing from the font (CJK, emoji, …) fall back to
     Minecraft's font.
-17. `display: inline-block` / `img` / `item` sit on the text baseline; `vertical-align` is not supported.
+17. `vertical-align` only moves atomic boxes (`inline-block`, `img`, `item`); text inside inline elements stays on the baseline.
 18. Flex items have `min-width: auto` (content size) like the web — for ellipsis inside flex, set `min-width: 0`.
 
 ## 7. Recipes

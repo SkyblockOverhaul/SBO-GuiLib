@@ -1,15 +1,17 @@
 package net.sbo.guilib.core.layout
 
 import net.sbo.guilib.core.css.ComputedStyle
+import net.sbo.guilib.core.css.Dim
 import net.sbo.guilib.core.css.Display
 import net.sbo.guilib.core.css.TextAlign
 import net.sbo.guilib.core.css.TextOverflow
+import net.sbo.guilib.core.css.VerticalAlign
 import net.sbo.guilib.core.css.WhiteSpace
 
 /**
  * Inline formatting: turns text nodes, `display: inline` elements and atomic inline boxes (inline-block, images)
  * into wrapped lines. Horizontal margin/border/padding of `display: inline` elements take space at their start and
- * end ([Fragment.Edge]); vertical ones don't affect the line height (like the web). `vertical-align` is always `baseline`.
+ * end ([Fragment.Edge]); vertical ones don't affect the line height (like the web). `vertical-align` applies to atomic boxes only (inline-block, images, items), not to text in inline elements.
  */
 internal class InlineLayout(private val engine: LayoutEngine) {
 
@@ -271,11 +273,21 @@ internal class InlineLayout(private val engine: LayoutEngine) {
                     }
                     is Fragment.Box -> {
                         val b = f.owner.box
-                        val base = b.margin.top + (b.baseline ?: b.height)
-                        above = maxOf(above, base)
-                        below = maxOf(below, b.marginBoxHeight - base)
+                        val asc = ascentOf(f.owner, container, strutMetrics) ?: continue // top / bottom: below
+                        above = maxOf(above, asc)
+                        below = maxOf(below, b.marginBoxHeight - asc)
                     }
                     is Fragment.Edge -> {}
+                }
+            }
+            // vertical-align top / bottom: placed against the line box; taller ones grow it at the other end.
+            for (f in frags) {
+                if (f !is Fragment.Box) continue
+                val h = f.owner.box.marginBoxHeight
+                when (f.owner.style.verticalAlign) {
+                    VerticalAlign.TOP -> below = maxOf(below, h - above)
+                    VerticalAlign.BOTTOM -> above = maxOf(above, h - below)
+                    else -> {}
                 }
             }
             val lineHeight = above + below
@@ -289,7 +301,11 @@ internal class InlineLayout(private val engine: LayoutEngine) {
                     is Fragment.Text -> Fragment.Text(f.x + shift, f.width, f.text, f.style, f.owner)
                     is Fragment.Box -> {
                         val b = f.owner.box
-                        val top = above - (b.margin.top + (b.baseline ?: b.height))
+                        val top = when (f.owner.style.verticalAlign) {
+                            VerticalAlign.TOP -> 0f
+                            VerticalAlign.BOTTOM -> lineHeight - b.marginBoxHeight
+                            else -> above - ascentOf(f.owner, container, strutMetrics)!!
+                        }
                         b.x = x + f.x + shift + b.margin.left
                         b.y = y + lineY + top + b.margin.top
                         Fragment.Box(f.x + shift, f.width, top, f.owner)
@@ -301,6 +317,32 @@ internal class InlineLayout(private val engine: LayoutEngine) {
             lineY += lineHeight
         }
         return Paragraph(x, y, availWidth, lines)
+    }
+
+    /**
+     * Distance from the line's baseline up to the top of [node]'s margin box for its `vertical-align`, or null for
+     * `top` / `bottom` (aligned to the line box instead). Keywords are relative to the [container]'s font ([strut]).
+     */
+    private fun ascentOf(node: LayoutNode, container: ComputedStyle, strut: FontMetrics): Float? {
+        val b = node.box
+        val h = b.marginBoxHeight
+        val onBaseline = b.margin.top + (b.baseline ?: b.height)
+        val fontSize = container.fontSize
+        return when (val va = node.style.verticalAlign) {
+            VerticalAlign.BASELINE -> onBaseline
+            VerticalAlign.SUB -> onBaseline - fontSize * 0.2f
+            VerticalAlign.SUPER -> onBaseline + fontSize * 0.35f
+            VerticalAlign.TEXT_TOP -> strut.ascent
+            VerticalAlign.TEXT_BOTTOM -> h - strut.descent
+            // Center at half the x-height (≈ 0.5em) above the baseline.
+            VerticalAlign.MIDDLE -> h / 2f + fontSize * 0.25f
+            VerticalAlign.TOP, VerticalAlign.BOTTOM -> null
+            is Dim -> {
+                val lh = node.style.lineHeight.resolve(node.style.fontSize, 1.2f)
+                onBaseline + (va.resolve(lh) ?: 0f)
+            }
+            else -> onBaseline
+        }
     }
 
     /** Cuts fragments so that they plus "…" fit in [avail]; returns the new line width. */

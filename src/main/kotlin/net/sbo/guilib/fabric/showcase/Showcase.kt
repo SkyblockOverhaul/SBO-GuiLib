@@ -539,6 +539,14 @@ object Showcase {
         p(className = "spaced-title") { +"LETTER-SPACING: 3PX" }
         p(style = "letter-spacing: 0.1em") { +"letter-spacing: 0.1em (hover the title above, it animates)" }
         p(style = "font-family: minecraft; letter-spacing: 1px") { +"Minecraft font, letter-spacing: 1px" }
+        p(className = "va-demo") {
+            span(className = "va-tall") {}
+            for (align in listOf("baseline", "middle", "top", "bottom", "text-top", "super", "sub", "4px")) {
+                +"x"
+                span(key = align, className = "va-box", style = "vertical-align: $align", title = "vertical-align: $align") {}
+            }
+            +" vertical-align"
+        }
         TranslationDemo()
     }
 
