@@ -63,6 +63,8 @@ object LetterSpacing {
         }
 
         override fun metrics(style: TextStyle) = inner.metrics(if (style.letterSpacing == 0f) style else style.copy(letterSpacing = 0f))
+
+        override fun fontFaces(faces: List<net.sbo.guilib.core.css.FontFace>) = inner.fontFaces(faces)
     }
 }
 
@@ -73,6 +75,9 @@ data class FontMetrics(val ascent: Float, val descent: Float, val normalLineHeig
 interface TextMeasurer {
     fun width(text: String, style: TextStyle): Float
     fun metrics(style: TextStyle): FontMetrics
+
+    /** The `@font-face` rules of a document's stylesheets (called whenever they are set). */
+    fun fontFaces(faces: List<net.sbo.guilib.core.css.FontFace>) {}
 }
 
 /**

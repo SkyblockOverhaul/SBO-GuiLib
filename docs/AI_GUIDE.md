@@ -159,7 +159,7 @@ pseudo-classes `:hover :active :focus :focus-visible :focus-within :disabled :en
 `:nth-child() :nth-last-child() :nth-of-type() :nth-last-of-type()` (`odd`, `even`, `3`, `2n+1`, `-n+3`; not the `of S` form).
 **Pseudo-elements:** `::before` and `::after` (also the old `:before`/`:after`), at the end of a selector (`.crumb + .crumb::before`, `.btn:hover::after`). They need `content`: strings and `attr(name)` (e.g. `attr(title)`), `content: ""` for decorative boxes, `none`/`normal` removes the box. The box is the first/last child of the element, inline by default, inherits from it, can be positioned, sized, transitioned and animated like any element. Clicks and hover on it go to the element. Inputs, textareas, images, items and `<br>` get none. No other pseudo-elements, no `url()`/counters/quotes in `content`.
 At-rules: `@keyframes` and `@media` (nestable): comma lists, `not`/`only`, `screen`/`all`/`print`, `and`/`or`; features `width` `height` `aspect-ratio` `orientation` in GUI px, `resolution` = Minecraft's GUI scale (`min-resolution: 3dppx` or `3x`), `hover` (hover), `pointer` (fine), `prefers-reduced-motion` (no-preference), `prefers-color-scheme` (dark); `min-`/`max-` prefixes and range syntax `(400px <= width < 640px)`. Styles update when the window size or GUI scale changes.
-Not supported: other pseudo-elements (`::placeholder`, `::selection`, …), `@import`, `@font-face`, `@container`, `@supports`.
+Not supported: other pseudo-elements (`::placeholder`, `::selection`, …), `@import`, `@container`, `@supports`.
 
 **Values:** `px`, `%`, `em`, `rem`, `vw`, `vh`, `vmin`, `vmax`, unitless `0`; colors `#rgb #rgba #rrggbb #rrggbbaa`,
 `rgb()/rgba()` (comma or space syntax), `hsl()/hsla()`, all CSS named colors, `transparent`, `currentColor`;
@@ -200,7 +200,11 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
 - Scrollbars: `scrollbar-width` (`auto thin none`), `scrollbar-color: <thumb> <track>`
 
 `font-family`: `inter` (default, bundled), `minecraft` (vanilla font; alias `monospace`), or fonts registered with
-`FontManager.register("name", weight, italic, "modid:fonts/x.ttf")`. Weights map to the nearest face (400/500/600/700).
+`FontManager.register("name", weight, italic, "modid:fonts/x.ttf")` or with `@font-face` in a stylesheet:
+`@font-face { font-family: "My Font"; src: url("modid:fonts/my.ttf") format("truetype"); font-weight: 700; font-style: italic }`
+(`src` = resource locations, the first that exists is used; `local()` and web URLs are not supported; `font-weight` may be a
+range like `100 900` for a variable font, drawn at its default instance). Fonts are global like resources: a family declared
+in one stylesheet works in every screen. Weights map to the nearest face (400/500/600/700).
 
 ## 6. Differences from the web (read this!)
 

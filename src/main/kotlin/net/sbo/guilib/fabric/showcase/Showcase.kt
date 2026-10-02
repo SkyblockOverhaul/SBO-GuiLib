@@ -553,6 +553,7 @@ object Showcase {
         }
         div(className = "ellipsis") { +"This line is far too long for its box and ends with an ellipsis instead of overflowing" }
         p(style = "font-family: minecraft") { +"font-family: minecraft uses the vanilla font." }
+        p(className = "font-face-demo") { +"@font-face: \"Showcase Display\" is a font declared in showcase.css" }
         p(style = "font-size: 12px") { +"font-size: 12px" }
         p(style = "font-size: 6px") { +"font-size: 6px" }
         p(style = "text-align: center") { +"text-align: center" }

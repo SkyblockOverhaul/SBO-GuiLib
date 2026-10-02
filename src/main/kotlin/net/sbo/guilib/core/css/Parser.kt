@@ -62,6 +62,8 @@ class Stylesheet(
     val origin: Origin = Origin.AUTHOR,
     /** `@keyframes` defined in this sheet, by name. */
     val keyframes: Map<String, Keyframes> = emptyMap(),
+    /** `@font-face` rules of this sheet, in order. */
+    val fontFaces: List<FontFace> = emptyList(),
 ) {
     companion object {
         fun parse(text: String, source: String = "<inline>", origin: Origin = Origin.AUTHOR) = CssParser.parseStylesheet(text, source, origin)
@@ -78,13 +80,15 @@ object CssParser {
         val tokens = Tokenizer(text).tokenize()
         val rules = ArrayList<StyleRule>()
         val keyframes = LinkedHashMap<String, Keyframes>()
-        parseRules(tokens, source, rules, keyframes, emptyList())
-        return Stylesheet(source, rules, origin, keyframes)
+        val fontFaces = ArrayList<FontFace>()
+        parseRules(tokens, source, rules, keyframes, fontFaces, emptyList())
+        return Stylesheet(source, rules, origin, keyframes, fontFaces)
     }
 
     /** Parses a list of rules ([tokens] = a whole sheet or the body of an `@media` block). */
     private fun parseRules(
-        tokens: List<Token>, source: String, rules: MutableList<StyleRule>, keyframes: MutableMap<String, Keyframes>, media: List<MediaQueryList>,
+        tokens: List<Token>, source: String, rules: MutableList<StyleRule>, keyframes: MutableMap<String, Keyframes>,
+        fontFaces: MutableList<FontFace>, media: List<MediaQueryList>,
     ) {
         var i = 0
         while (i < tokens.size) {
@@ -106,7 +110,20 @@ object CssParser {
                         }
                         val queries = MediaParser.parse(toComponentValues(tokens.subList(i + 1, open))) { warn(source, t, it) }
                         val end = findBlockEnd(tokens, open)
-                        parseRules(tokens.subList(open + 1, end), source, rules, keyframes, media + queries)
+                        parseRules(tokens.subList(open + 1, end), source, rules, keyframes, fontFaces, media + queries)
+                        i = end + 1
+                    } else if (t.text.equals("font-face", true)) {
+                        // Fonts are global like in browsers (an enclosing @media doesn't limit them).
+                        var open = i + 1
+                        while (open < tokens.size && tokens[open].type == TokenType.WHITESPACE) open++
+                        if (open >= tokens.size || tokens[open].type != TokenType.LBRACE) {
+                            warn(source, t, "@font-face needs a block; rule ignored")
+                            i = skipAtRule(tokens, i + 1)
+                            continue
+                        }
+                        val end = findBlockEnd(tokens, open)
+                        val decls = parseDeclarationTokens(tokens.subList(open + 1, end), source, descriptors = true)
+                        FontFaceParser.parse(decls) { d, msg -> if (d != null) warnAt(d.location, msg) else warn(source, t, msg) }?.let { fontFaces += it }
                         i = end + 1
                     } else {
                         warn(source, t, "at-rule '@${t.text}' is not supported yet and was ignored")
@@ -187,7 +204,8 @@ object CssParser {
         return end + 1
     }
 
-    private fun parseDeclarationTokens(tokens: List<Token>, source: String): List<Declaration> {
+    /** [descriptors]: an at-rule body (`@font-face`) whose names aren't properties, so values are kept unparsed. */
+    private fun parseDeclarationTokens(tokens: List<Token>, source: String, descriptors: Boolean = false): List<Declaration> {
         val out = ArrayList<Declaration>()
         var i = 0
         while (i < tokens.size) {
@@ -208,13 +226,13 @@ object CssParser {
                 }
                 end++
             }
-            parseDeclaration(tokens.subList(i, end), source)?.let { out += it }
+            parseDeclaration(tokens.subList(i, end), source, descriptors)?.let { out += it }
             i = end + 1
         }
         return out
     }
 
-    private fun parseDeclaration(tokens: List<Token>, source: String): Declaration? {
+    private fun parseDeclaration(tokens: List<Token>, source: String, descriptor: Boolean = false): Declaration? {
         val nameTok = tokens.first()
         if (nameTok.type != TokenType.IDENT) {
             warn(source, nameTok, "expected a property name but found '$nameTok'; declaration ignored")
@@ -241,7 +259,7 @@ object CssParser {
         val value = trimWhitespace(toComponentValues(valueTokens))
         val decl = Declaration(name, value, important, source, nameTok.line, nameTok.col)
 
-        if (decl.isCustom) return decl
+        if (decl.isCustom || descriptor) return decl
         if (!Properties.isKnown(name)) {
             warnAt(decl.location, "unknown property '$name'${Properties.suggest(name)?.let { "; did you mean '$it'?" } ?: ""}; declaration ignored")
             return null

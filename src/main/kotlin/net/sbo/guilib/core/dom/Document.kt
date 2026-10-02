@@ -28,6 +28,10 @@ class Document(
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     val styleEngine = StyleEngine(stylesheets)
+
+    init {
+        measurer.fontFaces(stylesheets.flatMap { it.fontFaces })
+    }
     private val animator = net.sbo.guilib.core.anim.Animator(styleEngine)
     private val timeOrigin = clock()
 
@@ -135,6 +139,7 @@ class Document(
 
     fun setStylesheets(sheets: List<Stylesheet>) {
         styleEngine.stylesheets = sheets
+        measurer.fontFaces(sheets.flatMap { it.fontFaces })
         body.styleChanged(true)
     }
 

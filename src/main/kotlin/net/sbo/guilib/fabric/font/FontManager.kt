@@ -3,6 +3,7 @@ package net.sbo.guilib.fabric.font
 import net.minecraft.client.Minecraft
 import net.minecraft.resources.Identifier
 import net.sbo.guilib.core.Log
+import net.sbo.guilib.core.css.FontFace
 import net.sbo.guilib.core.layout.FontMetrics
 import net.sbo.guilib.core.layout.TextMeasurer
 import net.sbo.guilib.core.layout.TextStyle
@@ -12,20 +13,48 @@ import kotlin.math.roundToInt
  * Resolves `font-family` / `font-weight` / `font-style` to a font and measures text.
  *
  * Built in: `inter` (default, bundled, OFL) and `minecraft` (vanilla font; alias `monospace`).
- * Mods add fonts with [register]. Characters missing in a TTF fall back to the Minecraft font.
+ * Mods add fonts with [register] or with `@font-face` in a stylesheet. Characters missing in a TTF fall back to the
+ * Minecraft font.
  * Text is laid out at the exact physical pixel size (`font-size × GUI scale`), so it stays sharp.
  */
 object FontManager : TextMeasurer {
 
-    private class Family(val faces: MutableMap<Pair<Int, Boolean>, String> = HashMap())
+    /** One face of a family, for the weights [min]..[max] (a single weight unless it is a variable font). */
+    private data class Face(val min: Int, val max: Int, val italic: Boolean)
+
+    private class Family(val faces: MutableMap<Face, String> = LinkedHashMap())
 
     private val families = HashMap<String, Family>()
     private val loaded = HashMap<String, TrueTypeFont?>()
 
     /** Registers a TTF/OTF resource (`"mymod:fonts/x.ttf"`) as [family] with the given weight/style. */
-    fun register(family: String, weight: Int, italic: Boolean, location: String) {
-        families.getOrPut(family.lowercase()) { Family() }.faces[weight to italic] = location
+    fun register(family: String, weight: Int, italic: Boolean, location: String) = register(family, weight, weight, italic, location)
+
+    /** Like [register] for a weight range (`font-weight: 100 900` of a variable font; drawn at its default weight). */
+    fun register(family: String, minWeight: Int, maxWeight: Int, italic: Boolean, location: String) {
+        val faces = families.getOrPut(family.lowercase()) { Family() }.faces
+        val face = Face(minWeight, maxWeight, italic)
+        if (faces[face] == location) return
+        faces[face] = location
         widthCache.clear()
+    }
+
+    /**
+     * `@font-face` rules of a stylesheet. Like [register] they are global (fonts are resources, shared by every
+     * screen); a later rule for the same family, weight and style replaces the earlier one (e.g. after a hot reload).
+     */
+    override fun fontFaces(faces: List<FontFace>) {
+        for (f in faces) {
+            val location = f.sources.firstOrNull { src ->
+                val id = Identifier.tryParse(src)
+                id != null && Minecraft.getInstance().resourceManager.getResource(id).isPresent
+            }
+            if (location == null) {
+                Log.warnOnce("GuiLib: @font-face '${f.family}': none of ${f.sources} was found (expected resource locations like 'mymod:fonts/x.ttf')")
+                continue
+            }
+            register(f.family, f.weightMin, f.weightMax, f.italic, location)
+        }
     }
 
     /** A run of text drawn with one font: `font == null` means the Minecraft font. */
@@ -45,8 +74,9 @@ object FontManager : TextMeasurer {
     fun fontFor(style: TextStyle): TrueTypeFont? {
         val family = families[familyName(style)] ?: return null
         // Closest weight within the same style (italic falls back to upright).
-        val candidates = family.faces.entries.filter { it.key.second == style.italic }.ifEmpty { family.faces.entries.toList() }
-        val best = candidates.minByOrNull { kotlin.math.abs(it.key.first - style.fontWeight) } ?: return null
+        val candidates = family.faces.entries.filter { it.key.italic == style.italic }.ifEmpty { family.faces.entries.toList() }
+        val w = style.fontWeight
+        val best = candidates.minByOrNull { (f, _) -> if (w < f.min) f.min - w else if (w > f.max) w - f.max else 0 } ?: return null
         return load(best.value)
     }
 
