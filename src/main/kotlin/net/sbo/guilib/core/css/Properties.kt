@@ -84,6 +84,7 @@ enum class Prop(val css: String, val inherited: Boolean, val initial: Any?) {
     WHITE_SPACE("white-space", true, WhiteSpace.NORMAL),
     TEXT_OVERFLOW("text-overflow", false, TextOverflow.CLIP),
     TEXT_DECORATION("text-decoration", true, TextDecoration.NONE),
+    LETTER_SPACING("letter-spacing", true, Dim.ZERO),
     TEXT_SHADOW("text-shadow", true, null),
     BOX_SHADOW("box-shadow", false, emptyList<BoxShadow>()),
 
@@ -184,6 +185,7 @@ object Properties {
         enumParser(Prop.WHITE_SPACE) { single(it)?.let { v -> keyword<WhiteSpace>(v) } }
         enumParser(Prop.TEXT_OVERFLOW) { single(it)?.let { v -> keyword<TextOverflow>(v) } }
         enumParser(Prop.TEXT_DECORATION) { textDecoration(it) }
+        enumParser(Prop.LETTER_SPACING) { single(it)?.let { v -> if (isIdent(v, "normal")) Length(0f, "px") else length(v)?.takeIf { l -> !l.isPercent } } }
         enumParser(Prop.TEXT_SHADOW) { textShadow(it) }
         enumParser(Prop.BOX_SHADOW) { boxShadow(it) }
         enumParser(Prop.CURSOR) { single(it)?.let { v -> keyword<Cursor>(v) } }

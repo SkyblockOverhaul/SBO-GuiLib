@@ -16,6 +16,7 @@ import net.sbo.guilib.core.css.Colors
 import net.sbo.guilib.core.css.ObjectFit
 import net.sbo.guilib.core.dom.Rect
 import net.sbo.guilib.core.dom.Transform2D
+import net.sbo.guilib.core.layout.LetterSpacing
 import net.sbo.guilib.core.paint.PaintCommand
 import net.sbo.guilib.fabric.font.FontManager
 import net.sbo.guilib.fabric.font.GlyphAtlas
@@ -198,6 +199,16 @@ object CommandRenderer {
 
     private fun drawText(ctx: GuiGraphicsExtractor, t: PaintCommand.Text) {
         if (Colors.alpha(t.color) == 0) return
+        if (t.style.letterSpacing != 0f) {
+            // letter-spacing: each grapheme on its own, followed by the spacing (matches LetterSpacing's measuring).
+            val plain = t.style.copy(letterSpacing = 0f)
+            var x = t.x
+            for (g in LetterSpacing.graphemes(t.text)) {
+                drawText(ctx, PaintCommand.Text(x, t.y, g, plain, t.color, t.alpha))
+                x += FontManager.width(g, plain) + t.style.letterSpacing
+            }
+            return
+        }
         val shadow = t.style.shadow
         var x = t.x
         for (seg in FontManager.segments(t.text, t.style)) {

@@ -5,6 +5,7 @@ import net.sbo.guilib.core.css.Stylesheet
 import net.sbo.guilib.core.dom.Document
 import net.sbo.guilib.core.dom.VNode
 import net.sbo.guilib.core.event.InteractionController
+import net.sbo.guilib.core.layout.LetterSpacing
 import net.sbo.guilib.core.layout.TextMeasurer
 import net.sbo.guilib.core.paint.PaintCommand
 import net.sbo.guilib.core.paint.Painter
@@ -14,8 +15,9 @@ import net.sbo.guilib.core.paint.Painter
  * Call [frame] once per frame and draw the returned commands.
  */
 class UiRoot(measurer: TextMeasurer, stylesheets: List<Stylesheet> = emptyList(), clock: () -> Long = System::currentTimeMillis) {
-    val document = Document(measurer, stylesheets, clock)
-    val painter = Painter(measurer)
+    private val measurer = LetterSpacing.wrap(measurer)
+    val document = Document(this.measurer, stylesheets, clock)
+    val painter = Painter(this.measurer)
     val input = InteractionController(document) { x, y -> painter.hitTest(x, y) }
     private var painted = false
 

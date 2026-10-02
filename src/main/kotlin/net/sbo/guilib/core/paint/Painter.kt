@@ -313,7 +313,7 @@ class Painter(private val measurer: TextMeasurer) {
                     val baseline = y + p.y + line.y + line.baseline
                     val color = Colors.withOpacity(f.style.color, alpha)
                     // Scaled text is drawn at the scaled font size, so it stays sharp (re-rasterized, not stretched).
-                    val style = if (fontScale == 1f) f.style else f.style.copy(fontSize = f.style.fontSize * fontScale)
+                    val style = if (fontScale == 1f) f.style else f.style.copy(fontSize = f.style.fontSize * fontScale, letterSpacing = f.style.letterSpacing * fontScale)
                     if (style.fontSize < 0.5f) continue
                     emit(PaintCommand.Text(xf.x(tx), xf.y(baseline - m.ascent), f.text, style, color, alpha))
                     val thickness = maxOf(1f, f.style.fontSize / 12f)

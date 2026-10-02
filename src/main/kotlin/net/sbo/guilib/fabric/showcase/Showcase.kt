@@ -536,6 +536,9 @@ object Showcase {
         p(style = "font-size: 6px") { +"font-size: 6px" }
         p(style = "text-align: center") { +"text-align: center" }
         p(style = "text-align: right") { +"text-align: right" }
+        p(className = "spaced-title") { +"LETTER-SPACING: 3PX" }
+        p(style = "letter-spacing: 0.1em") { +"letter-spacing: 0.1em (hover the title above, it animates)" }
+        p(style = "font-family: minecraft; letter-spacing: 1px") { +"Minecraft font, letter-spacing: 1px" }
         TranslationDemo()
     }
 

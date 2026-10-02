@@ -100,6 +100,7 @@ class ComputedStyle internal constructor(
     val textOverflow get() = values[Prop.TEXT_OVERFLOW.ordinal] as TextOverflow
     val textDecoration get() = values[Prop.TEXT_DECORATION.ordinal] as TextDecoration
     val textShadow get() = values[Prop.TEXT_SHADOW.ordinal] as TextShadow?
+    val letterSpacing get() = (values[Prop.LETTER_SPACING.ordinal] as? Dim.Px)?.px ?: 0f
     @Suppress("UNCHECKED_CAST")
     val boxShadow get() = values[Prop.BOX_SHADOW.ordinal] as List<BoxShadow>
 

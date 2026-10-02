@@ -13,13 +13,56 @@ data class TextStyle(
     val color: Int,
     val decoration: TextDecoration = TextDecoration.NONE,
     val shadow: TextShadow? = null,
+    /** `letter-spacing` in px, added after every character (grapheme). Measurers never see it: see [LetterSpacing]. */
+    val letterSpacing: Float = 0f,
 ) {
     val bold get() = fontWeight >= 600
 
     companion object {
         fun of(style: ComputedStyle) = TextStyle(
             style.fontFamily, style.fontSize, style.fontWeight, style.isItalic, style.color, style.textDecoration, style.textShadow,
+            style.letterSpacing,
         )
+    }
+}
+
+/**
+ * Adds `letter-spacing` on top of a backend [TextMeasurer]: the backend measures without it, and every grapheme
+ * gets [TextStyle.letterSpacing] after it (also the last one, like browsers). Renderers draw per grapheme the same way.
+ */
+object LetterSpacing {
+    fun wrap(inner: TextMeasurer): TextMeasurer = if (inner is Wrapped) inner else Wrapped(inner)
+
+    /** The graphemes of [text] (user-perceived characters, e.g. an emoji with modifiers). */
+    fun graphemes(text: String): List<String> {
+        val b = java.text.BreakIterator.getCharacterInstance().also { it.setText(text) }
+        val out = ArrayList<String>()
+        var start = b.first()
+        var end = b.next()
+        while (end != java.text.BreakIterator.DONE) {
+            out += text.substring(start, end)
+            start = end
+            end = b.next()
+        }
+        return out
+    }
+
+    private fun count(text: String): Int {
+        if (text.isEmpty()) return 0
+        val b = java.text.BreakIterator.getCharacterInstance().also { it.setText(text) }
+        var n = 0
+        while (b.next() != java.text.BreakIterator.DONE) n++
+        return n
+    }
+
+    private class Wrapped(val inner: TextMeasurer) : TextMeasurer {
+        override fun width(text: String, style: TextStyle): Float {
+            val ls = style.letterSpacing
+            if (ls == 0f) return inner.width(text, style)
+            return inner.width(text, style.copy(letterSpacing = 0f)) + ls * count(text)
+        }
+
+        override fun metrics(style: TextStyle) = inner.metrics(if (style.letterSpacing == 0f) style else style.copy(letterSpacing = 0f))
     }
 }
 

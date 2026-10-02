@@ -368,3 +368,7 @@ button.small { padding: 0 4px; }
 }
 .crosshair { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border: 2px solid #f0b232; border-radius: 50%; }
 .crosshair::after { content: ""; position: absolute; left: 4px; top: 4px; width: 2px; height: 2px; background-color: #f0b232; }
+
+/* letter-spacing */
+.spaced-title { letter-spacing: 3px; font-weight: bold; color: #f0b232; transition: letter-spacing 200ms ease-out; }
+.spaced-title:hover { letter-spacing: 5px; }

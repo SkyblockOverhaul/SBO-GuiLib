@@ -177,7 +177,7 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
 - Animation: `transition` (+ `-property -duration -timing-function -delay`), `animation` (+ `-name -duration -timing-function -delay
   -iteration-count -direction -fill-mode -play-state`) with `@keyframes`; easing `linear ease ease-in ease-out ease-in-out cubic-bezier() steps()`.
   Animatable: colors, lengths (also px ↔ % via calc), numbers (`opacity`, `flex-grow`, `font-size` …), radii, `line-height`,
-  `text-shadow`, `box-shadow`, scrollbar colors, gradient stop colors, `visibility`, `transform`, `transform-origin`; other values switch at 50%
+  `text-shadow`, `letter-spacing`, `box-shadow`, scrollbar colors, gradient stop colors, `visibility`, `transform`, `transform-origin`; other values switch at 50%
   in keyframes and don't transition.
 - Transform: `transform` with `translate() translateX() translateY() scale() scaleX() scaleY() rotate() skew() skewX() skewY()
   matrix(a, b, c, d, tx, ty)` (`none` to reset; angles in `deg rad grad turn`) and
@@ -186,7 +186,7 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
   pixel-exact and scaled text is re-rendered at the new size (stays sharp); rotated/skewed content is drawn through a matrix
   (text is rasterized at 2× and filtered, so rotated text stays smooth). Transforms interpolate when both lists have the same functions in the same order
   (`none` counts as matching anything), e.g. `@keyframes spin { to { transform: rotate(360deg) } }`.
-- Text: `color font-family font-size font-weight font-style line-height text-align white-space text-overflow text-decoration text-shadow`
+- Text: `color font-family font-size font-weight font-style line-height text-align white-space text-overflow text-decoration text-shadow letter-spacing` (`letter-spacing`: `normal` or a length, also negative; added after every character, animatable)
 - Visual: `background background-color background-image opacity visibility object-fit`. `background-image` takes a comma list of layers
   (first = top): `url("modid:path.png")` (stretched to the box), `linear-gradient(…)` (angles, `to right`, `to top left`, stops with
   positions, hard stops) and `radial-gradient(…)` (`circle`/`ellipse`, size keywords, `at <position>`). Gradients respect `border-radius`.
@@ -223,7 +223,7 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
 12. `border-width` default (`medium`) is 1px; like the web, a border without `border-style` draws nothing.
 13. Every positioned element (`relative/absolute/fixed`) is its own paint layer; `z-index` orders layers among siblings in the same layer. Use `portal { }` for things that must be on top of everything. `position: fixed` elements ignore their ancestors' `transform`.
 14. Not supported (yet): 3D transforms (a `transform` containing them is ignored), `repeating-*-gradient`, `conic-gradient`,
-    `:nth-child(… of S)`, pseudo-elements other than `::before`/`::after`, float, `align-content`, `vertical-align`, letter-spacing, subgrid, named grid lines (`[name]` is ignored).
+    `:nth-child(… of S)`, pseudo-elements other than `::before`/`::after`, float, `align-content`, `vertical-align`, subgrid, named grid lines (`[name]` is ignored).
     Grid: `auto-fit` behaves like `auto-fill` (empty tracks aren't collapsed); items can't be placed before line 1.
 15. Images: `src` is a resource location (`"modid:textures/x.png"`), PNG, SVG or GIF only; no URLs yet. Animated GIFs loop like in a browser (all images with the same `src` play in sync); very long GIFs are cut off after ~32M pixels of frames.
 16. Text has no kerning; `text-align: justify` behaves like `left`. No right-to-left or complex-script shaping: Arabic/Hebrew
