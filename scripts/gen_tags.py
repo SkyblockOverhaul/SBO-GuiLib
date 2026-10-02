@@ -85,6 +85,8 @@ TAGS = {
     "em": ("Italic inline text.", [], True),
     "i": ("Italic inline text.", [], True),
     "small": ("Smaller inline text.", [], True),
+    "sub": ("Subscript text (`vertical-align: sub`, smaller font), e.g. `H` `sub { +\"2\" }` `O`.", [], True),
+    "sup": ("Superscript text (`vertical-align: super`, smaller font), e.g. `x` `sup { +\"2\" }`.", [], True),
     "code": ("Inline code (Minecraft font).", [], True),
     "pre": ("Preformatted block (`white-space: pre`).", [], True),
     "scroll": ("Scroll container: a div with `overflow: auto` and a styled scrollbar. (Not an HTML tag.)", [], True),

@@ -20,7 +20,7 @@ ul, ol, li, h1, h2, h3, h4, pre, hr, scroll, form {
     display: block;
 }
 
-span, a, strong, b, em, i, small, code, label {
+span, a, strong, b, em, i, small, sub, sup, code, label {
     display: inline;
 }
 
@@ -33,6 +33,8 @@ h4 { font-size: 1em; font-weight: bold; margin: 0 0 0.25em 0; }
 strong, b { font-weight: bold; }
 em, i { font-style: italic; }
 small { font-size: 0.85em; }
+sub { vertical-align: sub; font-size: 0.75em; }
+sup { vertical-align: super; font-size: 0.75em; }
 code, pre { font-family: minecraft; }
 pre { white-space: pre; }
 

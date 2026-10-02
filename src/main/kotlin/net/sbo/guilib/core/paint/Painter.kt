@@ -310,7 +310,7 @@ class Painter(private val measurer: TextMeasurer) {
                     if (owner?.parent?.style?.visibility == Visibility.HIDDEN) continue
                     val m = measurer.metrics(f.style)
                     val tx = x + p.x + f.x
-                    val baseline = y + p.y + line.y + line.baseline
+                    val baseline = y + p.y + line.y + line.baseline - f.shift
                     val color = Colors.withOpacity(f.style.color, alpha)
                     // Scaled text is drawn at the scaled font size, so it stays sharp (re-rasterized, not stretched).
                     val style = if (fontScale == 1f) f.style else f.style.copy(fontSize = f.style.fontSize * fontScale, letterSpacing = f.style.letterSpacing * fontScale)
@@ -368,8 +368,8 @@ class Painter(private val measurer: TextMeasurer) {
                 val br = if (ends) st.borderRightWidth else 0f
                 val left = x + p.x + m[0] + (if (starts) px(st.marginLeft) else 0f)
                 val right = x + p.x + m[1] - (if (ends) px(st.marginRight) else 0f)
-                val top = baseline - metrics.ascent - px(st.paddingTop) - bt
-                val bottom = baseline + metrics.descent + px(st.paddingBottom) + bb
+                val top = baseline - e.box.baselineShift - metrics.ascent - px(st.paddingTop) - bt
+                val bottom = baseline - e.box.baselineShift + metrics.descent + px(st.paddingBottom) + bb
                 if (right <= left || bottom <= top) continue
                 val layout = Rect(left, top, right - left, bottom - top)
                 val radii = radii(st, layout, xf)

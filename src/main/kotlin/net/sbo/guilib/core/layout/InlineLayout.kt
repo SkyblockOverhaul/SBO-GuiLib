@@ -11,13 +11,16 @@ import net.sbo.guilib.core.css.WhiteSpace
 /**
  * Inline formatting: turns text nodes, `display: inline` elements and atomic inline boxes (inline-block, images)
  * into wrapped lines. Horizontal margin/border/padding of `display: inline` elements take space at their start and
- * end ([Fragment.Edge]); vertical ones don't affect the line height (like the web). `vertical-align` applies to atomic boxes only (inline-block, images, items), not to text in inline elements.
+ * end ([Fragment.Edge]); vertical ones don't affect the line height (like the web). `vertical-align` of atomic boxes
+ * (inline-block, images, items) places them on the line; on `display: inline` elements it shifts their baseline
+ * (sub/sup), which adds up through nested inline elements and grows the line where needed.
  */
 internal class InlineLayout(private val engine: LayoutEngine) {
 
     sealed interface Item {
-        class Text(val text: String, val style: TextStyle, val owner: LayoutNode) : Item
-        class Atomic(val node: LayoutNode) : Item
+        /** [shift]: baseline raise (px, up) from the `vertical-align` of enclosing inline elements. */
+        class Text(val text: String, val style: TextStyle, val owner: LayoutNode, val shift: Float = 0f) : Item
+        class Atomic(val node: LayoutNode, val shift: Float = 0f) : Item
         data object Break : Item
         /** Start or end of a `display: inline` element with horizontal margin/border/padding. */
         class Edge(val node: LayoutNode, val width: Float, val start: Boolean) : Item
@@ -26,6 +29,7 @@ internal class InlineLayout(private val engine: LayoutEngine) {
     /** [edge]: 0 = text, 1 = start edge of [owner], 2 = end edge. */
     private class Piece(
         val text: String, val style: TextStyle, val owner: LayoutNode, val width: Float, val trailingSpace: Float, val edge: Int = 0,
+        val shift: Float = 0f,
     )
 
     private sealed interface Chunk {
@@ -34,7 +38,7 @@ internal class InlineLayout(private val engine: LayoutEngine) {
             val widthNoTrail = width - (pieces.lastOrNull()?.trailingSpace ?: 0f)
             val isOnlySpace = pieces.all { it.text.isBlank() }
         }
-        class Atomic(val node: LayoutNode) : Chunk
+        class Atomic(val node: LayoutNode, val shift: Float) : Chunk
         data object Break : Chunk
     }
 
@@ -51,8 +55,11 @@ internal class InlineLayout(private val engine: LayoutEngine) {
         private const val ELLIPSIS = "…"
     }
 
-    /** Collects inline items from [nodes] (inline-level siblings) and marks consumed nodes. */
-    fun collect(nodes: List<LayoutNode>, out: MutableList<Item>, mark: Boolean = true) {
+    /**
+     * Collects inline items from [nodes] (inline-level siblings) and marks consumed nodes. [parent] is the style of the
+     * nodes' parent (for `vertical-align` keywords), [shift] the baseline shift they inherit.
+     */
+    fun collect(nodes: List<LayoutNode>, out: MutableList<Item>, mark: Boolean = true, parent: ComputedStyle? = null, shift: Float = 0f) {
         for (node in nodes) {
             if (node.textContent == null && node.style.display == Display.NONE) {
                 if (mark) node.box.visible = false
@@ -63,24 +70,26 @@ internal class InlineLayout(private val engine: LayoutEngine) {
                 text != null -> {
                     if (mark) node.box.inParagraph = true
                     val base = TextStyle.of(node.style)
-                    if (!node.formattingCodes) out += Item.Text(text, base, node)
-                    else for ((t, s) in FormattingCodes.parse(text, base)) out += Item.Text(t, s, node)
+                    if (!node.formattingCodes) out += Item.Text(text, base, node, shift)
+                    else for ((t, s) in FormattingCodes.parse(text, base)) out += Item.Text(t, s, node, shift)
                 }
                 node.isLineBreak -> {
                     if (mark) node.box.inParagraph = true
                     out += Item.Break
                 }
-                isAtomic(node) -> out += Item.Atomic(node)
+                isAtomic(node) -> out += Item.Atomic(node, shift)
                 else -> {
                     if (mark) {
                         node.box.reset(); node.box.inParagraph = true
                     }
                     val s = node.style
+                    val own = shift + baselineShift(s, parent ?: s)
+                    if (mark) node.box.baselineShift = own
                     fun px(d: net.sbo.guilib.core.css.Dim) = d.resolve(0f) ?: 0f
                     val start = px(s.marginLeft) + s.borderLeftWidth + px(s.paddingLeft)
                     val end = px(s.paddingRight) + s.borderRightWidth + px(s.marginRight)
                     if (start != 0f) out += Item.Edge(node, start, true)
-                    collect(node.layoutChildren, out, mark)
+                    collect(node.layoutChildren, out, mark, s, own)
                     if (end != 0f) out += Item.Edge(node, end, false)
                 }
             }
@@ -104,7 +113,7 @@ internal class InlineLayout(private val engine: LayoutEngine) {
                     close(); out += Chunk.Break; lastWasSpace = true
                 }
                 is Item.Atomic -> {
-                    close(); out += Chunk.Atomic(item.node); lastWasSpace = false
+                    close(); out += Chunk.Atomic(item.node, item.shift); lastWasSpace = false
                 }
                 // Edges stick to the neighbouring word (no line break between them).
                 is Item.Edge -> current += Piece("", TextStyle.of(item.node.style), item.node, item.width, 0f, if (item.start) 1 else 2)
@@ -141,7 +150,7 @@ internal class InlineLayout(private val engine: LayoutEngine) {
             val word = seg.trimEnd(' ')
             val full = engine.measurer.width(seg, item.style)
             val trail = if (word.length == seg.length) 0f else full - engine.measurer.width(word, item.style)
-            current += Piece(seg, item.style, item.owner, full, trail)
+            current += Piece(seg, item.style, item.owner, full, trail, shift = item.shift)
             if (seg.endsWith(' ')) close()
         }
     }
@@ -184,7 +193,7 @@ internal class InlineLayout(private val engine: LayoutEngine) {
         val strutMetrics = measurer.metrics(strutStyle)
         val strutLineHeight = container.lineHeight.resolve(container.fontSize, strutMetrics.normalLineHeight / container.fontSize.coerceAtLeast(0.01f))
 
-        class Placed(val x: Float, val piece: Piece?, val atomic: LayoutNode?)
+        class Placed(val x: Float, val piece: Piece?, val atomic: LayoutNode?, val shift: Float = 0f)
 
         val rawLines = ArrayList<MutableList<Placed>>()
         var cur = ArrayList<Placed>()
@@ -208,7 +217,7 @@ internal class InlineLayout(private val engine: LayoutEngine) {
                     engine.layoutShrinkToFit(c.node, availWidth)
                     val w = c.node.box.marginBoxWidth
                     if (wraps && cur.isNotEmpty() && curX + w > availWidth + 0.01f) finish()
-                    cur += Placed(curX, null, c.node); curX += w
+                    cur += Placed(curX, null, c.node, c.shift); curX += w
                 }
             }
         }
@@ -224,11 +233,13 @@ internal class InlineLayout(private val engine: LayoutEngine) {
 
             // Merge pieces with the same style/owner into fragments.
             val frags = ArrayList<Fragment>()
+            val boxShift = HashMap<LayoutNode, Float>()
             var i = 0
             while (i < raw.size) {
                 val p = raw[i]
                 if (p.atomic != null) {
                     frags += Fragment.Box(p.x, p.atomic.box.marginBoxWidth, 0f, p.atomic)
+                    if (p.shift != 0f) boxShift[p.atomic] = p.shift
                     i++; continue
                 }
                 val piece = p.piece!!
@@ -250,7 +261,7 @@ internal class InlineLayout(private val engine: LayoutEngine) {
                         w = measurer.width(trimmed, piece.style); text = trimmed
                     }
                 }
-                frags += Fragment.Text(p.x, w, text, piece.style, piece.owner)
+                frags += Fragment.Text(p.x, w, text, piece.style, piece.owner, piece.shift)
                 i = j
             }
 
@@ -268,12 +279,12 @@ internal class InlineLayout(private val engine: LayoutEngine) {
                         val m = measurer.metrics(f.style)
                         val lh = container.lineHeight.resolve(f.style.fontSize, m.normalLineHeight / f.style.fontSize.coerceAtLeast(0.01f))
                         val half = (lh - (m.ascent + m.descent)) / 2f
-                        above = maxOf(above, m.ascent + half)
-                        below = maxOf(below, m.descent + half)
+                        above = maxOf(above, m.ascent + half + f.shift)
+                        below = maxOf(below, m.descent + half - f.shift)
                     }
                     is Fragment.Box -> {
                         val b = f.owner.box
-                        val asc = ascentOf(f.owner, container, strutMetrics) ?: continue // top / bottom: below
+                        val asc = (ascentOf(f.owner, container, strutMetrics) ?: continue) + (boxShift[f.owner] ?: 0f) // top / bottom: below
                         above = maxOf(above, asc)
                         below = maxOf(below, b.marginBoxHeight - asc)
                     }
@@ -298,13 +309,13 @@ internal class InlineLayout(private val engine: LayoutEngine) {
             }
             val placed = frags.map { f ->
                 when (f) {
-                    is Fragment.Text -> Fragment.Text(f.x + shift, f.width, f.text, f.style, f.owner)
+                    is Fragment.Text -> Fragment.Text(f.x + shift, f.width, f.text, f.style, f.owner, f.shift)
                     is Fragment.Box -> {
                         val b = f.owner.box
                         val top = when (f.owner.style.verticalAlign) {
                             VerticalAlign.TOP -> 0f
                             VerticalAlign.BOTTOM -> lineHeight - b.marginBoxHeight
-                            else -> above - ascentOf(f.owner, container, strutMetrics)!!
+                            else -> above - ascentOf(f.owner, container, strutMetrics)!! - (boxShift[f.owner] ?: 0f)
                         }
                         b.x = x + f.x + shift + b.margin.left
                         b.y = y + lineY + top + b.margin.top
@@ -345,6 +356,28 @@ internal class InlineLayout(private val engine: LayoutEngine) {
         }
     }
 
+    /**
+     * How far the `vertical-align` of a `display: inline` element with [style] raises its baseline above its
+     * [parent]'s. `top` / `bottom` act like `text-top` / `text-bottom` here (not aligned to the line box).
+     */
+    private fun baselineShift(style: ComputedStyle, parent: ComputedStyle): Float {
+        val va = style.verticalAlign
+        if (va == VerticalAlign.BASELINE) return 0f
+        val pf = parent.fontSize
+        val m by lazy { engine.measurer.metrics(TextStyle.of(style)) }
+        val pm by lazy { engine.measurer.metrics(TextStyle.of(parent)) }
+        return when (va) {
+            VerticalAlign.SUB -> -pf * 0.2f
+            VerticalAlign.SUPER -> pf * 0.35f
+            VerticalAlign.TEXT_TOP, VerticalAlign.TOP -> pm.ascent - m.ascent
+            VerticalAlign.TEXT_BOTTOM, VerticalAlign.BOTTOM -> m.descent - pm.descent
+            // Middle of the text at half the parent's x-height (≈ 0.5em) above its baseline.
+            VerticalAlign.MIDDLE -> pf * 0.25f - (m.ascent - m.descent) / 2f
+            is Dim -> va.resolve(style.lineHeight.resolve(style.fontSize, 1.2f)) ?: 0f
+            else -> 0f
+        }
+    }
+
     /** Cuts fragments so that they plus "…" fit in [avail]; returns the new line width. */
     private fun applyEllipsis(frags: MutableList<Fragment>, avail: Float): Float {
         val measurer = engine.measurer
@@ -364,13 +397,13 @@ internal class InlineLayout(private val engine: LayoutEngine) {
                 }
                 val cut = f.text.substring(0, lo).trimEnd()
                 frags.removeAt(frags.size - 1)
-                if (cut.isNotEmpty()) frags += Fragment.Text(f.x, measurer.width(cut, f.style), cut, f.style, f.owner)
+                if (cut.isNotEmpty()) frags += Fragment.Text(f.x, measurer.width(cut, f.style), cut, f.style, f.owner, f.shift)
                 break
             }
             frags.removeAt(frags.size - 1)
         }
         val endX = frags.lastOrNull()?.let { it.x + it.width } ?: 0f
-        frags += Fragment.Text(endX, ellipsisWidth, ELLIPSIS, lastText.style, lastText.owner)
+        frags += Fragment.Text(endX, ellipsisWidth, ELLIPSIS, lastText.style, lastText.owner, lastText.shift)
         return endX + ellipsisWidth
     }
 }

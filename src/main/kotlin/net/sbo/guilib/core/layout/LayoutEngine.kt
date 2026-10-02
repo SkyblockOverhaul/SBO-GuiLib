@@ -218,7 +218,7 @@ class LayoutEngine(val measurer: TextMeasurer) {
         fun flush() {
             if (group.isEmpty()) return
             val items = ArrayList<InlineLayout.Item>()
-            inline.collect(group, items)
+            inline.collect(group, items, parent = node.style)
             group.clear()
             val meaningful = items.any { it !is InlineLayout.Item.Text || it.text.isNotBlank() || node.style.whiteSpace == WhiteSpace.PRE || node.style.whiteSpace == WhiteSpace.PRE_WRAP }
             if (!meaningful) return

@@ -43,6 +43,8 @@ import net.sbo.guilib.core.dsl.select
 import net.sbo.guilib.core.dsl.slider
 import net.sbo.guilib.core.dsl.sortableList
 import net.sbo.guilib.core.dsl.span
+import net.sbo.guilib.core.dsl.sub
+import net.sbo.guilib.core.dsl.sup
 import net.sbo.guilib.core.dsl.switch
 import net.sbo.guilib.core.dsl.tabs
 import net.sbo.guilib.core.dsl.textarea
@@ -565,6 +567,12 @@ object Showcase {
                 span(key = align, className = "va-box", style = "vertical-align: $align", title = "vertical-align: $align") {}
             }
             +" vertical-align"
+        }
+        p(className = "va-text") {
+            +"H"; sub { +"2" }; +"O, E = mc"; sup { +"2" }; +", 10"; sup { +"-3" }; +", footnote"; sup { +"[1]" }
+            +" · "; span(className = "va-chip", style = "vertical-align: 3px") { +"3px" }
+            +" "; span(className = "va-chip", style = "vertical-align: -3px") { +"-3px" }
+            +" text"
         }
         TranslationDemo()
     }

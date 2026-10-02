@@ -1123,6 +1123,98 @@ fun NodeBuilder.small(
     element("small", key, id, className, style, ref, attrs, handlers, children)
 }
 
+/** Subscript text (`vertical-align: sub`, smaller font), e.g. `H` `sub { +"2" }` `O`. */
+fun NodeBuilder.sub(
+    className: String? = null,
+    id: String? = null,
+    style: String? = null,
+    key: Any? = null,
+    title: String? = null,
+    ref: Ref<Element?>? = null,
+    tabIndex: Int? = null,
+    onClick: ((MouseEvent) -> Unit)? = null,
+    onDoubleClick: ((MouseEvent) -> Unit)? = null,
+    onContextMenu: ((MouseEvent) -> Unit)? = null,
+    onMouseDown: ((MouseEvent) -> Unit)? = null,
+    onMouseUp: ((MouseEvent) -> Unit)? = null,
+    onMouseMove: ((MouseEvent) -> Unit)? = null,
+    onMouseEnter: ((MouseEvent) -> Unit)? = null,
+    onMouseLeave: ((MouseEvent) -> Unit)? = null,
+    onWheel: ((WheelEvent) -> Unit)? = null,
+    onKeyDown: ((KeyboardEvent) -> Unit)? = null,
+    onKeyUp: ((KeyboardEvent) -> Unit)? = null,
+    onFocus: ((FocusEvent) -> Unit)? = null,
+    onBlur: ((FocusEvent) -> Unit)? = null,
+    onScroll: ((ScrollEvent) -> Unit)? = null,
+    children: (NodeBuilder.() -> Unit)? = null,
+) {
+    val attrs = HashMap<String, Any?>()
+    if (title != null) attrs["title"] = title
+    if (tabIndex != null) attrs["tabindex"] = tabIndex
+    val handlers = HashMap<String, (UIEvent) -> Unit>()
+    handlers.on("click", onClick)
+    handlers.on("dblclick", onDoubleClick)
+    handlers.on("contextmenu", onContextMenu)
+    handlers.on("mousedown", onMouseDown)
+    handlers.on("mouseup", onMouseUp)
+    handlers.on("mousemove", onMouseMove)
+    handlers.on("mouseenter", onMouseEnter)
+    handlers.on("mouseleave", onMouseLeave)
+    handlers.on("wheel", onWheel)
+    handlers.on("keydown", onKeyDown)
+    handlers.on("keyup", onKeyUp)
+    handlers.on("focus", onFocus)
+    handlers.on("blur", onBlur)
+    handlers.on("scroll", onScroll)
+    element("sub", key, id, className, style, ref, attrs, handlers, children)
+}
+
+/** Superscript text (`vertical-align: super`, smaller font), e.g. `x` `sup { +"2" }`. */
+fun NodeBuilder.sup(
+    className: String? = null,
+    id: String? = null,
+    style: String? = null,
+    key: Any? = null,
+    title: String? = null,
+    ref: Ref<Element?>? = null,
+    tabIndex: Int? = null,
+    onClick: ((MouseEvent) -> Unit)? = null,
+    onDoubleClick: ((MouseEvent) -> Unit)? = null,
+    onContextMenu: ((MouseEvent) -> Unit)? = null,
+    onMouseDown: ((MouseEvent) -> Unit)? = null,
+    onMouseUp: ((MouseEvent) -> Unit)? = null,
+    onMouseMove: ((MouseEvent) -> Unit)? = null,
+    onMouseEnter: ((MouseEvent) -> Unit)? = null,
+    onMouseLeave: ((MouseEvent) -> Unit)? = null,
+    onWheel: ((WheelEvent) -> Unit)? = null,
+    onKeyDown: ((KeyboardEvent) -> Unit)? = null,
+    onKeyUp: ((KeyboardEvent) -> Unit)? = null,
+    onFocus: ((FocusEvent) -> Unit)? = null,
+    onBlur: ((FocusEvent) -> Unit)? = null,
+    onScroll: ((ScrollEvent) -> Unit)? = null,
+    children: (NodeBuilder.() -> Unit)? = null,
+) {
+    val attrs = HashMap<String, Any?>()
+    if (title != null) attrs["title"] = title
+    if (tabIndex != null) attrs["tabindex"] = tabIndex
+    val handlers = HashMap<String, (UIEvent) -> Unit>()
+    handlers.on("click", onClick)
+    handlers.on("dblclick", onDoubleClick)
+    handlers.on("contextmenu", onContextMenu)
+    handlers.on("mousedown", onMouseDown)
+    handlers.on("mouseup", onMouseUp)
+    handlers.on("mousemove", onMouseMove)
+    handlers.on("mouseenter", onMouseEnter)
+    handlers.on("mouseleave", onMouseLeave)
+    handlers.on("wheel", onWheel)
+    handlers.on("keydown", onKeyDown)
+    handlers.on("keyup", onKeyUp)
+    handlers.on("focus", onFocus)
+    handlers.on("blur", onBlur)
+    handlers.on("scroll", onScroll)
+    element("sup", key, id, className, style, ref, attrs, handlers, children)
+}
+
 /** Inline code (Minecraft font). */
 fun NodeBuilder.code(
     className: String? = null,

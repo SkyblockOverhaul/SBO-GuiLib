@@ -55,6 +55,9 @@ class LayoutBox {
     /** True for inline elements/text nodes whose content was placed into an ancestor's [paragraphs]. */
     var inParagraph = false
 
+    /** For `display: inline` elements: baseline raise (px) from their own and their inline ancestors' `vertical-align`. */
+    var baselineShift = 0f
+
     /** True if this node takes part in layout (not `display: none`). */
     var visible = true
 
@@ -71,6 +74,7 @@ class LayoutBox {
         x = 0f; y = 0f; width = 0f; height = 0f
         paragraphs.clear()
         inParagraph = false
+        baselineShift = 0f
         baseline = null
         visible = true
     }
@@ -92,7 +96,11 @@ sealed interface Fragment {
     /** The DOM node this fragment comes from (a text node or an atomic inline element). */
     val owner: LayoutNode
 
-    class Text(override val x: Float, override val width: Float, val text: String, val style: TextStyle, override val owner: LayoutNode) : Fragment
+    /** [shift]: how far the baseline is raised (px, negative = lowered) by `vertical-align` of inline ancestors. */
+    class Text(
+        override val x: Float, override val width: Float, val text: String, val style: TextStyle, override val owner: LayoutNode,
+        val shift: Float = 0f,
+    ) : Fragment
     class Box(override val x: Float, override val width: Float, val y: Float, override val owner: LayoutNode) : Fragment
     /**
      * Horizontal margin + border + padding at the [start] (or end) of the `display: inline` element [owner]; only
