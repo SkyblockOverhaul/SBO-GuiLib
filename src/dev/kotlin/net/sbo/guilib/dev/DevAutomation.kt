@@ -127,6 +127,14 @@ object DevAutomation : ClientModInitializer {
                 root.input.mouseUp(r.x + 2f, r.y + r.height / 2f, 0)
             }
             "hover" -> hover(arg)
+            // "mcclick:.btn" clicks through Minecraft's Screen.mouseClicked/mouseReleased (Minecraft GUI coordinates),
+            // so the screen's own coordinate mapping (useScreenScale) is part of the test.
+            "mcclick" -> find(arg)?.getBoundingClientRect()?.let { r ->
+                val (x, y) = toMinecraft(screen, r.x + r.width / 2f, r.y + r.height / 2f)
+                val event = net.minecraft.client.input.MouseButtonEvent(x, y, net.minecraft.client.input.MouseButtonInfo(0, 0))
+                screen.mouseClicked(event, false)
+                screen.mouseReleased(event)
+            }
             // "type:abc"; U+65E5 escapes for text the Windows command line would mangle. Typed per code point, like GLFW does.
             "type" -> unescape(arg).codePoints().forEach { root.input.charTyped(String(Character.toChars(it))) }
             // "key:Enter", with modifiers "key:shift+Home" / "key:ctrl+a".
@@ -154,8 +162,9 @@ object DevAutomation : ClientModInitializer {
                 val sel = arg.substringBeforeLast(':')
                 val notches = arg.substringAfterLast(':').toDouble()
                 find(sel)?.getBoundingClientRect()?.let { r ->
+                    val (x, y) = toMinecraft(screen, r.x + r.width / 2f, r.y + r.height / 2f)
                     repeat(kotlin.math.abs(notches).toInt()) {
-                        screen.mouseScrolled((r.x + r.width / 2f).toDouble(), (r.y + r.height / 2f).toDouble(), 0.0, -kotlin.math.sign(notches))
+                        screen.mouseScrolled(x, y, 0.0, -kotlin.math.sign(notches))
                     }
                 }
             }
@@ -177,6 +186,12 @@ object DevAutomation : ClientModInitializer {
             }
             "release" -> root.input.mouseUp(pointerX, pointerY, 0)
         }
+    }
+
+    /** Document px → Minecraft GUI px (they differ when the screen has its own scale). */
+    private fun toMinecraft(screen: GuiLibScreen, x: Float, y: Float): Pair<Double, Double> {
+        val k = (screen.root.document.scale ?: return x.toDouble() to y.toDouble()) / Minecraft.getInstance().window.guiScale.toFloat()
+        return (x * k).toDouble() to (y * k).toDouble()
     }
 
     private var pointerX = 0f

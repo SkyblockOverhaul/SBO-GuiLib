@@ -40,6 +40,11 @@ body {
     border-bottom: 1px solid var(--border);
 }
 .title { font-weight: bold; }
+.titlebar-actions { display: flex; align-items: center; gap: 6px; }
+.scale-label { font-size: 6px; color: var(--muted); }
+.scale-slider { width: 90px; font-size: 6px; }
+.scale-reset { font-size: 6px; padding: 1px 4px; }
+.scale-reset.active { background-color: var(--accent); border-color: var(--accent); }
 .close { padding: 1px 5px; background-color: transparent; border-color: transparent; }
 .close:hover { background-color: #da373c; }
 

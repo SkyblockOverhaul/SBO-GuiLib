@@ -23,15 +23,20 @@ import net.sbo.guilib.fabric.image.Images
  */
 object GuiLib {
 
-    /** Opens [app] as a screen. Must be called on the client thread (use [runOnUi] otherwise). */
+    /**
+     * Opens [app] as a screen. Must be called on the client thread (use [runOnUi] otherwise).
+     * [scale]: the screen's own GUI scale (physical pixels per CSS px, e.g. `2.5f`), independent of Minecraft's;
+     * `null` = Minecraft's. Components can change it later with `useScreenScale()`.
+     */
     fun open(
         app: ComponentType<Unit>,
         stylesheets: List<String> = emptyList(),
         title: String = app.name,
         vanillaBackground: Boolean = true,
         pauseGame: Boolean = false,
+        scale: Float? = null,
     ): GuiLibScreen {
-        val screen = GuiLibScreen(Component.literal(title), VComponent(app, Unit, null), stylesheets, vanillaBackground, pauseGame)
+        val screen = GuiLibScreen(Component.literal(title), VComponent(app, Unit, null), stylesheets, vanillaBackground, pauseGame, scale)
         setScreen(screen)
         return screen
     }
@@ -41,11 +46,11 @@ object GuiLib {
         open(component(title) { content() }, stylesheets, title)
 
     /** Creates the screen without opening it (e.g. to return it from a config button). */
-    fun screen(app: ComponentType<Unit>, stylesheets: List<String> = emptyList(), title: String = app.name): GuiLibScreen =
-        GuiLibScreen(Component.literal(title), VComponent(app, Unit, null), stylesheets)
+    fun screen(app: ComponentType<Unit>, stylesheets: List<String> = emptyList(), title: String = app.name, scale: Float? = null): GuiLibScreen =
+        GuiLibScreen(Component.literal(title), VComponent(app, Unit, null), stylesheets, scale = scale)
 
-    fun screen(content: VNode, stylesheets: List<String> = emptyList(), title: String = "GuiLib"): GuiLibScreen =
-        GuiLibScreen(Component.literal(title), content, stylesheets)
+    fun screen(content: VNode, stylesheets: List<String> = emptyList(), title: String = "GuiLib", scale: Float? = null): GuiLibScreen =
+        GuiLibScreen(Component.literal(title), content, stylesheets, scale = scale)
 
     /** Closes the current screen. */
     fun close() = setScreen(null)

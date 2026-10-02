@@ -226,6 +226,19 @@ class ComponentScope internal constructor(
     fun useDocument(): Document = document
 
     /**
+     * Gives this screen its own GUI scale while mounted, independent of Minecraft's (`null` = Minecraft's; fractions
+     * like `2.5f` work): everything – portals, text, images – is laid out and drawn with it, `vw`/`vh` and
+     * `@media (resolution)` follow, and changing it re-lays out without reopening. Restored on unmount.
+     */
+    fun useScreenScale(scale: Float?) {
+        useEffect(scale) {
+            val before = document.scale
+            document.scale = scale
+            onCleanup { document.scale = before }
+        }
+    }
+
+    /**
      * Puts [className] on the body while [enabled] and this component is mounted (e.g. a theme or font switch that
      * also reaches modals and tooltips, without reopening the screen): `useBodyClass("font-mc", settings.mcFont)`.
      */

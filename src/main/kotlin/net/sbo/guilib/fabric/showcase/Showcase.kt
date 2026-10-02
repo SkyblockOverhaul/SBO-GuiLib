@@ -62,10 +62,25 @@ object Showcase {
 
     private val App = component<String>("Showcase") { initialSection ->
         var section by useState(initialSection)
+        // The showcase's own GUI scale, independent of Minecraft's (null = Minecraft's). The slider only shows the
+        // value while dragging and applies it on release: rescaling under a dragging mouse would move the slider itself.
+        var uiScale by useState<Float?>(null)
+        var dragged by useState<Float?>(null)
+        useScreenScale(uiScale)
+        val shown = dragged ?: uiScale ?: net.minecraft.client.Minecraft.getInstance().window.guiScale.toFloat()
         div(className = "window") {
             div(className = "titlebar") {
                 span(className = "title") { +"GuiLib Showcase" }
-                button(className = "close", title = "Close", onClick = { GuiLib.close() }) { +"✕" }
+                div(className = "titlebar-actions") {
+                    span(className = "scale-label") { +"UI scale" }
+                    slider(
+                        value = shown, min = 1f, max = 4f, step = 0.25f, className = "scale-slider",
+                        onChange = { dragged = it }, onChangeEnd = { dragged = null; uiScale = it },
+                        showValue = true, format = { String.format(java.util.Locale.ROOT, "%.2f×", it) },
+                    )
+                    button(className = classNames("scale-reset", "active" to (uiScale == null)), title = "Use Minecraft's GUI scale", onClick = { uiScale = null }) { +"MC" }
+                    button(className = "close", title = "Close", onClick = { GuiLib.close() }) { +"✕" }
+                }
             }
             div(className = "body") {
                 nav(className = "sidebar") {

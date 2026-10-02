@@ -24,6 +24,8 @@ import org.lwjgl.glfw.GLFW
  *
  * @param content the root node, e.g. `VComponent(App, Unit, null)` (see [GuiLib.open] for the convenient forms)
  * @param stylesheets resource locations like `"mymod:ui/main.css"` (loaded from `assets/mymod/ui/main.css`)
+ * @param scale the screen's own GUI scale (physical pixels per CSS px, fractions allowed), or `null` for Minecraft's;
+ *   changeable later with `useScreenScale()` / `root.document.scale`
  */
 open class GuiLibScreen(
     title: Component,
@@ -32,12 +34,14 @@ open class GuiLibScreen(
     /** Draw Minecraft's default blurred/dimmed background behind the UI. */
     private val vanillaBackground: Boolean = true,
     private val pauseGame: Boolean = false,
+    scale: Float? = null,
 ) : Screen(title) {
 
     val root: UiRoot = UiRoot(FontManager, Stylesheets.loadAll(stylesheets))
     private var mounted = false
 
     init {
+        root.document.scale = scale
         GuiLib.initDocument(root)
         Stylesheets.watch(this)
     }
@@ -70,11 +74,51 @@ open class GuiLibScreen(
         if (vanillaBackground) super.extractBackground(ctx, mouseX, mouseY, delta)
     }
 
+    // ---- own GUI scale ----------------------------------------------------------------------------------------
+    // With `document.scale` set, the document lives in its own coordinate space: one CSS px = `scale` physical pixels.
+    // It is drawn under an extra pose scale (scale / Minecraft's), mouse positions are divided by the same factor, and
+    // text and SVGs are rasterized for the new pixel size (FontManager.activeScale).
+
+    private val mcScale get() = minecraft.window.guiScale.toFloat().coerceAtLeast(1f)
+
+    /** Physical pixels per CSS px for this screen. */
+    private fun scale(): Float = root.document.scale?.coerceIn(0.25f, 16f) ?: mcScale
+
+    /** Factor from this document's px to Minecraft's GUI px. */
+    private fun factor(): Float = scale() / mcScale
+
+    private inline fun <T> scaled(block: () -> T): T {
+        val own = root.document.scale ?: return block()
+        val before = FontManager.activeScale
+        FontManager.activeScale = own.coerceIn(0.25f, 16f)
+        try {
+            return block()
+        } finally {
+            FontManager.activeScale = before
+        }
+    }
+
+    private fun docX(x: Double) = (x / factor()).toFloat()
+    private fun docY(y: Double) = (y / factor()).toFloat()
+
     override fun extractRenderState(ctx: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
-        root.document.resolution = minecraft.window.guiScale.toFloat()
+        val s = scale()
+        root.document.resolution = s
         if (mounted && Translator.current() !== translator) renderContent()
-        val commands = root.frame(width.toFloat(), height.toFloat())
-        CommandRenderer.draw(ctx, commands, mouseX, mouseY)
+        scaled {
+            if (root.document.scale == null) {
+                val commands = root.frame(width.toFloat(), height.toFloat())
+                CommandRenderer.draw(ctx, commands, mouseX, mouseY)
+            } else {
+                val k = s / mcScale
+                val commands = root.frame(minecraft.window.width / s, minecraft.window.height / s)
+                val pose = ctx.pose()
+                pose.pushMatrix()
+                pose.scale(k, k)
+                CommandRenderer.draw(ctx, commands, (mouseX / k).toInt(), (mouseY / k).toInt())
+                pose.popMatrix()
+            }
+        }
         Cursors.of(root.input.cursor)?.let(ctx::requestCursor)
         hoverTooltip(ctx, mouseX, mouseY)
     }
@@ -96,40 +140,45 @@ open class GuiLibScreen(
         }
     }
 
-    override fun mouseMoved(x: Double, y: Double) {
-        root.input.mouseMove(x.toFloat(), y.toFloat())
+    // Input handlers may measure text (caret placement), so they run with the screen's scale active too.
+
+    override fun mouseMoved(x: Double, y: Double) = scaled {
+        root.input.mouseMove(docX(x), docY(y))
     }
 
-    override fun mouseClicked(click: MouseButtonEvent, doubled: Boolean): Boolean =
-        root.input.mouseDown(click.x().toFloat(), click.y().toFloat(), domButton(click.button()), Keys.modifiers(click.modifiers()))
-
-    override fun mouseReleased(click: MouseButtonEvent): Boolean =
-        root.input.mouseUp(click.x().toFloat(), click.y().toFloat(), domButton(click.button()), Keys.modifiers(click.modifiers()))
-
-    override fun mouseDragged(click: MouseButtonEvent, deltaX: Double, deltaY: Double): Boolean {
-        root.input.mouseMove(click.x().toFloat(), click.y().toFloat(), Keys.modifiers(click.modifiers()))
-        return true
+    override fun mouseClicked(click: MouseButtonEvent, doubled: Boolean): Boolean = scaled {
+        root.input.mouseDown(docX(click.x()), docY(click.y()), domButton(click.button()), Keys.modifiers(click.modifiers()))
     }
 
-    override fun mouseScrolled(mouseX: Double, mouseY: Double, horizontal: Double, vertical: Double): Boolean =
+    override fun mouseReleased(click: MouseButtonEvent): Boolean = scaled {
+        root.input.mouseUp(docX(click.x()), docY(click.y()), domButton(click.button()), Keys.modifiers(click.modifiers()))
+    }
+
+    override fun mouseDragged(click: MouseButtonEvent, deltaX: Double, deltaY: Double): Boolean = scaled {
+        root.input.mouseMove(docX(click.x()), docY(click.y()), Keys.modifiers(click.modifiers()))
+        true
+    }
+
+    override fun mouseScrolled(mouseX: Double, mouseY: Double, horizontal: Double, vertical: Double): Boolean = scaled {
         root.input.wheel(
-            mouseX.toFloat(), mouseY.toFloat(), (-horizontal * SCROLL_STEP).toFloat(), (-vertical * SCROLL_STEP).toFloat(),
+            docX(mouseX), docY(mouseY), (-horizontal * SCROLL_STEP).toFloat(), (-vertical * SCROLL_STEP).toFloat(),
             Keys.currentModifiers(), // Minecraft passes no modifiers with the wheel; Shift + wheel scrolls sideways
         )
+    }
 
     override fun keyPressed(keyInput: KeyEvent): Boolean {
         val mods = Keys.modifiers(keyInput.modifiers())
         val key = Keys.keyName(keyInput.key(), keyInput.scancode(), mods)
-        if (root.input.keyDown(key, keyInput.key(), mods)) return true
+        if (scaled { root.input.keyDown(key, keyInput.key(), mods) }) return true
         return super.keyPressed(keyInput) // Escape closes the screen
     }
 
-    override fun keyReleased(keyInput: KeyEvent): Boolean {
+    override fun keyReleased(keyInput: KeyEvent): Boolean = scaled {
         val mods = Keys.modifiers(keyInput.modifiers())
-        return root.input.keyUp(Keys.keyName(keyInput.key(), keyInput.scancode(), mods), keyInput.key(), mods)
+        root.input.keyUp(Keys.keyName(keyInput.key(), keyInput.scancode(), mods), keyInput.key(), mods)
     }
 
-    override fun charTyped(input: CharacterEvent): Boolean = root.input.charTyped(input.codepointAsString())
+    override fun charTyped(input: CharacterEvent): Boolean = scaled { root.input.charTyped(input.codepointAsString()) }
 
     override fun isPauseScreen() = pauseGame
 

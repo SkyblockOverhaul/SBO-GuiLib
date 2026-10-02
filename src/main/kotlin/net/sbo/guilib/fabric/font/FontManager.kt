@@ -96,7 +96,15 @@ object FontManager : TextMeasurer {
         return font
     }
 
-    fun guiScale(): Float = Minecraft.getInstance().window.guiScale.toFloat().coerceAtLeast(1f)
+    /**
+     * Scale of the screen being laid out / drawn right now when it has its own (`useScreenScale`), set by
+     * [net.sbo.guilib.fabric.GuiLibScreen] around its frame and input handling. Render thread only.
+     */
+    @Volatile
+    var activeScale: Float? = null
+
+    /** Physical pixels per CSS px: the active screen's own scale, else Minecraft's GUI scale. */
+    fun guiScale(): Float = activeScale ?: Minecraft.getInstance().window.guiScale.toFloat().coerceAtLeast(1f)
 
     /** Physical pixel size used to rasterize [style]. */
     fun pixelSize(style: TextStyle): Int = (style.fontSize * guiScale()).roundToInt().coerceAtLeast(1)

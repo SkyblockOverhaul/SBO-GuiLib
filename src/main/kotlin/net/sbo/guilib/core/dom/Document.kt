@@ -97,6 +97,19 @@ class Document(
 
     /** Screen pixels per GUI pixel (the GUI scale), for `@media (resolution)`; set by the backend. */
     var resolution = 1f
+
+    /**
+     * The GUI scale this document asks for (screen pixels per CSS px, e.g. `2.5f`), or `null` for the backend's own
+     * (Minecraft's GUI scale). The backend lays out and draws the whole document with it: viewport = window / scale,
+     * so `vw`/`vh` and `@media (width, resolution)` follow. Set it with `useScreenScale()` or `GuiLib.open(scale = …)`.
+     */
+    var scale: Float? = null
+        set(value) {
+            val v = value?.takeIf { it.isFinite() && it > 0f }
+            if (field != v) {
+                field = v; invalidateLayout()
+            }
+        }
     private var appliedResolution = 1f
 
     var viewportWidth = 0f
@@ -273,6 +286,7 @@ class Document(
         if (resolution != appliedResolution) {
             appliedResolution = resolution
             body.styleChanged(true) // @media (resolution)
+            invalidateLayout() // text widths snap to the new pixel grid
         }
         if (viewportWidth != this.viewportWidth || viewportHeight != this.viewportHeight) {
             this.viewportWidth = viewportWidth

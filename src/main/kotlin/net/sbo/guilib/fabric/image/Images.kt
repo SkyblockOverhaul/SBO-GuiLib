@@ -232,7 +232,7 @@ object Images {
         null
     }
 
-    fun guiScale(): Float = Minecraft.getInstance().window.guiScale.toFloat()
+    fun guiScale(): Float = net.sbo.guilib.fabric.font.FontManager.guiScale()
 
     fun physical(gui: Float) = ceil(gui * guiScale()).toInt()
 
