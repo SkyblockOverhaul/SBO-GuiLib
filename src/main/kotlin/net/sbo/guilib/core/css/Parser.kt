@@ -112,6 +112,21 @@ object CssParser {
                         val end = findBlockEnd(tokens, open)
                         parseRules(tokens.subList(open + 1, end), source, rules, keyframes, fontFaces, media + queries)
                         i = end + 1
+                    } else if (t.text.equals("supports", true)) {
+                        // Decided once here: what GuiLib supports doesn't change at runtime.
+                        var open = i + 1
+                        while (open < tokens.size && tokens[open].type != TokenType.LBRACE && tokens[open].type != TokenType.SEMICOLON &&
+                            tokens[open].type != TokenType.EOF) open++
+                        if (open >= tokens.size || tokens[open].type != TokenType.LBRACE) {
+                            warn(source, t, "@supports without a block was ignored")
+                            i = skipAtRule(tokens, i + 1)
+                            continue
+                        }
+                        val end = findBlockEnd(tokens, open)
+                        if (SupportsParser.evaluate(toComponentValues(tokens.subList(i + 1, open))) { warn(source, t, it) }) {
+                            parseRules(tokens.subList(open + 1, end), source, rules, keyframes, fontFaces, media)
+                        }
+                        i = end + 1
                     } else if (t.text.equals("font-face", true)) {
                         // Fonts are global like in browsers (an enclosing @media doesn't limit them).
                         var open = i + 1

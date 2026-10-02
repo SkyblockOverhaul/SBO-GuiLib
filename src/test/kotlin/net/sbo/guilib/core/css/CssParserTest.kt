@@ -80,9 +80,9 @@ class CssParserTest {
 
     @Test
     fun atRulesAreSkippedWithWarning() {
-        val sheet = Stylesheet.parse("@supports (display: grid) { .a { color: red } } .b { color: blue }", "x.css")
+        val sheet = Stylesheet.parse("@container (min-width: 10px) { .a { color: red } } .b { color: blue }", "x.css")
         assertEquals(1, sheet.rules.size)
-        assertTrue(warnings.single().contains("@supports"))
+        assertTrue(warnings.single().contains("@container"))
     }
 
     @Test

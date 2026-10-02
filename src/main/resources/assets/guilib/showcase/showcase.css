@@ -402,4 +402,9 @@ button.small { padding: 0 4px; }
 @keyframes conic-spin { to { background: conic-gradient(from 360deg, #5b8def, #b16cea, #5b8def); } }
 
 body.showcase-mc-font { font-family: minecraft; }
+/* The ::after text comes from whichever block applies. */
+.supports-demo::after { content: " not supported"; color: #ff7b72; }
+@supports (display: grid) and (not (display: contents)) {
+    .supports-demo::after { content: " yes, this block applies"; color: #3fb950; }
+}
 .font-face-demo { font-family: "Showcase Display", inter; font-size: 10px; color: var(--accent); }
