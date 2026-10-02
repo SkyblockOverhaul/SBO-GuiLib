@@ -77,6 +77,10 @@ outside the UI, on the render thread); on an element you render with `className`
 Rules of hooks apply: call hooks unconditionally at the top of the component (not inside `div { }` blocks, loops or ifs).
 Hook misuse is detected and logged.
 
+**Helper functions:** every `{ }` block is a `NodeBuilder` and all tags are extensions on it, so a reusable piece of UI is
+`fun NodeBuilder.renderGraph(values: List<Int>) { div(className = "graph") { … } }`, called inside any block (`div { renderGraph(data) }`).
+A plain `fun renderGraph() = div { }` does not compile. Helpers can't use hooks; use a `component` when the part needs its own state.
+
 ## 3. Elements (tag functions)
 
 Every tag accepts: `className`, `id`, `style` (a **CSS string**, e.g. `style = "width: 20px; color: red"`), `key`,

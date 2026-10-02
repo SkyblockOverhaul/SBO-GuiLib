@@ -6,6 +6,7 @@
 
 Key facts:
 - Components: `val App = component("App") { var n by useState(0); button(onClick = { n++ }) { +"Clicked $n" } }`
+- Helper functions: declare them on the DSL receiver, `fun NodeBuilder.renderGraph(values: List<Int>) { div { … } }`, call inside any block; no hooks in helpers (use a component for state)
 - Open: `GuiLib.open(App, stylesheets = listOf("modid:ui/app.css"))` (file at `assets/modid/ui/app.css`)
 - Props: `className`, `id`, `style` (CSS string), `key`, `title`, `ref`, `onClick`/`onChange`/… (Kotlin lambdas)
 - Hooks: useState, useEffect (no deps = once), useMemo, useRef, useContext, useInterval, useAsync / useFuture / usePromise (async data: loading / value / error / reload()), useDocumentEvent, useBodyClass / useBodyStyle (theme or font switch at runtime; body.classList / setStyleProperty like the DOM), useScreenScale(2.5f) / GuiLib.open(scale = …) (own GUI scale per screen, null = Minecraft's)
