@@ -126,6 +126,37 @@ open class GuiLibScreen(
         }
         Cursors.of(root.input.cursor)?.let(ctx::requestCursor)
         hoverTooltip(ctx, mouseX, mouseY)
+        syncTextInput()
+    }
+
+    //#if MC >= 26.3
+    //$$ private var textInput = false
+    //$$ private var textInputArea: List<Int>? = null
+    //#endif
+
+    /**
+     * From 26.3 on (SDL) Minecraft only receives typed characters while text input is switched on, which vanilla does
+     * for a focused `EditBox`. GuiLib delivers characters to whatever element has focus (like GLFW did before), so text
+     * input is on while any element is focused; the IME window is placed at that element.
+     */
+    private fun syncTextInput() {
+        //#if MC >= 26.3
+        //$$ val focused = root.document.focusedElement?.takeIf { mounted }
+        //$$ if (focused == null) {
+        //$$     if (textInput) minecraft.onTextInputFocusChange(this, false)
+        //$$     textInput = false
+        //$$     return
+        //$$ }
+        //$$ if (!textInput) minecraft.onTextInputFocusChange(this, true)
+        //$$ textInput = true
+        //$$ val r = focused.getBoundingClientRect()
+        //$$ val f = factor()
+        //$$ val area = listOf((r.x * f).toInt(), (r.y * f).toInt(), (r.width * f).toInt(), (r.height * f).toInt())
+        //$$ if (area != textInputArea) {
+        //$$     textInputArea = area
+        //$$     minecraft.textInputManager().setTextInputArea(area[0], area[1], area[2], area[3])
+        //$$ }
+        //#endif
     }
 
     /**
@@ -190,6 +221,7 @@ open class GuiLibScreen(
     override fun removed() {
         root.document.unmount()
         mounted = false
+        syncTextInput()
         Stylesheets.unwatch(this)
         super.removed()
     }
