@@ -171,10 +171,10 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
 - Border: `border border-(top|right|bottom|left) border-width border-style border-color border-*-width/-style/-color border-radius border-*-radius` (styles `solid`; `dashed/dotted` draw solid)
 - Layout: `display` (`block inline inline-block flex inline-flex grid inline-grid none`), `position` (`static relative absolute fixed`), `top right bottom left inset z-index overflow overflow-x overflow-y`
 - Inline: `vertical-align` (`baseline sub super text-top text-bottom middle top bottom`, a length, or a % of the line height) for `inline-block` / `inline-flex` / `img` / `item` boxes; text in inline elements always sits on the baseline
-- Flexbox: `flex flex-direction flex-wrap flex-flow flex-grow flex-shrink flex-basis justify-content align-items align-self place-items gap row-gap column-gap order`
+- Flexbox: `flex flex-direction flex-wrap flex-flow flex-grow flex-shrink flex-basis justify-content align-items align-self align-content place-items place-content gap row-gap column-gap order` (`align-content` moves the lines of a wrapping container with a fixed cross size; default `normal` stretches them, like the web)
 - Grid: `grid-template-columns grid-template-rows` (`px % fr auto min-content max-content minmax() repeat(n | auto-fill | auto-fit, …)`),
   `grid-template-areas grid-area grid-row grid-column grid-row-start/-end grid-column-start/-end` (line numbers, negative lines, `span n`, area names),
-  `grid-auto-rows grid-auto-columns grid-auto-flow` (`row column dense`), `justify-items justify-self place-items place-self`, `gap`/`grid-gap`
+  `grid-auto-rows grid-auto-columns grid-auto-flow` (`row column dense`), `justify-items justify-self place-items place-self`, `justify-content`/`align-content` (distribute columns/rows), `gap`/`grid-gap`
 - Animation: `transition` (+ `-property -duration -timing-function -delay`), `animation` (+ `-name -duration -timing-function -delay
   -iteration-count -direction -fill-mode -play-state`) with `@keyframes`; easing `linear ease ease-in ease-out ease-in-out cubic-bezier() steps()`.
   Animatable: colors, lengths (also px ↔ % via calc), numbers (`opacity`, `flex-grow`, `font-size` …), radii, `line-height`,
@@ -224,7 +224,7 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
 12. `border-width` default (`medium`) is 1px; like the web, a border without `border-style` draws nothing.
 13. Every positioned element (`relative/absolute/fixed`) is its own paint layer; `z-index` orders layers among siblings in the same layer. Use `portal { }` for things that must be on top of everything. `position: fixed` elements ignore their ancestors' `transform`.
 14. Not supported (yet): 3D transforms (a `transform` containing them is ignored), `repeating-*-gradient`, `conic-gradient`,
-    `:nth-child(… of S)`, pseudo-elements other than `::before`/`::after`, float, `align-content`, `vertical-align` on text (no `sub`/`sup` text shifting), subgrid, named grid lines (`[name]` is ignored).
+    `:nth-child(… of S)`, pseudo-elements other than `::before`/`::after`, float, `vertical-align` on text (no `sub`/`sup` text shifting), subgrid, named grid lines (`[name]` is ignored).
     Grid: `auto-fit` behaves like `auto-fill` (empty tracks aren't collapsed); items can't be placed before line 1.
 15. Images: `src` is a resource location (`"modid:textures/x.png"`), PNG, SVG or GIF only; no URLs yet. Animated GIFs loop like in a browser (all images with the same `src` play in sync); very long GIFs are cut off after ~32M pixels of frames.
 16. Text has no kerning; `text-align: justify` behaves like `left`. No right-to-left or complex-script shaping: Arabic/Hebrew

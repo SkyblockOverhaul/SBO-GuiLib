@@ -65,6 +65,22 @@ enum class FlexDirection { ROW, ROW_REVERSE, COLUMN, COLUMN_REVERSE;
 }
 enum class FlexWrap { NOWRAP, WRAP, WRAP_REVERSE }
 enum class JustifyContent { FLEX_START, FLEX_END, CENTER, SPACE_BETWEEN, SPACE_AROUND, SPACE_EVENLY }
+/** `align-content`: lines of a wrapping flex container / rows of a grid. `NORMAL` behaves like `STRETCH`. */
+enum class AlignContent {
+    NORMAL, STRETCH, FLEX_START, FLEX_END, CENTER, SPACE_BETWEEN, SPACE_AROUND, SPACE_EVENLY;
+
+    /** The same distribution as a [JustifyContent] (stretching is handled separately). */
+    val distribution: JustifyContent get() = when (this) {
+        NORMAL, STRETCH, FLEX_START -> JustifyContent.FLEX_START
+        FLEX_END -> JustifyContent.FLEX_END
+        CENTER -> JustifyContent.CENTER
+        SPACE_BETWEEN -> JustifyContent.SPACE_BETWEEN
+        SPACE_AROUND -> JustifyContent.SPACE_AROUND
+        SPACE_EVENLY -> JustifyContent.SPACE_EVENLY
+    }
+    val stretches get() = this == NORMAL || this == STRETCH
+}
+
 enum class AlignItems { STRETCH, FLEX_START, FLEX_END, CENTER, BASELINE }
 enum class AlignSelf { AUTO, STRETCH, FLEX_START, FLEX_END, CENTER, BASELINE }
 enum class Overflow { VISIBLE, HIDDEN, SCROLL, AUTO;

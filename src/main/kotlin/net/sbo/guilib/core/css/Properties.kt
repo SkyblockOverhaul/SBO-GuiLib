@@ -67,6 +67,7 @@ enum class Prop(val css: String, val inherited: Boolean, val initial: Any?) {
     FLEX_WRAP("flex-wrap", false, FlexWrap.NOWRAP),
     JUSTIFY_CONTENT("justify-content", false, JustifyContent.FLEX_START),
     ALIGN_ITEMS("align-items", false, AlignItems.STRETCH),
+    ALIGN_CONTENT("align-content", false, AlignContent.NORMAL),
     ALIGN_SELF("align-self", false, AlignSelf.AUTO),
     FLEX_GROW("flex-grow", false, 0f),
     FLEX_SHRINK("flex-shrink", false, 1f),
@@ -173,6 +174,7 @@ object Properties {
         enumParser(Prop.FLEX_WRAP) { single(it)?.let { v -> keyword<FlexWrap>(v) } }
         enumParser(Prop.JUSTIFY_CONTENT) { single(it)?.let(::justify) }
         enumParser(Prop.ALIGN_ITEMS) { single(it)?.let(::alignItems) }
+        enumParser(Prop.ALIGN_CONTENT) { single(it)?.let(::alignContent) }
         enumParser(Prop.ALIGN_SELF) { single(it)?.let { v -> alignItems(v)?.let { a -> AlignSelf.valueOf(a.name) } ?: keyword<AlignSelf>(v) } }
         enumParser(Prop.FLEX_GROW, Prop.FLEX_SHRINK) { single(it)?.let(::number)?.takeIf { n -> n >= 0f } }
         enumParser(Prop.ORDER) { single(it)?.let(::integer) }
@@ -286,6 +288,13 @@ object Properties {
             val j = (if (w.size == 2) alignItems(w[1]) else a) ?: return@put null
             if (w.size > 2) null else listOf(Prop.ALIGN_ITEMS to a, Prop.JUSTIFY_ITEMS to j)
         }
+        put("place-content") { v ->
+            // place-content: <align-content> [<justify-content>]
+            val w = words(v)
+            val a = w.getOrNull(0)?.let(::alignContent) ?: return@put null
+            val j = (if (w.size == 2) justify(w[1]) else w[0].let { justify(it) ?: JustifyContent.FLEX_START }) ?: return@put null
+            if (w.size > 2) null else listOf(Prop.ALIGN_CONTENT to a, Prop.JUSTIFY_CONTENT to j)
+        }
         put("grid-row") { v -> GridParser.lineShorthand(v, Prop.GRID_ROW_START, Prop.GRID_ROW_END) }
         put("grid-column") { v -> GridParser.lineShorthand(v, Prop.GRID_COLUMN_START, Prop.GRID_COLUMN_END) }
         put("grid-area") { v -> GridParser.areaShorthand(v) }
@@ -312,6 +321,7 @@ object Properties {
         put("overflow", listOf(Prop.OVERFLOW_X, Prop.OVERFLOW_Y)); put("gap", listOf(Prop.ROW_GAP, Prop.COLUMN_GAP))
         put("flex", listOf(Prop.FLEX_GROW, Prop.FLEX_SHRINK, Prop.FLEX_BASIS)); put("flex-flow", listOf(Prop.FLEX_DIRECTION, Prop.FLEX_WRAP))
         put("background", listOf(Prop.BACKGROUND_COLOR, Prop.BACKGROUND_IMAGE)); put("place-items", listOf(Prop.ALIGN_ITEMS, Prop.JUSTIFY_ITEMS))
+        put("place-content", listOf(Prop.ALIGN_CONTENT, Prop.JUSTIFY_CONTENT))
         put("grid-row", listOf(Prop.GRID_ROW_START, Prop.GRID_ROW_END)); put("grid-column", listOf(Prop.GRID_COLUMN_START, Prop.GRID_COLUMN_END))
         put("grid-area", listOf(Prop.GRID_ROW_START, Prop.GRID_COLUMN_START, Prop.GRID_ROW_END, Prop.GRID_COLUMN_END))
         put("grid-gap", listOf(Prop.ROW_GAP, Prop.COLUMN_GAP)); put("grid-row-gap", listOf(Prop.ROW_GAP)); put("grid-column-gap", listOf(Prop.COLUMN_GAP))
@@ -476,6 +486,12 @@ object Properties {
         isIdent(v, "start") || isIdent(v, "left") || isIdent(v, "normal") -> JustifyContent.FLEX_START
         isIdent(v, "end") || isIdent(v, "right") -> JustifyContent.FLEX_END
         else -> keyword<JustifyContent>(v)
+    }
+
+    private fun alignContent(v: ComponentValue): AlignContent? = when {
+        isIdent(v, "start") -> AlignContent.FLEX_START
+        isIdent(v, "end") -> AlignContent.FLEX_END
+        else -> keyword<AlignContent>(v)
     }
 
     private fun alignItems(v: ComponentValue): AlignItems? = when {

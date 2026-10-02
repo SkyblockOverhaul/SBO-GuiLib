@@ -326,8 +326,8 @@ internal class GridLayout(private val e: LayoutEngine) {
         // Rows.
         val rowDefs = List(placement.rows) { def(explicitRows, s.gridAutoRows, it) }
         val rowContrib = items.map { val h = it.node.box.marginBoxHeight; Contribution(it.row, it.rowSpan, h, h) }
-        val rowSizes = sizeTracks(rowDefs, rowContrib, contentHeight, gapR, true)
-        val rowStart = offsets(rowSizes, gapR, null, JustifyContent.FLEX_START)
+        val rowSizes = sizeTracks(rowDefs, rowContrib, contentHeight, gapR, s.alignContent.stretches)
+        val rowStart = offsets(rowSizes, gapR, contentHeight, s.alignContent.distribution)
 
         // Final sizes with stretch alignment, then position inside the area.
         for (it in items) {

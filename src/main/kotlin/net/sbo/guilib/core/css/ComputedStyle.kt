@@ -81,6 +81,7 @@ class ComputedStyle internal constructor(
     val flexWrap get() = values[Prop.FLEX_WRAP.ordinal] as FlexWrap
     val justifyContent get() = values[Prop.JUSTIFY_CONTENT.ordinal] as JustifyContent
     val alignItems get() = values[Prop.ALIGN_ITEMS.ordinal] as AlignItems
+    val alignContent get() = values[Prop.ALIGN_CONTENT.ordinal] as AlignContent
     val alignSelf get() = values[Prop.ALIGN_SELF.ordinal] as AlignSelf
     val flexGrow get() = values[Prop.FLEX_GROW.ordinal] as Float
     val flexShrink get() = values[Prop.FLEX_SHRINK.ordinal] as Float

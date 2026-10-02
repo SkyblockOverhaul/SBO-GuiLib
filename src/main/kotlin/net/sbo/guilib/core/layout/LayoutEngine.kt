@@ -381,6 +381,25 @@ class LayoutEngine(val measurer: TextMeasurer) {
                 }
                 m
             }
+        }
+        // align-content: distribute free cross space between the lines of a wrapping container.
+        var contentStart = 0f
+        var contentBetween = 0f
+        if (!singleLine && crossSize != null) {
+            val free = crossSize - (lineCross.sum() + gapCross * (lines.size - 1).coerceAtLeast(0))
+            val n = lines.size
+            if (s.alignContent.stretches) {
+                if (free > 0f) for (li in lineCross.indices) lineCross[li] += free / n
+            } else when (s.alignContent.distribution) {
+                JustifyContent.FLEX_START -> {}
+                JustifyContent.FLEX_END -> contentStart = free
+                JustifyContent.CENTER -> contentStart = free / 2f
+                JustifyContent.SPACE_BETWEEN -> if (free > 0f && n > 1) contentBetween = free / (n - 1)
+                JustifyContent.SPACE_AROUND -> if (free > 0f) { contentBetween = free / n; contentStart = contentBetween / 2f } else contentStart = free / 2f
+                JustifyContent.SPACE_EVENLY -> if (free > 0f) { contentBetween = free / (n + 1); contentStart = contentBetween } else contentStart = free / 2f
+            }
+        }
+        for ((li, line) in lines.withIndex()) {
             for (item in line) {
                 val ns = item.node.style
                 val crossAuto = item.node.textContent != null || (if (row) ns.height else ns.width) == Dim.Auto
@@ -395,7 +414,7 @@ class LayoutEngine(val measurer: TextMeasurer) {
 
         // 5. Main-axis alignment and positioning.
         val reverse = s.flexDirection.isReverse
-        var crossOffset = 0f
+        var crossOffset = contentStart
         var usedMainMax = 0f
         for ((li, line) in lines.withIndex()) {
             val used = line.sumOf { it.outerTarget.toDouble() }.toFloat() + gapMain * (line.size - 1).coerceAtLeast(0)
@@ -474,7 +493,7 @@ class LayoutEngine(val measurer: TextMeasurer) {
                 applyRelative(item.node, contentWidth, contentHeight)
                 if (box.baseline == null && li == 0) b.baseline?.let { box.baseline = b.y + it }
             }
-            crossOffset += lineCross[li] + gapCross
+            crossOffset += lineCross[li] + gapCross + contentBetween
         }
         val totalCross = (lineCross.sum() + gapCross * (lines.size - 1).coerceAtLeast(0))
         return if (row) totalCross else usedMainMax

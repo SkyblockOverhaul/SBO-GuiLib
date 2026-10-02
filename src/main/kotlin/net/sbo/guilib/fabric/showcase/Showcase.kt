@@ -470,6 +470,18 @@ object Showcase {
         }
     }
 
+    /** align-content moves the lines of a wrapping flex container that is taller than its lines. */
+    private val AlignContentDemo = component("AlignContentDemo") {
+        var align by useState("normal")
+        p(className = "muted") { +"align-content (flex-wrap: wrap, height: 70px)" }
+        segmented(value = align, onChange = { align = it }) {
+            for (v in listOf("normal", "flex-start", "center", "flex-end", "space-between", "space-evenly")) option(v, v)
+        }
+        div(className = "flex-demo wrap-demo", style = "align-content: $align") {
+            for (i in 1..9) div(key = i, className = "chip") { +"Item $i" }
+        }
+    }
+
     private val LayoutDemo = component("LayoutDemo") {
         h2 { +"Flexbox" }
         for (justify in listOf("flex-start", "center", "space-between", "space-evenly")) {
@@ -490,6 +502,7 @@ object Showcase {
             div(className = "chip") { +"short" }
             div(className = "badge") { +"abs" }
         }
+        AlignContentDemo()
         h3 { +"@media" }
         p(className = "muted") { +"Resize the window or change the GUI scale: these react to the screen size and resolution (= GUI scale)." }
         div(className = "media-demo") {

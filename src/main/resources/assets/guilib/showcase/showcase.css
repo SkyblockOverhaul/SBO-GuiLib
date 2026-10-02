@@ -377,3 +377,6 @@ button.small { padding: 0 4px; }
 .va-demo { padding: 2px 4px; background-color: #2b2d31; border-radius: 4px; }
 .va-tall { display: inline-block; width: 4px; height: 28px; background-color: #4e5058; border-radius: 2px; }
 .va-box { display: inline-block; width: 8px; height: 8px; margin: 0 4px 0 1px; background-color: #5865f2; border-radius: 2px; }
+
+/* align-content */
+.wrap-demo { flex-wrap: wrap; height: 70px; margin-top: 4px; }
