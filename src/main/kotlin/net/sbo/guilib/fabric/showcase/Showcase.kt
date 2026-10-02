@@ -476,6 +476,16 @@ object Showcase {
         }
         p(className = "muted") { +"background-image: url(...)" }
         div(className = "bg-demo") { +"Text over a background image" }
+        h3 { +"Tinting SVGs with currentColor" }
+        p(className = "muted") { +"currentColor in an SVG is the element's CSS color, so one icon file fits every theme." }
+        div(className = "row") {
+            button(className = "icon-btn") { img("guilib:showcase/refresh.svg"); +"Refresh" }
+            button(className = "icon-btn primary") { img("guilib:showcase/refresh.svg"); +"Refresh" }
+            button(className = "icon-btn light") { img("guilib:showcase/refresh.svg"); +"Refresh" }
+            img("guilib:showcase/refresh.svg", className = "tint-icon", style = "color: #3ba55d")
+            img("guilib:showcase/refresh.svg", className = "tint-icon", style = "color: #faa61a")
+            img("guilib:showcase/refresh.svg", className = "tint-icon", style = "color: #ed4245")
+        }
     }
 
     private val AnimationDemo = component("AnimationDemo") {

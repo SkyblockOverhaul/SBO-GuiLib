@@ -25,4 +25,5 @@ Key facts:
 ## Examples
 
 - [Showcase](src/main/kotlin/net/sbo/guilib/fabric/showcase/Showcase.kt) and [its CSS](src/main/resources/assets/guilib/showcase/showcase.css)
+- SVG icons: `fill="currentColor"` in the SVG takes the element's CSS `color` (tint one icon file from CSS)
 - [Default styles](src/main/resources/assets/guilib/css/ua.css) – every color is a `--guilib-*` variable (theme = override them on `:root`)

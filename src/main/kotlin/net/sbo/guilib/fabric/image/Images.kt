@@ -23,7 +23,8 @@ import kotlin.math.ceil
 /**
  * Resolves `<img src>` / `background-image: url()` sources to textures.
  * - `modid:path/file.png` → the resource's texture (loaded by Minecraft's TextureManager)
- * - `modid:path/file.svg` → rasterized with JSVG at the exact on-screen pixel size (cached per size)
+ * - `modid:path/file.svg` → rasterized with JSVG at the exact on-screen pixel size (cached per size); `currentColor`
+ *   in the SVG is the element's CSS `color` (see [SvgColor])
  * - `modid:path/file.gif` → decoded into composited frames (one texture each); animated GIFs play on their own clock
  */
 object Images {
@@ -34,6 +35,8 @@ object Images {
         val svg: SVGDocument?,
         val pngId: Identifier?,
         val gif: AnimatedGif? = null,
+        /** SVG source, kept only when it uses `currentColor` (it is parsed again for each color). */
+        val svgSource: String? = null,
     ) : ReplacedContent
 
     /**
@@ -120,6 +123,7 @@ object Images {
 
     private val entries = HashMap<String, Entry?>()
     private val svgTextures = LinkedHashMap<String, Texture>()
+    private val coloredSvgs = LinkedHashMap<String, SVGDocument>()
     private var svgCounter = 0
     private var gifCounter = 0
 
@@ -138,10 +142,10 @@ object Images {
         }
         return try {
             if (id.path.endsWith(".svg", ignoreCase = true)) {
-                val doc = resource.get().open().use { SVGLoader().load(it, null, LoaderContext.createDefault()) }
-                    ?: throw IllegalArgumentException("not a valid SVG")
+                val source = resource.get().open().use { it.readAllBytes() }.toString(Charsets.UTF_8)
+                val doc = parseSvg(source) ?: throw IllegalArgumentException("not a valid SVG")
                 val size = doc.size()
-                Entry(src, size.width, size.height, doc, null)
+                Entry(src, size.width, size.height, doc, null, svgSource = source.takeIf { SvgColor.usesCurrentColor(it) })
             } else if (id.path.endsWith(".gif", ignoreCase = true)) {
                 // Only the header is read here (the natural size for layout); the frames are decoded in the background.
                 val bytes = resource.get().open().use { it.readAllBytes() }
@@ -194,15 +198,34 @@ object Images {
         return input.readInt() to input.readInt()
     }
 
-    /** Texture to draw [entry] at [pixelWidth]×[pixelHeight] physical pixels. */
-    fun texture(entry: Entry, pixelWidth: Int, pixelHeight: Int): Texture? {
+    private fun parseSvg(source: String): SVGDocument? =
+        SVGLoader().load(ByteArrayInputStream(source.toByteArray()), null, LoaderContext.createDefault())
+
+    /** The document of [entry] with `currentColor` = [color] (only for SVGs that use it). Cached. */
+    private fun coloredSvg(entry: Entry, source: String, color: Int): SVGDocument? {
+        val key = "${entry.src}#${Integer.toHexString(color)}"
+        coloredSvgs[key]?.let { return it }
+        val doc = try {
+            parseSvg(SvgColor.withCurrentColor(source, color))
+        } catch (e: Exception) {
+            Log.warnOnce("GuiLib: failed to load image '${entry.src}': $e"); null
+        } ?: return null
+        coloredSvgs[key] = doc
+        if (coloredSvgs.size > 64) coloredSvgs.remove(coloredSvgs.keys.first())
+        return doc
+    }
+
+    /** Texture to draw [entry] at [pixelWidth]×[pixelHeight] physical pixels; [color] is `currentColor` for SVGs. */
+    fun texture(entry: Entry, pixelWidth: Int, pixelHeight: Int, color: Int): Texture? {
         entry.pngId?.let { return Texture(it, entry.width.toInt(), entry.height.toInt()) }
         entry.gif?.let { return it.frame() }
-        val svg = entry.svg ?: return null
+        val plain = entry.svg ?: return null
         val w = pixelWidth.coerceIn(1, 4096)
         val h = pixelHeight.coerceIn(1, 4096)
-        val key = "${entry.src}@${w}x$h"
+        val source = entry.svgSource
+        val key = if (source == null) "${entry.src}@${w}x$h" else "${entry.src}#${Integer.toHexString(color)}@${w}x$h"
         svgTextures[key]?.let { return it }
+        val svg = if (source == null) plain else coloredSvg(entry, source, color) ?: return null
         val tex = rasterize(svg, w, h) ?: return null
         svgTextures[key] = tex
         // Keep the cache bounded; release the oldest textures.
@@ -242,5 +265,6 @@ object Images {
         entries.clear()
         svgTextures.values.forEach { Minecraft.getInstance().textureManager.release(it.id) }
         svgTextures.clear()
+        coloredSvgs.clear()
     }
 }

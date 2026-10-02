@@ -237,4 +237,14 @@ class PainterTest {
         root.frame(200f, 100f)
         assertTrue(root.painter.commands.filterIsInstance<PaintCommand.Gradient>()[0].mesh === grads[0].mesh)
     }
+
+    @Test
+    fun imagesCarryTheInheritedColorAsCurrentColor() {
+        val root = ui(".btn { color: #ff8800 } .icon { width: 8px; height: 8px; background-image: url(mymod:icons/refresh.svg) }") {
+            div(className = "btn") { div(className = "icon") }
+        }
+        val img = root.painter.commands.filterIsInstance<PaintCommand.Image>().single()
+        assertEquals("mymod:icons/refresh.svg", img.src)
+        assertEquals(0xFFFF8800.toInt(), img.color)
+    }
 }

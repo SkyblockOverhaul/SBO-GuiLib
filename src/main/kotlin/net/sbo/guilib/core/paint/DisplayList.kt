@@ -45,10 +45,10 @@ sealed interface PaintCommand {
     /** A run of text; [y] is the top of the glyph box (baseline − ascent). */
     class Text(val x: Float, val y: Float, val text: String, val style: TextStyle, val color: Int, val alpha: Float) : PaintCommand
 
-    /** Image from a `src` URL/resource location, fitted into the rect. */
+    /** Image from a `src` URL/resource location, fitted into the rect; [color] is `currentColor` for SVGs. */
     class Image(
         val x: Float, val y: Float, val width: Float, val height: Float,
-        val src: String, val fit: ObjectFit, val alpha: Float, val radii: FloatArray,
+        val src: String, val fit: ObjectFit, val alpha: Float, val radii: FloatArray, val color: Int,
     ) : PaintCommand
 
     /**

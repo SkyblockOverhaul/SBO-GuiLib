@@ -278,6 +278,12 @@ button.primary:hover { background-color: #6f9cf2; }
 
 .color-preview { width: 120px; height: 60px; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-weight: bold; text-shadow: 1px 1px #0008; }
 
+/* ---- currentColor icons ---- */
+.icon-btn img { width: 9px; height: 9px; }
+.icon-btn.light { background-color: #f0f2f4; border-color: #d1d9e0; color: #1f2328; }
+.icon-btn.light:hover { background-color: #e4e8eb; color: #0969da; }
+.tint-icon { width: 16px; height: 16px; }
+
 /* ---- theme variables ---- */
 /* Variables set on a subtree restyle its controls; the panel sets its own color, because body's
    color: var(--guilib-text) was already resolved on body. */

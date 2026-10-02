@@ -402,7 +402,7 @@ object CommandRenderer {
         // SVGs are rasterized so that the whole image maps 1:1 to physical pixels at this size.
         val fullW = Images.physical(dw * nw / sw)
         val fullH = Images.physical(dh * nh / sh)
-        val tex = Images.texture(entry, fullW, fullH) ?: return
+        val tex = Images.texture(entry, fullW, fullH, img.color) ?: return
         val tx = tex.width / nw
         val ty = tex.height / nh
         val u = sx * tx

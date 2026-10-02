@@ -219,7 +219,7 @@ class Painter(private val measurer: TextMeasurer) {
         if (el.replaced != null) {
             val c = xf.map(Rect(layout.x + b.contentX, layout.y + b.contentY, b.contentWidth, b.contentHeight))
             val src = el.getAttribute("src") as? String
-            if (src != null) emit(PaintCommand.Image(c.x, c.y, c.width, c.height, src, s.objectFit, alpha, radii))
+            if (src != null) emit(PaintCommand.Image(c.x, c.y, c.width, c.height, src, s.objectFit, alpha, radii, s.color))
             else emit(PaintCommand.Replaced(el, c.x, c.y, c.width, c.height, alpha))
         }
     }
@@ -243,7 +243,7 @@ class Painter(private val measurer: TextMeasurer) {
             if (Colors.alpha(bg) > 0) emit(PaintCommand.Box(r.x, r.y, r.width, r.height, bg, radii, FloatArray(4), IntArray(4)))
             for (layer in layers.asReversed()) when (layer) {
                 is BackgroundLayer.Url ->
-                    emit(PaintCommand.Image(r.x, r.y, r.width, r.height, layer.src, net.sbo.guilib.core.css.ObjectFit.FILL, alpha, radii))
+                    emit(PaintCommand.Image(r.x, r.y, r.width, r.height, layer.src, net.sbo.guilib.core.css.ObjectFit.FILL, alpha, radii, s.color))
                 is BackgroundLayer.Gradient ->
                     emit(PaintCommand.Gradient(r.x, r.y, r.width, r.height, GradientMesh.cached(layer, r.width, r.height, alpha), radii))
             }
