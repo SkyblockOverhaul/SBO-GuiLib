@@ -5,6 +5,7 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallba
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands
 import net.minecraft.client.Minecraft
 import net.sbo.guilib.core.Log
+import net.sbo.guilib.fabric.image.Images
 import net.sbo.guilib.fabric.render.GuiPipelines
 import net.sbo.guilib.fabric.resources.HotReload
 import net.sbo.guilib.fabric.resources.Stylesheets
@@ -42,6 +43,7 @@ object GuiLibMod : ClientModInitializer {
         }
         GuiPipelines.init()
         HotReload.init()
+        Images.warmUp()
         logger.info("GuiLib initialized")
     }
 }

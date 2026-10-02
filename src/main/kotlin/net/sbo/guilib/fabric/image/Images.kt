@@ -12,6 +12,7 @@ import net.sbo.guilib.core.Log
 import net.sbo.guilib.core.dom.ReplacedContent
 import java.awt.RenderingHints
 import java.awt.image.BufferedImage
+import java.awt.image.DataBufferInt
 import java.io.ByteArrayInputStream
 import java.io.DataInputStream
 import java.util.concurrent.CompletableFuture
@@ -86,9 +87,35 @@ object Images {
     /** A drawable texture region: the texture and its size in texels. */
     class Texture(val id: Identifier, val width: Int, val height: Int)
 
-    /** Decodes GIFs off the render thread; one daemon thread is enough (they rarely load at the same time). */
+    /** Decodes GIFs (and warms up SVG support) off the render thread; one daemon thread is enough. */
     private val decoder: ExecutorService = Executors.newSingleThreadExecutor { r ->
-        Thread(r, "GuiLib GIF decoder").apply { isDaemon = true; priority = Thread.MIN_PRIORITY }
+        Thread(r, "GuiLib image worker").apply { isDaemon = true; priority = Thread.MIN_PRIORITY }
+    }
+
+    /**
+     * Parses and draws a tiny SVG on the worker thread. The first SVG otherwise froze the render thread for ~110 ms:
+     * JSVG's class loading (~80 ms for the first parse) and Java2D's setup (~30 ms for the first rasterization) are
+     * one-time costs, so paying them in the background at startup leaves only the real work for the render thread.
+     */
+    fun warmUp() {
+        decoder.execute {
+            try {
+                val svg = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
+                    <defs><linearGradient id="g"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#000"/></linearGradient></defs>
+                    <rect x="1" y="1" width="14" height="14" rx="3" fill="url(#g)" stroke="#888" stroke-width="1"/>
+                    <path d="M4 8 L7 11 L12 5" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round"/>
+                    <circle cx="8" cy="8" r="2" opacity="0.5"/></svg>"""
+                val doc = SVGLoader().load(ByteArrayInputStream(svg.toByteArray()), null, LoaderContext.createDefault()) ?: return@execute
+                val img = BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB)
+                val g = img.createGraphics()
+                g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+                g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE)
+                doc.render(null, g, ViewBox(0f, 0f, 16f, 16f))
+                g.dispose()
+            } catch (e: Throwable) {
+                Log.warn("GuiLib: SVG warm-up failed: $e") // harmless, the first SVG just loads slower
+            }
+        }
     }
 
     private val entries = HashMap<String, Entry?>()
@@ -193,8 +220,9 @@ object Images {
         g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE)
         svg.render(null, g, ViewBox(0f, 0f, w.toFloat(), h.toFloat()))
         g.dispose()
+        val argb = (img.raster.dataBuffer as DataBufferInt).data // TYPE_INT_ARGB: one int per pixel, row by row
         val native = NativeImage(w, h, false)
-        for (y in 0 until h) for (x in 0 until w) native.setPixel(x, y, img.getRGB(x, y))
+        for (y in 0 until h) for (x in 0 until w) native.setPixel(x, y, argb[y * w + x])
         val id = Identifier.fromNamespaceAndPath("guilib", "dynamic/svg_${svgCounter++}")
         val texture = DynamicTexture({ "GuiLib SVG $id" }, native)
         Minecraft.getInstance().textureManager.register(id, texture)
