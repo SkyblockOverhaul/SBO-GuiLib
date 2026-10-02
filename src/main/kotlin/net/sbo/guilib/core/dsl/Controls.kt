@@ -343,7 +343,7 @@ fun NodeBuilder.numberInput(
  * Multi-line text field (like `<textarea>`), controlled like `input`:
  * `textarea(value = note, onChange = { note = it.value }, placeholder = "Description", rows = 4, maxLength = 256)`.
  * Wraps words, Enter inserts a line break, arrow keys/Home/End/PageUp/PageDown move the caret, Ctrl+A/C/X/V work,
- * and it scrolls vertically when the text is taller than [rows] lines. [maxLines] limits the line breaks: Enter does
+ * and it scrolls vertically when the text is taller than [rows] lines (the height without a CSS `height`). [maxLines] limits the line breaks: Enter does
  * nothing once the text has [maxLines] lines, and extra line breaks in pasted text become spaces (wrapped lines don't
  * count). Styled with `textarea`,
  * `.guilib-textarea-line`, `.guilib-placeholder`, `.guilib-caret`, `.guilib-selection`.
@@ -372,6 +372,7 @@ fun NodeBuilder.textarea(
     if (placeholder != null) attrs["placeholder"] = placeholder
     if (maxLength != null) attrs["maxlength"] = maxLength
     if (maxLines != null) attrs["maxlines"] = maxLines
+    attrs["rows"] = rows
     if (disabled) attrs["disabled"] = true
     if (autoFocus) attrs["autofocus"] = true
     val handlers = HashMap<String, (UIEvent) -> Unit>()
@@ -384,9 +385,8 @@ fun NodeBuilder.textarea(
     on(EventType.KEYDOWN, onKeyDown)
     on(EventType.FOCUS, onFocus)
     on(EventType.BLUR, onBlur)
-    // Height for [rows] lines (line height ≈ 1.2em) plus the default padding; `style` can override it.
-    val height = String.format(java.util.Locale.ROOT, "height: calc(%.2fem + 8px)", rows * 1.2f)
-    element("textarea", key, id, className, if (style != null) "$height; $style" else height, ref, attrs, handlers, null)
+    // Without a CSS height it is [rows] lines tall (plus padding and border), like a browser textarea.
+    element("textarea", key, id, className, style, ref, attrs, handlers, null)
 }
 
 /**

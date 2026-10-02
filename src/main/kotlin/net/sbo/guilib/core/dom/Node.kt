@@ -414,6 +414,7 @@ class Element internal constructor(val tagName: String) : Node(), Selectable {
     override val intrinsicWidth: Float? get() = replaced?.width
     override val intrinsicHeight: Float? get() = replaced?.height
     override val isLineBreak: Boolean get() = tagName == "br"
+    override val rows: Int? get() = if (tagName == "textarea") (getAttribute("rows") as? Int)?.coerceAtLeast(1) else null
 
     /** Scroll offset of a scroll container (`overflow: auto/scroll`). Clamped to the scrollable range. */
     var scrollTop: Float = 0f

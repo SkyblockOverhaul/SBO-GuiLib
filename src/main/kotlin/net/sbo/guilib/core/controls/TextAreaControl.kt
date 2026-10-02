@@ -221,8 +221,11 @@ internal class TextAreaControl(val el: Element) : EditableControl {
             if (top + height - el.scrollTop > viewBottom) el.scrollTop = top + height - viewBottom
         }
 
+        // Line boxes are relative to the border box, `position: absolute` to the padding box.
+        val bx = el.box.border.left
+        val by = el.box.border.top
         val blinkOn = ((now - blinkStart) / 500L) % 2L == 0L
-        setStyle(caretEl, "left: ${caretX}px; top: ${top}px; height: ${height}px; visibility: ${if (focused && blinkOn && !hasSelection) "visible" else "hidden"}")
+        setStyle(caretEl, "left: ${caretX - bx}px; top: ${top - by}px; height: ${height}px; visibility: ${if (focused && blinkOn && !hasSelection) "visible" else "hidden"}")
         for (i in lines.indices) {
             val sel = selectionEls.getOrNull(i) ?: continue
             val l = lines[i]
@@ -236,7 +239,7 @@ internal class TextAreaControl(val el: Element) : EditableControl {
             }
             val x0 = b.x + b.contentX + xIn(i, from)
             val x1 = b.x + b.contentX + xIn(i, to) + if (breakSelected) 3f else 0f
-            setStyle(sel, "display: block; left: ${x0}px; top: ${b.y}px; width: ${x1 - x0}px; height: ${b.height}px")
+            setStyle(sel, "display: block; left: ${x0 - bx}px; top: ${b.y - by}px; width: ${x1 - x0}px; height: ${b.height}px")
         }
     }
 

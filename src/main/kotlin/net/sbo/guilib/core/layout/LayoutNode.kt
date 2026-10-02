@@ -14,6 +14,8 @@ interface LayoutNode {
     /** Natural size of replaced content (images, items); `null` for normal elements. */
     val intrinsicWidth: Float? get() = null
     val intrinsicHeight: Float? get() = null
+    /** Auto height in lines of text (`<textarea rows>`) instead of the children's height; `null` = normal. */
+    val rows: Int? get() = null
     /** True for `<br>`: forces a line break inside inline content. */
     val isLineBreak: Boolean get() = false
     /** Where the layout result is written. */

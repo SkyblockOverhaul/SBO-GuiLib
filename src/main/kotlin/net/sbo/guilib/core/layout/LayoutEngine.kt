@@ -74,6 +74,12 @@ class LayoutEngine(val measurer: TextMeasurer) {
         return s.width.resolve(cbWidth)?.let { toBorderBox(it, s, pb) }
     }
 
+    /** Height of one line of text in [style] (the line strut, as in [InlineLayout]). */
+    private fun rowHeight(style: ComputedStyle): Float {
+        val m = measurer.metrics(TextStyle.of(style))
+        return style.lineHeight.resolve(style.fontSize, m.normalLineHeight / style.fontSize.coerceAtLeast(0.01f))
+    }
+
     private fun specifiedHeight(node: LayoutNode, cbHeight: Float?): Float? {
         if (node.textContent != null) return null
         val s = node.style
@@ -167,7 +173,7 @@ class LayoutEngine(val measurer: TextMeasurer) {
             else -> layoutBlockChildren(node, contentWidth, contentHeightDef)
         }
 
-        var height = definiteHeight ?: (contentHeight + pbV)
+        var height = definiteHeight ?: ((node.rows?.let { it * rowHeight(s) } ?: contentHeight) + pbV)
         if (forcedHeight == null) height = clampHeight(node, height, cbHeight)
         box.height = maxOf(height, pbV)
 

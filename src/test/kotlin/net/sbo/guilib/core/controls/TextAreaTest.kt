@@ -152,4 +152,27 @@ class TextAreaTest {
         val caret = root.document.body.querySelector(".guilib-caret")!!
         assertTrue(caret.inlineStyle!!.contains("top: 37.5px"), caret.inlineStyle)
     }
+
+    @Test
+    fun rowsFitExactlyThatManyLinesAndMoreScroll() {
+        // 12.5px lines; padding and border come on top, whatever they are.
+        val root = ui { textarea(value = "a\nb", rows = 2, style = "padding: 3px 4px; border: 1px solid red") }
+        assertEquals(2 * 12.5f + 8f, root.area.box.height, 0.01f)
+        assertEquals(0f, root.area.maxScrollTop, 0.01f)
+        // A third line scrolls; the height stays.
+        val three = ui { textarea(value = "a\nb\nc", rows = 2) }
+        assertEquals(25f, three.area.box.height, 0.01f)
+        assertEquals(12.5f, three.area.maxScrollTop, 0.01f)
+        // The caret sits on its line, not shifted by the border (it would stick out at the bottom and scroll).
+        root.focus()
+        val caret = root.document.body.querySelector(".guilib-caret")!!
+        val line = root.document.body.querySelectorAll(".guilib-textarea-line")[1]
+        root.key("End", Modifiers(ctrl = true))
+        assertEquals(line.box.y, caret.box.y, 0.01f)
+        assertEquals(line.box.x + line.box.contentX + 5f, caret.box.x, 0.01f)
+        assertEquals(0f, root.area.maxScrollTop, 0.01f)
+        // An explicit height still wins.
+        val fixed = ui { textarea(value = "a", rows = 2, style = "height: 40px") }
+        assertEquals(40f, fixed.area.box.height, 0.01f)
+    }
 }
