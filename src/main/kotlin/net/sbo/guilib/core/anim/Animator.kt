@@ -45,11 +45,18 @@ internal class Animator(private val engine: StyleEngine) {
      */
     private val finished = IdentityHashMap<Element, MutableSet<String>>()
 
+    /** Elements that got a new transition or animation since the last [tick]. */
+    private val started = java.util.Collections.newSetFromMap(IdentityHashMap<Element, Boolean>())
+
     val isActive get() = states.isNotEmpty()
+
+    /** True if transitions or animations started since the last [tick] and still have to write their first values. */
+    val hasStarted get() = started.isNotEmpty()
 
     fun remove(el: Element) {
         states.remove(el)
         finished.remove(el)
+        started.remove(el)
         el.animatedStyle = null
     }
 
@@ -73,6 +80,7 @@ internal class Animator(private val engine: StyleEngine) {
                 }
                 if (state == null) state = State().also { states[el] = it }
                 state.transitions[p] = Transition(from, target, now + spec.delay, spec.duration, spec.timing)
+                started += el
             }
         }
 
@@ -91,7 +99,7 @@ internal class Animator(private val engine: StyleEngine) {
             for (spec in specs) {
                 if (done != null && spec.name in done && spec.name !in state.animations) continue
                 val keyframes = engine.keyframes(spec.name) ?: continue
-                val running = state.animations.getOrPut(spec.name) { Running(spec, now) }
+                val running = state.animations.getOrPut(spec.name) { started += el; Running(spec, now) }
                 running.spec = spec
                 val frames = ArrayList<Pair<Float, ComputedStyle>>()
                 if (keyframes.frames.none { it.offset == 0f }) frames += 0f to next
@@ -119,9 +127,19 @@ internal class Animator(private val engine: StyleEngine) {
      * Advances everything to [now]. Returns the set of animated properties per element so the caller can invalidate
      * style/layout/paint; elements whose animations ended get their plain style back.
      */
-    fun tick(now: Float, onChange: (Element, Set<Prop>) -> Unit) {
+    fun tick(now: Float, onChange: (Element, Set<Prop>) -> Unit) = tick(now, onlyStarted = false, onChange)
+
+    /**
+     * Writes the first values of transitions/animations that started since the last [tick] (at [now]) without
+     * advancing the others – otherwise those elements would be drawn at their target style for a frame.
+     */
+    fun tickStarted(now: Float, onChange: (Element, Set<Prop>) -> Unit) = tick(now, onlyStarted = true, onChange)
+
+    private fun tick(now: Float, onlyStarted: Boolean, onChange: (Element, Set<Prop>) -> Unit) {
+        if (onlyStarted && started.isEmpty()) return
         val done = ArrayList<Element>()
         for ((el, state) in states) {
+            if (onlyStarted && el !in started) continue
             val base = el.computed ?: continue
             val overrides = HashMap<Prop, Any?>()
 
@@ -157,6 +175,7 @@ internal class Animator(private val engine: StyleEngine) {
             if (state.transitions.isEmpty() && state.animations.isEmpty()) done += el
         }
         done.forEach { states.remove(it) }
+        started.clear()
     }
 
     /** Applies one keyframe animation at [now]; returns false once it's over and should be dropped. */

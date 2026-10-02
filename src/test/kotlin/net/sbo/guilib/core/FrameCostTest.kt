@@ -46,6 +46,27 @@ class FrameCostTest {
     }
 
     @Test
+    fun aTransitionStartedByTheHoverRefreshIsDrawnAtItsStartValue() {
+        // Regression: the hover refresh after a layout starts transitions in the settling update, which did not
+        // tick animations any more – the frame was painted with the transition's END value, then snapped back.
+        val css = ".a { height: 20px } .a.gone { height: 0 } .b { height: 10px; transition: opacity 1000ms linear } .b:hover { opacity: 0 }"
+        val root = UiRoot(FakeMeasurer, listOf(Stylesheet.parse("div { display: block }\n$css", "t.css", Origin.USER_AGENT)), clock = { now })
+        root.render(VComponent(component("T") { div(className = "a"); div(className = "b") }, Unit, null))
+        root.frame(200f, 100f)
+        root.input.mouseMove(5f, 5f) // over .a
+        root.frame(200f, 100f)
+        val a = root.document.body.querySelector(".a")!!
+        val b = root.document.body.querySelector(".b")!!
+        a.className = "a gone" // .b moves up under the mouse
+        now += 16
+        root.frame(200f, 100f)
+        assertEquals(1f, (b.animatedStyle ?: b.computed!!).opacity, 0.001f)
+        now += 500
+        root.frame(200f, 100f)
+        assertEquals(0.5f, (b.animatedStyle ?: b.computed!!).opacity, 0.02f)
+    }
+
+    @Test
     fun aStaticFrameDoesNothing() {
         val root = root(".a { height: 10px }")
         countFrames(root, 10)

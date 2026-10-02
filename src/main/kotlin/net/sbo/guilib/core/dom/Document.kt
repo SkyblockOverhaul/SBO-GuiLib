@@ -2,6 +2,7 @@ package net.sbo.guilib.core.dom
 
 import net.sbo.guilib.core.Log
 import net.sbo.guilib.core.css.ComputedStyle
+import net.sbo.guilib.core.css.Prop
 import net.sbo.guilib.core.css.Content
 import net.sbo.guilib.core.css.ContentPart
 import net.sbo.guilib.core.css.Display
@@ -299,20 +300,26 @@ class Document(
         }
         styleAndLayout()
         // Transitions/animations write their current values, then layout catches up within the same frame.
-        if (animate && animator.isActive) {
-            animator.tick(animationTime()) { el, props ->
-                if (props.any { !ComputedStyle.isPaintOnly(it) }) invalidateLayout() else invalidatePaint()
-                // Inherited values (e.g. color) must reach the children.
-                if (props.any { it.inherited }) el.styleChanged(true)
-            }
-        }
+        if (animate && animator.isActive) animator.tick(animationTime(), ::animated)
         // Controls position carets etc. from the layout; if that changed something, settle it in the same frame.
         val now = clock()
         for (h in frameHooks) h(now)
         styleAndLayout()
+        // Transitions/animations started by a restyle after the tick (or in a settling update, which doesn't advance
+        // the running ones) need their start values now – otherwise this frame shows the target style.
+        if (animator.hasStarted) {
+            animator.tickStarted(animationTime(), ::animated)
+            styleAndLayout()
+        }
         val repaint = paintDirty
         paintDirty = false
         return repaint
+    }
+
+    private fun animated(el: Element, props: Set<Prop>) {
+        if (props.any { !ComputedStyle.isPaintOnly(it) }) invalidateLayout() else invalidatePaint()
+        // Inherited values (e.g. color) must reach the children.
+        if (props.any { it.inherited }) el.styleChanged(true)
     }
 
     /** Per-document singletons of other parts of the library (e.g. the toaster), keyed by their class. */
