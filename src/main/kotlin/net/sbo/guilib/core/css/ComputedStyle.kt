@@ -105,6 +105,7 @@ class ComputedStyle internal constructor(
 
     val cursor get() = values[Prop.CURSOR.ordinal] as Cursor
     val pointerEvents get() = values[Prop.POINTER_EVENTS.ordinal] as PointerEvents
+    val content get() = values[Prop.CONTENT.ordinal] as Content
     val userSelect get() = values[Prop.USER_SELECT.ordinal] as UserSelect
     val objectFit get() = values[Prop.OBJECT_FIT.ordinal] as ObjectFit
     /** Empty for `transform: none`. */

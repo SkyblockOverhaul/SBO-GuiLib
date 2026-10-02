@@ -349,6 +349,21 @@ object Showcase {
             div(className = "demo-box shadow", style = "box-shadow: inset 0 0 0 2px #ffd166, 0 0 0 2px #e5484d") { +"rings" }
             div(className = "demo-box shadow lift") { +"hover me" }
         }
+        h3 { +"::before / ::after" }
+        div(className = "pseudo-demo") {
+            div(className = "crumbs") {
+                span(className = "crumb") { +"Dungeons" }
+                span(className = "crumb") { +"Catacombs" }
+                span(className = "crumb") { +"Floor 7" }
+            }
+            div(className = "row") {
+                span(className = "field-label required") { +"Party name" }
+                span(className = "bell") { +"Invites" }
+                span(className = "more-link") { +"Hover me" }
+                span(className = "tip-chip", title = "from attr(title)") { +"attr: " }
+            }
+            div(className = "quote") { +"Generated content, styled like real elements." }
+        }
     }
 
     private val ImagesDemo = component("ImagesDemo") {

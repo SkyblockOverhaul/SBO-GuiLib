@@ -36,7 +36,7 @@ UIs can be written quickly and correctly. Differences from the web are documente
 - **Components & hooks:** function components with props, `useState`, `useEffect` (+ cleanup, timers), `useMemo`,
   `useRef`, context, keyed list reconciliation, batched re-rendering of only the changed components.
 - **CSS:** stylesheets from resources + inline `style` strings; tag/class/id/attribute selectors, combinators,
-  `:hover :active :focus :disabled :checked :not() :nth-child()` …; specificity, `!important`, inheritance, custom properties
+  `:hover :active :focus :disabled :checked :not() :nth-child()` …, `::before` / `::after`; specificity, `!important`, inheritance, custom properties
   (`var(--accent)`), `px % em rem vw vh`, `@media` queries (screen size, GUI scale). Unknown properties/values log a warning with file and line — no crashes.
 - **Layout:** box model, block flow, inline text, **flexbox** (grow/shrink/basis, wrap, gap, alignment, auto margins,
   order), **CSS grid** (`fr`, `minmax()`, `repeat(auto-fill, …)`, spans, template areas, auto-placement),

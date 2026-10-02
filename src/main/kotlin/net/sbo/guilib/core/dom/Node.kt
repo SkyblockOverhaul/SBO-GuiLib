@@ -188,6 +188,8 @@ class Element internal constructor(val tagName: String) : Node(), Selectable {
             "disabled" -> setState(PseudoState.DISABLED, value == true)
             "checked" -> setState(PseudoState.CHECKED, value == true)
         }
+        // `content: attr(…)` of ::before/::after may read it.
+        if (document?.styleEngineHasPseudoElements == true) styleChanged(false)
         document?.invalidatePaint()
     }
 
@@ -220,6 +222,7 @@ class Element internal constructor(val tagName: String) : Node(), Selectable {
         }
         childList.clear()
         childList += nodes
+        renderList = null
         var prev: Element? = null
         for (n in nodes) {
             n.parent = this
@@ -289,7 +292,52 @@ class Element internal constructor(val tagName: String) : Node(), Selectable {
             field = value; document?.invalidateLayout()
         }
 
-    override val layoutChildren: List<LayoutNode> get() = childList
+    /** Generated `::before` / `::after` boxes; not part of [children], but laid out and painted around them. */
+    internal var pseudoBefore: Element? = null
+        private set
+    internal var pseudoAfter: Element? = null
+        private set
+
+    /** For a `::before` / `::after` box: the element it belongs to (events and hit-testing go there). */
+    internal var pseudoHost: Element? = null
+
+    private var renderList: List<Node>? = null
+
+    /** Replaced elements, controls with their own content (inputs) and `<br>` get no `::before` / `::after`. */
+    internal val canHavePseudo get() = replaced == null && !internalChildren && tagName != "br"
+
+    /** [children] plus the `::before` / `::after` boxes, in layout and paint order. */
+    internal val renderChildren: List<Node>
+        get() = renderList ?: (if (pseudoBefore == null && pseudoAfter == null) childList else buildList {
+            pseudoBefore?.let(::add)
+            addAll(childList)
+            pseudoAfter?.let(::add)
+        }).also { renderList = it }
+
+    internal fun setPseudo(after: Boolean, box: Element?) {
+        val old = if (after) pseudoAfter else pseudoBefore
+        if (old === box) return
+        old?.let { it.parent = null; it.detach() }
+        if (after) pseudoAfter = box else pseudoBefore = box
+        // Attached by hand: attach() would mark styles dirty, but the host computes the box's style itself.
+        box?.parent = this
+        box?.document = document
+        box?.children?.forEach { it.document = document }
+        renderList = null
+        document?.invalidateLayout()
+    }
+
+    /** Text of a `::before` / `::after` box. */
+    internal fun setPseudoText(text: String) {
+        val current = childList.singleOrNull() as? TextNode
+        when {
+            text.isEmpty() -> if (childList.isNotEmpty()) setChildren(emptyList())
+            current != null -> current.data = text
+            else -> setChildren(listOf(TextNode(text)))
+        }
+    }
+
+    override val layoutChildren: List<LayoutNode> get() = renderChildren
     override val intrinsicWidth: Float? get() = replaced?.width
     override val intrinsicHeight: Float? get() = replaced?.height
     override val isLineBreak: Boolean get() = tagName == "br"
@@ -363,6 +411,9 @@ internal fun Node.attach(doc: Document) {
     if (this is Element) {
         styleChanged(true)
         children.forEach { it.attach(doc) }
+        // Recreated by the next style pass.
+        setPseudo(false, null)
+        setPseudo(true, null)
     }
 }
 
@@ -370,5 +421,9 @@ internal fun Node.detach() {
     val doc = document ?: return
     doc.onDetach(this)
     document = null
-    if (this is Element) children.forEach { it.detach() }
+    if (this is Element) {
+        children.forEach { it.detach() }
+        pseudoBefore?.detach()
+        pseudoAfter?.detach()
+    }
 }

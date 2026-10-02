@@ -10,11 +10,47 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
 
     private class IndexedRule(val rule: StyleRule, val selector: Selector, val origin: Origin, val order: Int)
 
-    private val byId = HashMap<String, MutableList<IndexedRule>>()
+    /** Rules bucketed by the id / class / tag of their subject, so only candidates are matched. */
+    private class RuleIndex {
+        val byId = HashMap<String, MutableList<IndexedRule>>()
+        val byClass = HashMap<String, MutableList<IndexedRule>>()
+        val byTag = HashMap<String, MutableList<IndexedRule>>()
+        val universal = ArrayList<IndexedRule>()
+
+        fun clear() {
+            byId.clear(); byClass.clear(); byTag.clear(); universal.clear()
+        }
+
+        fun add(ir: IndexedRule) {
+            val subject = ir.selector.subject.parts
+            val id = subject.firstNotNullOfOrNull { it as? SimpleSelector.Id }
+            val cls = subject.firstNotNullOfOrNull { it as? SimpleSelector.Class }
+            val tag = subject.firstNotNullOfOrNull { it as? SimpleSelector.Type }
+            when {
+                id != null -> byId.getOrPut(id.id) { ArrayList() } += ir
+                cls != null -> byClass.getOrPut(cls.name) { ArrayList() } += ir
+                tag != null -> byTag.getOrPut(tag.name) { ArrayList() } += ir
+                else -> universal += ir
+            }
+        }
+
+        inline fun forCandidates(el: Selectable, f: (List<IndexedRule>?) -> Unit) {
+            el.styleId?.let { f(byId[it]) }
+            for (c in el.styleClasses) f(byClass[c])
+            f(byTag[el.styleTag.lowercase()])
+            f(universal)
+        }
+    }
+
     private val keyframesByName = HashMap<String, Keyframes>()
-    private val byClass = HashMap<String, MutableList<IndexedRule>>()
-    private val byTag = HashMap<String, MutableList<IndexedRule>>()
-    private val universal = ArrayList<IndexedRule>()
+    private val elementRules = RuleIndex()
+    /** `::before` / `::after` rules, by pseudo-element name. */
+    private val pseudoRules = HashMap<String, RuleIndex>()
+
+    /** True if some rule targets `::[name]`. */
+    fun hasPseudoRules(name: String) = name in pseudoRules
+
+    val hasPseudoElements get() = pseudoRules.isNotEmpty()
 
     /** True if some selector tests an interactive state (`:hover` …) on an ancestor/sibling, e.g. `.card:hover .title`. */
     var dependsOnAncestorState = false
@@ -44,7 +80,8 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
     private fun rebuildIndex() {
         keyframesByName.clear()
         for (sheet in stylesheets) keyframesByName.putAll(sheet.keyframes)
-        byId.clear(); byClass.clear(); byTag.clear(); universal.clear()
+        elementRules.clear()
+        pseudoRules.clear()
         dependsOnAncestorState = false
         usesStructural = false
         var order = 0
@@ -55,16 +92,8 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
                     if (selector.compounds.dropLast(1).any { c -> c.parts.any(::involvesState) }) dependsOnAncestorState = true
                     if (selector.combinators.any { it == Combinator.NEXT_SIBLING || it == Combinator.SUBSEQUENT_SIBLING } ||
                         selector.compounds.any { c -> c.parts.any(::involvesStructure) }) usesStructural = true
-                    val subject = selector.subject.parts
-                    val id = subject.firstNotNullOfOrNull { it as? SimpleSelector.Id }
-                    val cls = subject.firstNotNullOfOrNull { it as? SimpleSelector.Class }
-                    val tag = subject.firstNotNullOfOrNull { it as? SimpleSelector.Type }
-                    when {
-                        id != null -> byId.getOrPut(id.id) { ArrayList() } += ir
-                        cls != null -> byClass.getOrPut(cls.name) { ArrayList() } += ir
-                        tag != null -> byTag.getOrPut(tag.name) { ArrayList() } += ir
-                        else -> universal += ir
-                    }
+                    val pseudo = selector.pseudoElement
+                    (if (pseudo == null) elementRules else pseudoRules.getOrPut(pseudo) { RuleIndex() }).add(ir)
                 }
                 order++
             }
@@ -90,9 +119,11 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
 
     /**
      * Returns all rules matching [el], each with its highest matching specificity. Rules inside `@media` are only
-     * considered when [ctx] is given and they match it. Exposed for tests/devtools.
+     * considered when [ctx] is given and they match it. With [pseudoElement] (`"before"`/`"after"`) the rules for that
+     * pseudo-element of [el]. Exposed for tests/devtools.
      */
-    fun matchingRules(el: Selectable, ctx: StyleContext? = null): List<Pair<StyleRule, Int>> {
+    fun matchingRules(el: Selectable, ctx: StyleContext? = null, pseudoElement: String? = null): List<Pair<StyleRule, Int>> {
+        val index = if (pseudoElement == null) elementRules else pseudoRules[pseudoElement] ?: return emptyList()
         val best = LinkedHashMap<StyleRule, Int>()
         fun consider(list: List<IndexedRule>?) {
             list ?: return
@@ -104,36 +135,31 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
                 }
             }
         }
-        el.styleId?.let { consider(byId[it]) }
-        for (c in el.styleClasses) consider(byClass[c])
-        consider(byTag[el.styleTag.lowercase()])
-        consider(universal)
+        index.forCandidates(el) { consider(it) }
         return best.entries.map { it.key to it.value }
     }
 
     /**
      * Computes the style of [el]. [inline] are the declarations from its `style` attribute,
-     * [parent] the computed style of its parent (or `null` for the root).
+     * [parent] the computed style of its parent (or `null` for the root). With [pseudoElement] the style of that
+     * pseudo-element of [el] (pass [el]'s style as [parent]).
      */
-    fun compute(el: Selectable, inline: List<Declaration>, parent: ComputedStyle?, ctx: StyleContext): ComputedStyle {
+    fun compute(el: Selectable, inline: List<Declaration>, parent: ComputedStyle?, ctx: StyleContext, pseudoElement: String? = null): ComputedStyle {
         val originOf = HashMap<StyleRule, Origin>()
         val orderOf = HashMap<StyleRule, Int>()
         // Recover origin/order for matched rules (cheap; the index keeps them per selector).
         fun remember(list: List<IndexedRule>?) = list?.forEach { originOf[it.rule] = it.origin; orderOf[it.rule] = it.order }
-        el.styleId?.let { remember(byId[it]) }
-        for (c in el.styleClasses) remember(byClass[c])
-        remember(byTag[el.styleTag.lowercase()])
-        remember(universal)
+        (if (pseudoElement == null) elementRules else pseudoRules[pseudoElement])?.forCandidates(el) { remember(it) }
 
         val matched = ArrayList<Matched>()
-        for ((rule, spec) in matchingRules(el, ctx)) {
+        for ((rule, spec) in matchingRules(el, ctx, pseudoElement)) {
             val origin = originOf.getValue(rule)
             val order = orderOf.getValue(rule)
             for (d in rule.declarations) matched += Matched(d, rank(origin, d.important), spec, order)
         }
         for (d in inline) matched += Matched(d, rank(Origin.INLINE, d.important), Int.MAX_VALUE, Int.MAX_VALUE)
         matched.sortWith(compareBy<Matched>({ it.rank }, { it.specificity }, { it.order }))
-        return computeFromCascade(matched.map { it.decl }, parent, ctx, el.styleTag)
+        return computeFromCascade(matched.map { it.decl }, parent, ctx, if (pseudoElement == null) el.styleTag else "${el.styleTag}::$pseudoElement")
     }
 
     companion object {

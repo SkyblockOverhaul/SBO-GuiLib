@@ -115,7 +115,7 @@ class Painter(private val measurer: TextMeasurer) {
 
         if (visible) {
             paintBox(el, s, rect, alpha, local)
-            if (s.pointerEvents != PointerEvents.NONE) hitRegions += HitRegion(el, rect, clip, xf)
+            if (s.pointerEvents != PointerEvents.NONE) hitRegions += HitRegion(el.pseudoHost ?: el, rect, clip, xf)
         }
 
         // Clip children to the padding box if overflow isn't visible.
@@ -147,7 +147,7 @@ class Painter(private val measurer: TextMeasurer) {
 
         if (visible) paintParagraphs(el.box, sx, sy, alpha, local, el)
 
-        for (child in el.children) {
+        for (child in el.renderChildren) {
             pose = elPose // a previous child may have painted with its own transform
             if (child is TextNode) {
                 // Text that became its own box (e.g. a flex item) carries its own paragraph.
@@ -188,7 +188,7 @@ class Painter(private val measurer: TextMeasurer) {
         inlineEl: Element, container: Element, x: Float, y: Float, clip: Rect?, alpha: Float, layers: MutableList<Layer>, xf: Transform2D,
     ) {
         if (inlineEl.style.pointerEvents != PointerEvents.NONE) registerInlineHits(inlineEl, container, x, y, clip, xf)
-        for (c in inlineEl.children) {
+        for (c in inlineEl.renderChildren) {
             if (c !is Element || !c.box.visible) continue
             if (c.box.inParagraph) paintInlineElement(c, container, x, y, clip, alpha, layers, xf)
             else paintElement(c, x + c.box.x, y + c.box.y, clip, alpha, layers, xf)
@@ -396,7 +396,7 @@ class Painter(private val measurer: TextMeasurer) {
         for (p in container.box.paragraphs) for (line in p.lines) for (f in line.fragments) {
             val owner = (f.owner as? TextNode)?.parent ?: continue
             if (!inlineEl.contains(owner)) continue
-            hitRegions += HitRegion(owner, Rect(x + p.x + f.x, y + p.y + line.y, f.width, line.height), clip, xf)
+            hitRegions += HitRegion(owner.pseudoHost ?: owner, Rect(x + p.x + f.x, y + p.y + line.y, f.width, line.height), clip, xf)
         }
     }
 

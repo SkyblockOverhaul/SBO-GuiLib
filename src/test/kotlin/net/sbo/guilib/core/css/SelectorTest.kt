@@ -106,7 +106,7 @@ class SelectorTest {
 
     @Test
     fun rejectsUnsupportedSyntax() {
-        assertThrows(IllegalArgumentException::class.java) { Selector.parse("a::after") }
+        assertThrows(IllegalArgumentException::class.java) { Selector.parse("a::selection") }
         assertThrows(IllegalArgumentException::class.java) { Selector.parse("a:nth-child(foo)") }
         assertThrows(IllegalArgumentException::class.java) { Selector.parse("a:nth-child(2n+1 of .x)") }
         assertThrows(IllegalArgumentException::class.java) { Selector.parse("> a") }

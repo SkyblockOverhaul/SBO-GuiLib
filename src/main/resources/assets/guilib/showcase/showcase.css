@@ -347,3 +347,16 @@ button.small { padding: 0 4px; }
 .hour:nth-child(even) { background-color: var(--panel-2); }
 .party-row { display: inline-block; }
 .party-head { margin-right: 4px; }
+
+/* ::before / ::after */
+.pseudo-demo .row { align-items: center; gap: 14px; margin: 6px 0; }
+.crumb + .crumb::before { content: "›"; margin: 0 5px; color: var(--muted); }
+.required::after { content: " *"; color: #e5484d; }
+.bell { position: relative; padding: 2px 6px; background-color: var(--panel-2); border-radius: 4px; }
+.bell::after { content: ""; position: absolute; top: -3px; right: -3px; width: 7px; height: 7px; border-radius: 4px; background-color: #e5484d; box-shadow: 0 0 0 1px var(--panel); }
+.more-link { color: var(--accent); }
+.more-link::after { content: " →"; opacity: 0; transition: opacity 150ms; }
+.more-link:hover::after { opacity: 1; }
+.tip-chip::after { content: attr(title); color: #ffd166; }
+.quote { position: relative; padding: 4px 8px 4px 14px; background-color: var(--panel); border-radius: 3px; }
+.quote::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: 2px; background: linear-gradient(to bottom, var(--accent), #b07bf5); }

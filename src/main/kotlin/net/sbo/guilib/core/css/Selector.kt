@@ -137,9 +137,9 @@ enum class Combinator(val css: String) { DESCENDANT(" "), CHILD(" > "), NEXT_SIB
  * A complex selector like `.list > .row:hover span`. [compounds] are in source order, the last one is the subject;
  * `combinators[i]` joins `compounds[i]` and `compounds[i + 1]`.
  */
-class Selector(val compounds: List<Compound>, val combinators: List<Combinator>) {
+class Selector(val compounds: List<Compound>, val combinators: List<Combinator>, val pseudoElement: String? = null) {
     /** (ids, classes, types) packed as `ids * 1_000_000 + classes * 1_000 + types`, compared as a single int like the web. */
-    val specificity: Int = compounds.sumOf { it.specificity }
+    val specificity: Int = compounds.sumOf { it.specificity } + if (pseudoElement != null) 1 else 0
 
     val subject get() = compounds.last()
 
@@ -175,6 +175,7 @@ class Selector(val compounds: List<Compound>, val combinators: List<Combinator>)
             if (i > 0) append(combinators[i - 1].css)
             append(c)
         }
+        if (pseudoElement != null) append("::").append(pseudoElement)
     }
 
     companion object {
@@ -252,9 +253,24 @@ object SelectorParser {
         return out
     }
 
+    /** Pseudo-elements GuiLib generates boxes for. */
+    val PSEUDO_ELEMENTS = setOf("before", "after")
+
     private fun parseComplex(raw: List<Token>): Selector {
-        val tokens = raw.dropWhile { it.type == TokenType.WHITESPACE }.dropLastWhile { it.type == TokenType.WHITESPACE }
+        var tokens = raw.dropWhile { it.type == TokenType.WHITESPACE }.dropLastWhile { it.type == TokenType.WHITESPACE }
         if (tokens.isEmpty()) throw Fail("empty selector", raw.firstOrNull())
+        // A trailing `::before` / `::after` (or the old one-colon form) applies to the subject.
+        var pseudo: String? = null
+        val last = tokens.last()
+        if (last.type == TokenType.IDENT && last.text.lowercase() in PSEUDO_ELEMENTS && tokens.getOrNull(tokens.size - 2)?.type == TokenType.COLON) {
+            pseudo = last.text.lowercase()
+            tokens = tokens.dropLast(if (tokens.getOrNull(tokens.size - 3)?.type == TokenType.COLON) 3 else 2)
+            val before = tokens.lastOrNull()
+            // `::before` alone or after a combinator (`.a > ::before`) means `*::before`.
+            if (before == null || before.type == TokenType.WHITESPACE || before.isDelim('>') || before.isDelim('+') || before.isDelim('~')) {
+                tokens = tokens + Token(TokenType.DELIM, "*", last.line, last.col)
+            }
+        }
         val compounds = ArrayList<Compound>()
         val combinators = ArrayList<Combinator>()
         var i = 0
@@ -290,7 +306,7 @@ object SelectorParser {
             }
         }
         if (pending != null && pending != Combinator.DESCENDANT) throw Fail("selector ends with a combinator", tokens.last())
-        return Selector(compounds, combinators)
+        return Selector(compounds, combinators, pseudo)
     }
 
     /** Parses one compound starting at [start]; returns it and the index after it. */
@@ -319,7 +335,7 @@ object SelectorParser {
                 t.type == TokenType.COLON -> {
                     val n = tokens.getOrNull(i + 1) ?: throw Fail("expected a pseudo-class after ':'", t)
                     when {
-                        n.type == TokenType.COLON -> throw Fail("pseudo-elements (::${tokens.getOrNull(i + 2)?.text ?: ""}) are not supported", n)
+                        n.type == TokenType.COLON -> throw Fail("pseudo-element '::${tokens.getOrNull(i + 2)?.text ?: ""}' is not supported (only ::before and ::after, at the end of a selector)", n)
                         n.type == TokenType.IDENT -> {
                             val name = n.text.lowercase()
                             parts += STATES[name]?.let { SimpleSelector.State(it) }

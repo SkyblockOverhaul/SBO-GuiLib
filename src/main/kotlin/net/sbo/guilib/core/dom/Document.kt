@@ -2,6 +2,9 @@ package net.sbo.guilib.core.dom
 
 import net.sbo.guilib.core.Log
 import net.sbo.guilib.core.css.ComputedStyle
+import net.sbo.guilib.core.css.Content
+import net.sbo.guilib.core.css.ContentPart
+import net.sbo.guilib.core.css.Display
 import net.sbo.guilib.core.css.PseudoState
 import net.sbo.guilib.core.css.StyleContext
 import net.sbo.guilib.core.css.StyleEngine
@@ -102,6 +105,7 @@ class Document(
 
     internal val styleEngineDependsOnAncestorState get() = styleEngine.dependsOnAncestorState
     internal val styleEngineUsesStructural get() = styleEngine.usesStructural
+    internal val styleEngineHasPseudoElements get() = styleEngine.hasPseudoElements
 
     init {
         body.attach(this)
@@ -328,6 +332,10 @@ class Document(
                 el.computed = next
                 forceChildren = true
             }
+            if (styleEngine.hasPseudoElements || el.pseudoBefore != null || el.pseudoAfter != null) {
+                updatePseudo(el, false, ctx)
+                updatePseudo(el, true, ctx)
+            }
         }
         val visitChildren = forceChildren || el.childStyleDirty
         el.styleDirty = false
@@ -336,6 +344,39 @@ class Document(
         if (visitChildren) {
             for (c in el.children) if (c is Element) recalc(c, el.style, forceChildren, ctx)
         }
+    }
+
+    /** Creates, updates or removes the `::before` ([after] = false) or `::after` box of [el]. */
+    private fun updatePseudo(el: Element, after: Boolean, ctx: StyleContext) {
+        val name = if (after) "after" else "before"
+        val host = el.computed
+        val style = if (host != null && styleEngine.hasPseudoRules(name) && el.canHavePseudo) {
+            styleEngine.compute(el, emptyList(), host, ctx, name)
+        } else null
+        val content = style?.content as? Content.Items
+        if (style == null || content == null || style.display == Display.NONE) {
+            el.setPseudo(after, null)
+            return
+        }
+        val box = (if (after) el.pseudoAfter else el.pseudoBefore) ?: Element("::$name").also {
+            it.pseudoHost = el
+            el.setPseudo(after, it)
+        }
+        box.setPseudoText(content.parts.joinToString("") { p ->
+            when (p) {
+                is ContentPart.Text -> p.text
+                is ContentPart.Attr -> el.styleAttribute(p.name) ?: ""
+            }
+        })
+        val old = box.computed
+        if (!style.sameAs(old)) {
+            if (style.layoutDiffers(old)) invalidateLayout() else invalidatePaint()
+            animator.onStyleComputed(box, old, style, host, ctx, animationTime())
+            box.computed = style
+        }
+        box.styleDirty = false
+        box.subtreeStyleDirty = false
+        box.childStyleDirty = false
     }
 
     // ---- focus & interaction state ----------------------------------------------------------------------------

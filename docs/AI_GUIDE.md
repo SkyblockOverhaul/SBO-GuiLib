@@ -157,8 +157,9 @@ Invalid or unsupported CSS is **skipped with a warning** (`file:line:col`, "did 
 (`button.primary:hover`), descendant (`a b`), child (`a > b`), `a + b`, `a ~ b`, lists (`a, b`);
 pseudo-classes `:hover :active :focus :focus-visible :focus-within :disabled :enabled :checked :first-child :last-child :only-child :root :not(…)`,
 `:nth-child() :nth-last-child() :nth-of-type() :nth-last-of-type()` (`odd`, `even`, `3`, `2n+1`, `-n+3`; not the `of S` form).
+**Pseudo-elements:** `::before` and `::after` (also the old `:before`/`:after`), at the end of a selector (`.crumb + .crumb::before`, `.btn:hover::after`). They need `content`: strings and `attr(name)` (e.g. `attr(title)`), `content: ""` for decorative boxes, `none`/`normal` removes the box. The box is the first/last child of the element, inline by default, inherits from it, can be positioned, sized, transitioned and animated like any element. Clicks and hover on it go to the element. Inputs, textareas, images, items and `<br>` get none. No other pseudo-elements, no `url()`/counters/quotes in `content`.
 At-rules: `@keyframes` and `@media` (nestable): comma lists, `not`/`only`, `screen`/`all`/`print`, `and`/`or`; features `width` `height` `aspect-ratio` `orientation` in GUI px, `resolution` = Minecraft's GUI scale (`min-resolution: 3dppx` or `3x`), `hover` (hover), `pointer` (fine), `prefers-reduced-motion` (no-preference), `prefers-color-scheme` (dark); `min-`/`max-` prefixes and range syntax `(400px <= width < 640px)`. Styles update when the window size or GUI scale changes.
-Not supported: pseudo-elements (`::before`), `@import`, `@font-face`, `@container`, `@supports`.
+Not supported: other pseudo-elements (`::placeholder`, `::selection`, …), `@import`, `@font-face`, `@container`, `@supports`.
 
 **Values:** `px`, `%`, `em`, `rem`, `vw`, `vh`, `vmin`, `vmax`, unitless `0`; colors `#rgb #rgba #rrggbb #rrggbbaa`,
 `rgb()/rgba()` (comma or space syntax), `hsl()/hsla()`, all CSS named colors, `transparent`, `currentColor`;
@@ -194,6 +195,7 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
   inset shadows sit inside the padding box. Transitions between shadow lists work (`inset` must match per position).
 - Interaction: `cursor` (`auto default pointer text not-allowed crosshair move ns-resize ew-resize row-resize col-resize grab grabbing`;
   while the left button is held on an element with `grab`/`grabbing`/`move`/a resize cursor, that cursor stays even when the mouse leaves it), `pointer-events`, `user-select` (parsed only)
+- Generated content: `content` (strings, `attr(name)`, `none`/`normal`; only on `::before` / `::after`)
 - Scrollbars: `scrollbar-width` (`auto thin none`), `scrollbar-color: <thumb> <track>`
 
 `font-family`: `inter` (default, bundled), `minecraft` (vanilla font; alias `monospace`), or fonts registered with
@@ -221,7 +223,7 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
 12. `border-width` default (`medium`) is 1px; like the web, a border without `border-style` draws nothing.
 13. Every positioned element (`relative/absolute/fixed`) is its own paint layer; `z-index` orders layers among siblings in the same layer. Use `portal { }` for things that must be on top of everything. `position: fixed` elements ignore their ancestors' `transform`.
 14. Not supported (yet): 3D transforms (a `transform` containing them is ignored), `repeating-*-gradient`, `conic-gradient`,
-    `:nth-child(… of S)`, pseudo-elements, float, `align-content`, `vertical-align`, letter-spacing, subgrid, named grid lines (`[name]` is ignored).
+    `:nth-child(… of S)`, pseudo-elements other than `::before`/`::after`, float, `align-content`, `vertical-align`, letter-spacing, subgrid, named grid lines (`[name]` is ignored).
     Grid: `auto-fit` behaves like `auto-fill` (empty tracks aren't collapsed); items can't be placed before line 1.
 15. Images: `src` is a resource location (`"modid:textures/x.png"`), PNG, SVG or GIF only; no URLs yet. Animated GIFs loop like in a browser (all images with the same `src` play in sync); very long GIFs are cut off after ~32M pixels of frames.
 16. Text has no kerning; `text-align: justify` behaves like `left`. No right-to-left or complex-script shaping: Arabic/Hebrew

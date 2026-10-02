@@ -89,6 +89,7 @@ enum class Prop(val css: String, val inherited: Boolean, val initial: Any?) {
 
     CURSOR("cursor", true, Cursor.AUTO),
     POINTER_EVENTS("pointer-events", true, PointerEvents.AUTO),
+    CONTENT("content", false, Content.None),
     USER_SELECT("user-select", false, UserSelect.AUTO),
     OBJECT_FIT("object-fit", false, ObjectFit.FILL),
     TRANSFORM("transform", false, emptyList<TransformFn>()),
@@ -187,6 +188,7 @@ object Properties {
         enumParser(Prop.BOX_SHADOW) { boxShadow(it) }
         enumParser(Prop.CURSOR) { single(it)?.let { v -> keyword<Cursor>(v) } }
         enumParser(Prop.POINTER_EVENTS) { single(it)?.let { v -> keyword<PointerEvents>(v) } }
+        enumParser(Prop.CONTENT) { content(it) }
         enumParser(Prop.USER_SELECT) { single(it)?.let { v -> keyword<UserSelect>(v) } }
         enumParser(Prop.OBJECT_FIT) { single(it)?.let { v -> keyword<ObjectFit>(v) } }
         enumParser(Prop.TRANSFORM) { TransformParser.transform(it) }
@@ -483,6 +485,24 @@ object Properties {
         isIdent(v, "start") || isIdent(v, "justify") -> TextAlign.LEFT
         isIdent(v, "end") -> TextAlign.RIGHT
         else -> keyword<TextAlign>(v)
+    }
+
+    private fun content(values: Values): Content? {
+        val w = words(values)
+        if (w.isEmpty()) return null
+        if (w.size == 1 && (isIdent(w[0], "none") || isIdent(w[0], "normal"))) return Content.None
+        val parts = w.map { v ->
+            val t = tok(v)
+            when {
+                t?.type == TokenType.STRING -> ContentPart.Text(t.text)
+                v is FunctionValue && v.name.equals("attr", ignoreCase = true) -> {
+                    val name = words(v.args).singleOrNull()?.let(::tok)?.takeIf { it.type == TokenType.IDENT } ?: return null
+                    ContentPart.Attr(name.text.lowercase())
+                }
+                else -> return null
+            }
+        }
+        return Content.Items(parts)
     }
 
     private fun fontFamily(values: Values): List<String>? {

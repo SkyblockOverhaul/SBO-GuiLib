@@ -77,6 +77,18 @@ enum class TextOverflow { CLIP, ELLIPSIS }
 enum class Visibility { VISIBLE, HIDDEN }
 enum class BorderStyle { NONE, HIDDEN, SOLID, DASHED, DOTTED }
 enum class PointerEvents { AUTO, NONE }
+
+/** Value of `content` (only used by `::before` / `::after`): `none`/`normal`, or strings and `attr()` references. */
+sealed interface Content {
+    data object None : Content
+    data class Items(val parts: List<ContentPart>) : Content
+}
+
+sealed interface ContentPart {
+    data class Text(val text: String) : ContentPart
+    /** `attr(name)`: the attribute of the element the pseudo-element belongs to (empty if missing). */
+    data class Attr(val name: String) : ContentPart
+}
 enum class FontStyle { NORMAL, ITALIC }
 enum class ObjectFit { FILL, CONTAIN, COVER, NONE, SCALE_DOWN }
 enum class Cursor { AUTO, DEFAULT, POINTER, TEXT, NOT_ALLOWED, CROSSHAIR, MOVE, NS_RESIZE, EW_RESIZE, ROW_RESIZE, COL_RESIZE, GRAB, GRABBING }
