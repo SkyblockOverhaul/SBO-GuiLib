@@ -247,4 +247,44 @@ class PainterTest {
         assertEquals("mymod:icons/refresh.svg", img.src)
         assertEquals(0xFFFF8800.toInt(), img.color)
     }
+
+    private fun UiRoot.boxes(color: Int) = painter.commands.filterIsInstance<PaintCommand.Box>().filter { it.background == color }
+
+    @Test
+    fun dashedBordersAreDrawnAsDashesOverTheBackground() {
+        val root = ui(".d { width: 40px; height: 10px; border: 1px dashed #ff0000; background-color: #00ff00 }") { div(className = "d") }
+        // The background reaches under the border (background-clip: border-box), so it shows in the gaps.
+        val bg = root.boxes(0xFF00FF00.toInt()).single()
+        assertEquals(40f, bg.width); assertTrue(bg.borders.all { it == 0f })
+        val dashes = root.boxes(0xFFFF0000.toInt())
+        val top = dashes.filter { it.y == 0f && it.height == 1f }.sortedBy { it.x }
+        assertTrue(top.size >= 5, "top dashes: ${top.size}")
+        assertEquals(0f, top.first().x) // a dash in each square corner
+        assertEquals(40f, top.last().x + top.last().width, 0.001f)
+        assertTrue(top.all { it.width in 2.5f..3.5f })
+        // The left side starts and ends with a gap next to the corner dashes of the top and bottom sides.
+        val left = dashes.filter { it.x == 0f && it.width == 1f && it.height < 5f }
+        assertTrue(left.isNotEmpty() && left.all { it.y > 1f && it.y + it.height < 9f })
+    }
+
+    @Test
+    fun dottedBordersAreRoundDots() {
+        val root = ui(".d { width: 40px; height: 10px; border-bottom: 2px dotted #ff0000 }") { div(className = "d") }
+        val dots = root.boxes(0xFFFF0000.toInt())
+        assertTrue(dots.size >= 8, "dots: ${dots.size}")
+        assertTrue(dots.all { it.width == 2f && it.height == 2f && it.y == 8f && it.radii.all { r -> r == 1f } })
+    }
+
+    @Test
+    fun roundedDashedBordersGetSolidCornerArcs() {
+        val root = ui(".d { width: 40px; height: 20px; border: 1px dashed #ff0000; border-radius: 4px }") { div(className = "d") }
+        val clips = root.painter.commands.filterIsInstance<PaintCommand.PushClip>().map { it.rect }
+        assertEquals(4, clips.size) // one corner quadrant each
+        assertEquals(net.sbo.guilib.core.dom.Rect(0f, 0f, 4f, 4f), clips[0])
+        val arcs = root.boxes(net.sbo.guilib.core.css.Colors.TRANSPARENT).filter { it.hasRadius }
+        assertEquals(4, arcs.size)
+        assertTrue(arcs.all { a -> a.borders.all { it == 1f } && a.borderColors.all { it == 0xFFFF0000.toInt() } })
+        val top = root.boxes(0xFFFF0000.toInt()).filter { it.y == 0f }
+        assertTrue(top.all { it.x > 4f && it.x + it.width < 36f }) // the straight part between the arcs
+    }
 }

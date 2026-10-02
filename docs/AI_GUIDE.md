@@ -181,7 +181,7 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
 
 **Properties:**
 - Box: `width height min-width min-height max-width max-height box-sizing margin(-*) padding(-*)`
-- Border: `border border-(top|right|bottom|left) border-width border-style border-color border-*-width/-style/-color border-radius border-*-radius` (styles `solid`; `dashed/dotted` draw solid)
+- Border: `border border-(top|right|bottom|left) border-width border-style border-color border-*-width/-style/-color border-radius border-*-radius` (styles `none` `hidden` `solid` `dashed` `dotted`; dashes are 3× the width with stretched gaps and a dash in each square corner like Chrome, dots are round from 2px; with `border-radius` a uniform dashed border gets solid corner arcs, a dotted one dots along the arc; the background shows through the gaps)
 - Layout: `display` (`block inline inline-block flex inline-flex grid inline-grid none`), `position` (`static relative absolute fixed`), `top right bottom left inset z-index overflow overflow-x overflow-y`
 - Inline: `vertical-align` (`baseline sub super text-top text-bottom middle top bottom`, a length, or a % of the line height) for `inline-block` / `inline-flex` / `img` / `item` boxes, and on `display: inline` elements (`span`, `sub`, `sup`, …) to raise or lower their text (shifts add up when nested; the line grows to fit)
 - Flexbox: `flex flex-direction flex-wrap flex-flow flex-grow flex-shrink flex-basis justify-content align-items align-self align-content place-items place-content gap row-gap column-gap order` (`align-content` moves the lines of a wrapping container with a fixed cross size; default `normal` stretches them, like the web)

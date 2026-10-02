@@ -173,6 +173,7 @@ button.primary:hover { background-color: #6f9cf2; }
     background-color: var(--accent);
 }
 .demo-box.outline { background-color: transparent; border: 1px solid #b16cea; }
+.demo-box.drop-zone { width: 80px; background-color: #ffffff0a; border: 1px dashed var(--guilib-text-subtle); border-radius: 4px; color: var(--guilib-text-muted); }
 
 .svg-small { width: 16px; height: 16px; }
 .svg-big { width: 48px; height: 48px; }

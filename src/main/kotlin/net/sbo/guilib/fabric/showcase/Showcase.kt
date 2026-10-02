@@ -405,6 +405,15 @@ object Showcase {
             div(className = "demo-box", style = "border-radius: 6px; opacity: 0.4") { +"opacity" }
             div(className = "demo-box", style = "border-radius: 6px; background-color: rgba(91, 141, 239, 0.35); border: 1px solid #5b8def") { +"rgba" }
         }
+        h3 { +"Border styles" }
+        div(className = "box-grid") {
+            div(className = "demo-box outline", style = "border-style: dashed") { +"dashed" }
+            div(className = "demo-box outline", style = "border: 2px dashed #ffd166; border-radius: 6px") { +"2px round" }
+            div(className = "demo-box outline", style = "border-style: dotted") { +"dotted" }
+            div(className = "demo-box outline", style = "border: 3px dotted #06d6a0; border-radius: 10px") { +"3px round" }
+            div(className = "demo-box", style = "border-radius: 0; background-color: #5b8def33; border-bottom: 2px dashed #5b8def") { +"bottom" }
+            div(className = "demo-box drop-zone") { +"Drop here" }
+        }
         h3 { +"Gradients" }
         div(className = "box-grid") {
             div(className = "demo-box grad", style = "background: linear-gradient(to right, #5b8def, #b16cea)") { +"linear" }

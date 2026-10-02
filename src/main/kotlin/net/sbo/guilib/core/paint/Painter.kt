@@ -1,6 +1,7 @@
 package net.sbo.guilib.core.paint
 
 import net.sbo.guilib.core.css.BackgroundLayer
+import net.sbo.guilib.core.css.BorderStyle
 import net.sbo.guilib.core.css.BoxShadow
 import net.sbo.guilib.core.css.Colors
 import net.sbo.guilib.core.css.ComputedStyle
@@ -18,6 +19,7 @@ import net.sbo.guilib.core.layout.LayoutBox
 import net.sbo.guilib.core.layout.Paragraph
 import net.sbo.guilib.core.layout.TextStyle
 import net.sbo.guilib.core.layout.TextMeasurer
+import kotlin.math.roundToInt
 
 /**
  * Turns a laid-out element tree into [PaintCommand]s and [HitRegion]s.
@@ -227,17 +229,22 @@ class Painter(private val measurer: TextMeasurer) {
     /** Shadows, background and border of the border box [r] (already mapped through [xf]). */
     private fun decorate(s: ComputedStyle, r: Rect, borders: FloatArray, radii: FloatArray, alpha: Float, xf: Transform2D) {
         val bg = Colors.withOpacity(s.backgroundColor, alpha)
-        val hasBorder = borders.any { it > 0f }
         val borderColors = intArrayOf(
             Colors.withOpacity(s.borderTopColor, alpha), Colors.withOpacity(s.borderRightColor, alpha),
             Colors.withOpacity(s.borderBottomColor, alpha), Colors.withOpacity(s.borderLeftColor, alpha),
         )
+        // Dashed/dotted sides are drawn on their own after the box; the background reaches under them (border-box).
+        val styles = arrayOf(s.borderTopStyle, s.borderRightStyle, s.borderBottomStyle, s.borderLeftStyle)
+        val broken = BooleanArray(4) { borders[it] > 0f && (styles[it] == BorderStyle.DASHED || styles[it] == BorderStyle.DOTTED) }
+        val anyBroken = broken.any { it }
+        val solid = if (anyBroken) FloatArray(4) { if (broken[it]) 0f else borders[it] } else borders
+        val hasBorder = solid.any { it > 0f }
         val shadows = s.boxShadow
         // Outer shadows go under the box; the first shadow in the list is on top, so paint the list backwards.
         if (shadows.isNotEmpty()) for (sh in shadows.asReversed()) if (!sh.inset) emitShadow(sh, r, radii, alpha, xf)
         val layers = s.backgroundLayers
         if (layers.isEmpty()) {
-            if (Colors.alpha(bg) > 0 || hasBorder) emit(PaintCommand.Box(r.x, r.y, r.width, r.height, bg, radii, borders, borderColors))
+            if (Colors.alpha(bg) > 0 || hasBorder) emit(PaintCommand.Box(r.x, r.y, r.width, r.height, bg, radii, solid, borderColors))
         } else {
             // CSS order: background-color, then the image layers from last to first, then the border on top.
             if (Colors.alpha(bg) > 0) emit(PaintCommand.Box(r.x, r.y, r.width, r.height, bg, radii, FloatArray(4), IntArray(4)))
@@ -247,8 +254,9 @@ class Painter(private val measurer: TextMeasurer) {
                 is BackgroundLayer.Gradient ->
                     emit(PaintCommand.Gradient(r.x, r.y, r.width, r.height, GradientMesh.cached(layer, r.width, r.height, alpha), radii))
             }
-            if (hasBorder) emit(PaintCommand.Box(r.x, r.y, r.width, r.height, Colors.TRANSPARENT, radii, borders, borderColors))
+            if (hasBorder) emit(PaintCommand.Box(r.x, r.y, r.width, r.height, Colors.TRANSPARENT, radii, solid, borderColors))
         }
+        if (anyBroken) emitBrokenBorders(r, borders, borderColors, styles, broken, radii)
         // Inset shadows sit inside the padding box, above the background (the border doesn't overlap them).
         if (shadows.any { it.inset }) {
             val pad = Rect(r.x + borders[3], r.y + borders[0], r.width - borders[1] - borders[3], r.height - borders[0] - borders[2])
@@ -257,6 +265,88 @@ class Painter(private val measurer: TextMeasurer) {
                 (radii[2] - maxOf(borders[2], borders[1])).coerceAtLeast(0f), (radii[3] - maxOf(borders[2], borders[3])).coerceAtLeast(0f),
             )
             if (pad.width > 0f && pad.height > 0f) for (sh in shadows.asReversed()) if (sh.inset) emitShadow(sh, pad, inner, alpha, xf)
+        }
+    }
+
+    /**
+     * Dashed and dotted sides of the border box [r], like browsers: a dash (dot) in each square corner, whole dashes
+     * with stretched gaps in between. When all four sides are the same dashed border, rounded corners are drawn as
+     * solid arcs (each arc is the corner's dash) and dotted corners get dots along the arc. Other rounded corners stay
+     * open, like solid borders with different sides.
+     */
+    private fun emitBrokenBorders(r: Rect, w: FloatArray, colors: IntArray, styles: Array<BorderStyle>, broken: BooleanArray, radii: FloatArray) {
+        val uniform = (0 until 4).all { broken[it] && w[it] == w[0] && colors[it] == colors[0] && styles[it] == styles[0] }
+        val x0 = r.x
+        val y0 = r.y
+        val x1 = r.right
+        val y1 = r.bottom
+        fun rect(x: Float, y: Float, rw: Float, rh: Float, color: Int, round: Float) =
+            emit(PaintCommand.Box(x, y, rw, rh, color, FloatArray(4) { round }, FloatArray(4), IntArray(4)))
+        fun dotRadius(ws: Float) = if (ws >= 2f) ws / 2f else 0f // thin dots stay square, like browsers
+
+        for (side in 0 until 4) {
+            val color = colors[side]
+            if (!broken[side] || Colors.alpha(color) == 0) continue
+            val ws = w[side]
+            val dotted = styles[side] == BorderStyle.DOTTED
+            val horizontal = side == 0 || side == 2
+            // Along the side: top/bottom left to right, left/right top to bottom.
+            val rStart = if (side == 2) radii[3] else if (side == 1) radii[1] else radii[0]
+            val rEnd = when (side) { 0 -> radii[1]; 1, 2 -> radii[2]; else -> radii[3] }
+            val adjStart = if (horizontal) w[3] else w[0]
+            val adjEnd = if (horizontal) w[1] else w[2]
+            // Top and bottom own the square corners; left and right fit between their corner dashes.
+            val dashAtStart = rStart <= 0f && (horizontal || adjStart <= 0f)
+            val dashAtEnd = rEnd <= 0f && (horizontal || adjEnd <= 0f)
+            val a = (if (horizontal) x0 else y0) + if (rStart > 0f) rStart else if (dashAtStart) 0f else adjStart
+            val b = (if (horizontal) x1 else y1) - if (rEnd > 0f) rEnd else if (dashAtEnd) 0f else adjEnd
+            val dash = if (dotted) ws else 3f * ws
+            val slots = BorderDashes.slots(b - a, dash, if (dotted) ws else 3f * ws, dashAtStart, dashAtEnd)
+            val across = when (side) { 0 -> y0; 1 -> x1 - ws; 2 -> y1 - ws; else -> x0 }
+            for (i in 0 until slots.size / 2) {
+                var start = a + slots[2 * i]
+                var len = slots[2 * i + 1]
+                if (dotted) { start += (len - ws) / 2f; len = ws } // dots keep their size, only the gaps stretch
+                val round = if (dotted) dotRadius(ws) else 0f
+                if (horizontal) rect(start, across, len, ws, color, round) else rect(across, start, ws, len, color, round)
+            }
+        }
+        if (!uniform || Colors.alpha(colors[0]) == 0) return
+        val ws = w[0]
+        val color = colors[0]
+        if (styles[0] == BorderStyle.DOTTED) {
+            // Dots along the middle of each rounded corner's border.
+            for (corner in 0 until 4) {
+                val rad = radii[corner]
+                if (rad <= 0f) continue
+                val cx = if (corner == 0 || corner == 3) x0 + rad else x1 - rad
+                val cy = if (corner < 2) y0 + rad else y1 - rad
+                val rc = (rad - ws / 2f).coerceAtLeast(0f)
+                val n = maxOf(1, (Math.PI / 2 * rc / (2f * ws)).roundToInt())
+                val from = when (corner) { 0 -> Math.PI; 1 -> 1.5 * Math.PI; 2 -> 0.0; else -> 0.5 * Math.PI }
+                for (i in 0 until n) {
+                    val t = from + Math.PI / 2 * (i + 0.5) / n
+                    val px = cx + rc * kotlin.math.cos(t).toFloat()
+                    val py = cy + rc * kotlin.math.sin(t).toFloat()
+                    rect(px - ws / 2f, py - ws / 2f, ws, ws, color, dotRadius(ws))
+                }
+            }
+        } else if (pose == null) {
+            // Solid arcs: a box with just that rounded corner and a uniform border, clipped to the corner square.
+            // Clips are screen-space, so rotated or skewed boxes keep open corners.
+            for (corner in 0 until 4) {
+                val rad = radii[corner]
+                if (rad <= 0f) continue
+                val size = rad + 2f * ws + 2f
+                val left = corner == 0 || corner == 3
+                val top = corner < 2
+                emit(PaintCommand.PushClip(Rect(if (left) x0 else x1 - rad, if (top) y0 else y1 - rad, rad, rad)))
+                val cr = FloatArray(4).also { it[corner] = rad }
+                val bx = if (left) x0 else x1 - size
+                val by = if (top) y0 else y1 - size
+                emit(PaintCommand.Box(bx, by, size, size, Colors.TRANSPARENT, cr, FloatArray(4) { ws }, IntArray(4) { color }))
+                emit(PaintCommand.PopClip)
+            }
         }
     }
 

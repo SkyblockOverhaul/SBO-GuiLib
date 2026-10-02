@@ -57,6 +57,9 @@ class ComputedStyle internal constructor(
     val borderBottomColor get() = values[Prop.BORDER_BOTTOM_COLOR.ordinal] as Int
     val borderLeftColor get() = values[Prop.BORDER_LEFT_COLOR.ordinal] as Int
     val borderTopStyle get() = values[Prop.BORDER_TOP_STYLE.ordinal] as BorderStyle
+    val borderRightStyle get() = values[Prop.BORDER_RIGHT_STYLE.ordinal] as BorderStyle
+    val borderBottomStyle get() = values[Prop.BORDER_BOTTOM_STYLE.ordinal] as BorderStyle
+    val borderLeftStyle get() = values[Prop.BORDER_LEFT_STYLE.ordinal] as BorderStyle
     val borderTopLeftRadius get() = dim(Prop.BORDER_TOP_LEFT_RADIUS)
     val borderTopRightRadius get() = dim(Prop.BORDER_TOP_RIGHT_RADIUS)
     val borderBottomRightRadius get() = dim(Prop.BORDER_BOTTOM_RIGHT_RADIUS)
