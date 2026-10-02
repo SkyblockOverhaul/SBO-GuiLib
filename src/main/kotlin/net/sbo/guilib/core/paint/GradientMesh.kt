@@ -52,6 +52,18 @@ object GradientMesh {
     /** A polygon vertex with its gradient parameter `t` (0..1 along the gradient line/ray). */
     private data class V(val x: Float, val y: Float, val t: Float)
 
+    private data class Key(val g: BackgroundLayer.Gradient, val w: Float, val h: Float, val alpha: Float)
+
+    /** Recently used meshes: a repaint (scrolling, another element animating) reuses them instead of rebuilding. */
+    private val cache = object : LinkedHashMap<Key, ColorMesh>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Key, ColorMesh>?) = size > CACHE_SIZE
+    }
+    const val CACHE_SIZE = 128
+
+    /** The mesh of [g] in a [w]×[h] box at the origin (0, 0), cached. Meshes are shared: never modify them. */
+    fun cached(g: BackgroundLayer.Gradient, w: Float, h: Float, alpha: Float): ColorMesh =
+        cache.getOrPut(Key(g, w, h, alpha)) { build(g, 0f, 0f, w, h, alpha) }
+
     fun build(g: BackgroundLayer.Gradient, x: Float, y: Float, w: Float, h: Float, alpha: Float): ColorMesh = when {
         g.conic -> conic(g, x, y, w, h, alpha)
         g.radial -> radial(g, x, y, w, h, alpha)

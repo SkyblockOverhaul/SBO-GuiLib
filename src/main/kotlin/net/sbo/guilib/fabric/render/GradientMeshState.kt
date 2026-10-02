@@ -40,14 +40,15 @@ class GradientMeshState(
     }
 
     override fun buildVertices(consumer: VertexConsumer) {
-        val cx = x + w / 2f
-        val cy = y + h / 2f
+        // Mesh coordinates are relative to the box.
+        val cx = w / 2f
+        val cy = h / 2f
         val hx = (w / 2f * 8f).roundToInt()
         val hy = (h / 2f * 8f).roundToInt()
         fun v(i: Int) {
             val px = mesh.x[i]
             val py = mesh.y[i]
-            consumer.addVertexWith2DPose(pose, px, py)
+            consumer.addVertexWith2DPose(pose, x + px, y + py)
                 .setColor(mesh.color[i])
                 .setUv(px - cx, py - cy)
                 .setUv1(hx, hy)

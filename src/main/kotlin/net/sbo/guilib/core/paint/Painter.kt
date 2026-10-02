@@ -245,7 +245,7 @@ class Painter(private val measurer: TextMeasurer) {
                 is BackgroundLayer.Url ->
                     emit(PaintCommand.Image(r.x, r.y, r.width, r.height, layer.src, net.sbo.guilib.core.css.ObjectFit.FILL, alpha, radii))
                 is BackgroundLayer.Gradient ->
-                    emit(PaintCommand.Gradient(r.x, r.y, r.width, r.height, GradientMesh.build(layer, r.x, r.y, r.width, r.height, alpha), radii))
+                    emit(PaintCommand.Gradient(r.x, r.y, r.width, r.height, GradientMesh.cached(layer, r.width, r.height, alpha), radii))
             }
             if (hasBorder) emit(PaintCommand.Box(r.x, r.y, r.width, r.height, Colors.TRANSPARENT, radii, borders, borderColors))
         }

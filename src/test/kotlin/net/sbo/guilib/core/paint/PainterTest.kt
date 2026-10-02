@@ -213,4 +213,28 @@ class PainterTest {
         root.input.keyDown("Tab", 258, net.sbo.guilib.core.event.Modifiers(shift = true))
         assertEquals("one", root.document.focusedElement?.className)
     }
+
+    @Test
+    fun gradientMeshesAreBoxRelativeAndReused() {
+        val root = ui(".g { width: 40px; height: 10px; background-image: linear-gradient(90deg, red, blue) } .h { width: 30px; height: 10px; background-image: linear-gradient(90deg, red, blue) }") {
+            div(className = "g")
+            div(className = "g", style = "margin-left: 50px")
+            div(className = "h")
+        }
+        val grads = root.painter.commands.filterIsInstance<PaintCommand.Gradient>()
+        assertEquals(3, grads.size)
+        // Same gradient and size at another place: the same mesh, relative to the box.
+        assertTrue(grads[0].mesh === grads[1].mesh)
+        assertEquals(50f, grads[1].x - grads[0].x, 0.01f)
+        assertEquals(0f, grads[1].mesh.x.min(), 0.01f)
+        assertEquals(40f, grads[1].mesh.x.max(), 0.01f)
+        assertEquals(10f, grads[1].mesh.y.max(), 0.01f)
+        // Another size is another mesh.
+        assertTrue(grads[2].mesh !== grads[0].mesh)
+        assertEquals(30f, grads[2].mesh.x.max(), 0.01f)
+        // A repaint reuses it.
+        root.document.body.querySelector(".h")!!.inlineStyle = "opacity: 1"
+        root.frame(200f, 100f)
+        assertTrue(root.painter.commands.filterIsInstance<PaintCommand.Gradient>()[0].mesh === grads[0].mesh)
+    }
 }

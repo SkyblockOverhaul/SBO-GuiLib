@@ -53,7 +53,8 @@ sealed interface PaintCommand {
 
     /**
      * A gradient (or any smoothly colored shape) as colored triangles, clipped to the box [x], [y], [width], [height]
-     * with rounded corners [radii].
+     * with rounded corners [radii]. The [mesh] is relative to the box's top-left corner (so it can be reused when the
+     * box moves) and may be shared between commands.
      */
     class Gradient(
         val x: Float, val y: Float, val width: Float, val height: Float,
