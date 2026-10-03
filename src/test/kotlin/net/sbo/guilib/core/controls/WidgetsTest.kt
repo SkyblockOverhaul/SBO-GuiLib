@@ -355,7 +355,9 @@ class WidgetsTest {
         assertEquals(1, root.overlay(".guilib-select-menu").size)
         assertTrue(root.overlay(".guilib-option")[0].classList.contains("selected"))
         val shown = root.document.body.querySelector(".guilib-select-value")!!
-        assertEquals("Trophy, Water", (shown.children.single() as TextNode).data)
+        // One span per chosen entry (each keeps its option's class), joined with ", ".
+        fun text(n: net.sbo.guilib.core.dom.Node): String = if (n is TextNode) n.data else (n as Element).children.joinToString("") { text(it) }
+        assertEquals("Trophy, Water", text(shown))
         root.click(root.overlay(".guilib-option")[0])
         assertEquals(listOf("water"), values)
         // A click outside closes it.

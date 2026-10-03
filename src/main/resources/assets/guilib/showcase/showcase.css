@@ -279,6 +279,13 @@ button.primary:hover { background-color: #6f9cf2; }
 
 .color-preview { width: 120px; height: 60px; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-weight: bold; text-shadow: 1px 1px #0008; }
 
+/* ---- per-option classes (select / multiSelect) ---- */
+.rarity-uncommon { color: #55ff55; }
+.rarity-rare { color: #5555ff; }
+.rarity-epic { color: #aa00aa; }
+.rarity-legendary { color: #ffaa00; }
+.rarity-mythic { color: #ff55ff; }
+
 /* ---- currentColor icons ---- */
 .icon-btn img { width: 9px; height: 9px; }
 .icon-btn.light { background-color: #f0f2f4; border-color: #d1d9e0; color: #1f2328; }

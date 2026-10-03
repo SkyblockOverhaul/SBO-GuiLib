@@ -223,6 +223,7 @@ object Showcase {
         var floor by useState("m7")
         var fishing by useState(listOf("trophy", "lava"))
         var cats by useState(listOf<String>())
+        var loot by useState(listOf("chimera", "warden", "judgement"))
         var item by useState<String?>(null)
         var kills by useState(5000 to 20000)
         var mp by useState(1200)
@@ -259,6 +260,18 @@ object Showcase {
             multiSelect(values = cats, onChange = { cats = it }, placeholder = "All categories", searchable = true) {
                 option("dungeons", "Dungeons"); option("kuudra", "Kuudra"); option("fishing", "Fishing")
                 option("diana", "Diana"); option("slayer", "Slayer"); option("mining", "Mining")
+            }
+        }
+        div(className = "form-row") {
+            span(className = "form-label") { +"Loot" }
+            // className per option colors the entry in the menu and its name in the box.
+            multiSelect(values = loot, onChange = { loot = it }, placeholder = "Any drop", className = "loot-select") {
+                option("chimera", "Chimera I", className = "rarity-mythic")
+                option("shard", "Shard of the Shredded", className = "rarity-legendary")
+                option("warden", "Warden Heart", className = "rarity-legendary")
+                option("overflux", "Overflux Capacitor", className = "rarity-epic")
+                option("judgement", "Judgement Core", className = "rarity-rare")
+                option("scythe", "Scythe Blade", className = "rarity-uncommon", title = "Drops from Revenant Horror")
             }
         }
         div(className = "form-row") {

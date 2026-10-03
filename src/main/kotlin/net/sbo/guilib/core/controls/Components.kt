@@ -15,8 +15,18 @@ import net.sbo.guilib.core.event.KeyboardEvent
 import net.sbo.guilib.core.event.UIEvent
 
 /** One entry of a `select`. [label] may contain `§` color codes. */
-/** An entry of a select, radio group, segmented control or chips; [title] is its hover text. */
-data class SelectOption(val value: String, val label: String, val disabled: Boolean = false, val title: String? = null)
+/**
+ * An entry of a select, radio group, segmented control or chips; [title] is its hover text, [className] / [style] go on
+ * the entry (and, in a select, on its label in the box while chosen).
+ */
+data class SelectOption(
+    val value: String,
+    val label: String,
+    val disabled: Boolean = false,
+    val title: String? = null,
+    val className: String? = null,
+    val style: String? = null,
+)
 
 internal data class SelectProps(
     val value: String?,
@@ -135,10 +145,15 @@ internal val SelectComponent = component<SelectProps>("Select") { p ->
             e.preventDefault()
         } else menuKey(e)
     }
-    val label = p.options.filter { isSelected(it) }.joinToString(", ") { it.label }
+    val chosen = p.options.filter { isSelected(it) }
     element("select", null, p.id, classNames("multiple" to p.multiple, p.className), p.style, ref, attrs, handlers) {
-        span(className = if (label.isEmpty()) "guilib-select-value guilib-placeholder" else "guilib-select-value") {
-            +label.ifEmpty { p.placeholder ?: "" }
+        span(className = if (chosen.isEmpty()) "guilib-select-value guilib-placeholder" else "guilib-select-value") {
+            if (chosen.isEmpty()) +(p.placeholder ?: "")
+            // One span per chosen entry, so each keeps the option's class / style (e.g. colored item names).
+            chosen.forEachIndexed { i, o ->
+                if (i > 0) +", "
+                span(key = o.value, className = classNames("guilib-select-chosen", o.className), style = o.style) { +o.label }
+            }
         }
         span(className = "guilib-select-arrow") { +"▾" }
     }
@@ -169,7 +184,8 @@ internal val SelectComponent = component<SelectProps>("Select") { p ->
                         div(
                             key = o.value,
                             title = o.title,
-                            className = classNames("guilib-option", "selected" to isSelected(o), "highlighted" to (i == highlighted), "disabled" to o.disabled),
+                            className = classNames("guilib-option", "selected" to isSelected(o), "highlighted" to (i == highlighted), "disabled" to o.disabled, o.className),
+                            style = o.style,
                             onMouseEnter = { highlighted = i },
                             onClick = { choose(o) },
                         ) {

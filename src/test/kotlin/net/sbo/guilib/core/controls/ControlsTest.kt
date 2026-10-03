@@ -17,6 +17,7 @@ import net.sbo.guilib.core.dsl.checkbox
 import net.sbo.guilib.core.dsl.div
 import net.sbo.guilib.core.dsl.input
 import net.sbo.guilib.core.dsl.modal
+import net.sbo.guilib.core.dsl.multiSelect
 import net.sbo.guilib.core.dsl.select
 import net.sbo.guilib.core.css.Display
 import net.sbo.guilib.core.event.Modifiers
@@ -453,5 +454,39 @@ class ControlsTest {
         // The tooltip's portal comes after the menu's, so it is drawn on top of the open menu.
         val portals = root.document.overlayRoot.children.filterIsInstance<Element>()
         assertTrue(portals.indexOfFirst { it.querySelector(".guilib-tooltip") != null } > portals.indexOfFirst { it.querySelector(".guilib-select-menu") != null })
+    }
+
+    @Test
+    fun selectOptionsCarryTheirClassAndStyleIntoTheMenuAndTheBox() {
+        val root = ui {
+            div {
+                select(value = "hyp", onChange = {}) {
+                    option("hyp", "Hyperion", className = "legendary")
+                    option("aote", "Aspect of the End", style = "color: #5555ff")
+                }
+                multiSelect(values = listOf("hyp", "aote"), onChange = {}) {
+                    option("hyp", "Hyperion", className = "legendary")
+                    option("term", "Terminator", className = "legendary")
+                    option("aote", "Aspect of the End", style = "color: #5555ff")
+                }
+            }
+        }
+        val (single, multi) = root.document.body.querySelectorAll("select")
+        // The chosen entries in the box keep their class / style, one span each.
+        val chosen = single.querySelectorAll(".guilib-select-chosen")
+        assertEquals(1, chosen.size)
+        assertTrue(chosen[0].classList.contains("legendary"))
+        val chosenMulti = multi.querySelectorAll(".guilib-select-chosen")
+        assertEquals(listOf("Hyperion", "Aspect of the End"), chosenMulti.map { (it.children.single() as TextNode).data })
+        assertTrue(chosenMulti[0].classList.contains("legendary"))
+        assertEquals(0xFF5555FF.toInt(), chosenMulti[1].style.color)
+        fun text(n: net.sbo.guilib.core.dom.Node): String = if (n is TextNode) n.data else (n as Element).children.joinToString("") { text(it) }
+        assertEquals("Hyperion, Aspect of the End", text(multi.querySelector(".guilib-select-value")!!))
+        // In the open menu.
+        root.click(multi)
+        val options = root.document.overlayRoot.querySelectorAll(".guilib-option")
+        assertTrue(options[0].classList.contains("legendary") && options[0].classList.contains("selected"))
+        assertTrue(options[1].classList.contains("legendary"))
+        assertEquals(0xFF5555FF.toInt(), options[2].style.color)
     }
 }

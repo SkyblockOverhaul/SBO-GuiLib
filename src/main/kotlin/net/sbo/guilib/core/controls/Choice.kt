@@ -98,9 +98,9 @@ internal val ChoiceComponent = component<ChoiceProps>("Choice") { p ->
                     }
                 }
             }
-            val cls = if (p.segmented) classNames(OPTION_MARK, "guilib-segment", "selected" to selected, "disabled" to off)
-            else classNames(OPTION_MARK, "guilib-radio", "checked" to selected, "disabled" to off)
-            element("div", o.value, null, cls, null, null, attrs, handlers) {
+            val cls = if (p.segmented) classNames(OPTION_MARK, "guilib-segment", "selected" to selected, "disabled" to off, o.className)
+            else classNames(OPTION_MARK, "guilib-radio", "checked" to selected, "disabled" to off, o.className)
+            element("div", o.value, null, cls, o.style, null, attrs, handlers) {
                 if (!p.segmented) span(className = "guilib-radio-dot")
                 span(className = if (p.segmented) "guilib-segment-label" else "guilib-radio-label") { +o.label }
             }
@@ -136,7 +136,7 @@ internal val ChipsComponent = component<ChipsProps>("Chips") { p ->
                     p.onChange?.invoke(p.options.map { it.value }.filter { it in set })
                 }
             }
-            element("div", o.value, null, classNames("guilib-chip", "selected" to selected, "disabled" to off), null, null, attrs, handlers) {
+            element("div", o.value, null, classNames("guilib-chip", "selected" to selected, "disabled" to off, o.className), o.style, null, attrs, handlers) {
                 span(className = "guilib-chip-check") { +"✓" }
                 span { +o.label }
             }

@@ -38,15 +38,25 @@ import net.sbo.guilib.core.event.UIEvent
 class SelectBuilder {
     internal val options = ArrayList<SelectOption>()
 
-    /** An entry: `option("easy") { +"Easy" }`. [title] is shown as a tooltip while hovering the entry. */
-    fun option(value: String, disabled: Boolean = false, title: String? = null, label: NodeBuilder.() -> Unit) {
+    /**
+     * An entry: `option("easy") { +"Easy" }`. [title] is shown as a tooltip while hovering the entry; [className] and
+     * [style] go on the entry and, in a select, on its label in the box while chosen (`style = "color: #ffaa00"`).
+     */
+    fun option(
+        value: String,
+        disabled: Boolean = false,
+        title: String? = null,
+        className: String? = null,
+        style: String? = null,
+        label: NodeBuilder.() -> Unit,
+    ) {
         val text = NodeBuilder().apply(label).nodes.filterIsInstance<VText>().joinToString("") { it.text }
-        options += SelectOption(value, text, disabled, title)
+        options += SelectOption(value, text, disabled, title, className, style)
     }
 
-    /** An entry with a plain label: `option("easy", "Easy", title = "For new players")`. */
-    fun option(value: String, label: String, disabled: Boolean = false, title: String? = null) {
-        options += SelectOption(value, label, disabled, title)
+    /** An entry with a plain label: `option("hyp", "Hyperion", title = "Wither blade", className = "legendary")`. */
+    fun option(value: String, label: String, disabled: Boolean = false, title: String? = null, className: String? = null, style: String? = null) {
+        options += SelectOption(value, label, disabled, title, className, style)
     }
 }
 
