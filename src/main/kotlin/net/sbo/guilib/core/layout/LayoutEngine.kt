@@ -148,7 +148,14 @@ class LayoutEngine(val measurer: TextMeasurer) {
         val ih = node.intrinsicHeight
         // min/max-height clamp the specified height before the children see it (they size against the clamped value).
         val specH = specifiedHeight(node, cbHeight)?.let { clampHeight(node, it, cbHeight) }
+        // aspect-ratio (non-replaced boxes; images keep their own ratio). It applies to the box-sizing box.
+        val ratio = if (node.textContent == null && iw == null) s.aspectRatio else null
+        val contentBoxRatio = s.boxSizing == BoxSizing.CONTENT_BOX
         var width = forcedWidth ?: specifiedWidth(node, cbWidth) ?: when {
+            ratio != null && (forcedHeight ?: specH) != null -> {
+                val h = forcedHeight ?: specH!!
+                if (contentBoxRatio) (h - pbV) * ratio + pbH else h * ratio
+            }
             iw != null -> {
                 // Replaced element: keep the aspect ratio if only the height is given.
                 val contentH = specH?.let { it - pbV }
@@ -168,7 +175,10 @@ class LayoutEngine(val measurer: TextMeasurer) {
         box.width = maxOf(width, pbH)
         val contentWidth = box.contentWidth
 
-        val definiteHeight = forcedHeight ?: specH
+        val ratioHeight = if (ratio != null && forcedHeight == null && specH == null) {
+            clampHeight(node, if (contentBoxRatio) (box.width - pbH) / ratio + pbV else box.width / ratio, cbHeight)
+        } else null
+        val definiteHeight = forcedHeight ?: specH ?: ratioHeight
         val contentHeightDef = definiteHeight?.let { maxOf(it - pbV, 0f) }
 
         val establishesCb = node === root || (node.textContent == null && s.position != Position.STATIC)
@@ -185,6 +195,8 @@ class LayoutEngine(val measurer: TextMeasurer) {
         }
 
         var height = definiteHeight ?: ((node.rows?.let { it * rowHeight(s) } ?: contentHeight) + pbV)
+        // Like the web (min-height: auto), a ratio box grows to fit its content unless it clips.
+        if (ratioHeight != null && !s.overflowY.clips) height = maxOf(height, contentHeight + pbV)
         if (forcedHeight == null) height = clampHeight(node, height, cbHeight)
         box.height = maxOf(height, pbV)
 
@@ -232,6 +244,10 @@ class LayoutEngine(val measurer: TextMeasurer) {
         val cy = box.contentY
         var y = cy
         val group = ArrayList<LayoutNode>()
+        // line-clamp: only the first N lines of the inline content count; the box ends after them.
+        val clamp = node.style.lineClamp
+        var linesLeft = if (clamp > 0) clamp else Int.MAX_VALUE
+        var clampedAt: Float? = null
 
         fun flush() {
             if (group.isEmpty()) return
@@ -240,10 +256,19 @@ class LayoutEngine(val measurer: TextMeasurer) {
             group.clear()
             val meaningful = items.any { it !is InlineLayout.Item.Text || it.text.isNotBlank() || node.style.whiteSpace == WhiteSpace.PRE || node.style.whiteSpace == WhiteSpace.PRE_WRAP }
             if (!meaningful) return
-            val p = inline.layout(node.style, items, contentWidth, cx, y)
+            if (linesLeft <= 0) {
+                // Past the clamp: nothing of this run is shown.
+                for (it in items) if (it is InlineLayout.Item.Atomic) it.node.box.visible = false
+                return
+            }
+            val p = inline.layout(node.style, items, contentWidth, cx, y, linesLeft)
             if (box.baseline == null) p.lines.firstOrNull()?.let { box.baseline = y + it.baseline }
             box.paragraphs += p
             y += p.height
+            if (clamp > 0) {
+                linesLeft -= p.lines.size
+                if (linesLeft <= 0 && clampedAt == null) clampedAt = y
+            }
         }
 
         for (child in node.layoutChildren) {
@@ -276,7 +301,7 @@ class LayoutEngine(val measurer: TextMeasurer) {
             y += cb.marginBoxHeight
         }
         flush()
-        return y - cy
+        return (clampedAt ?: y) - cy
     }
 
     // ---- flexbox -----------------------------------------------------------------------------------------------
@@ -735,6 +760,13 @@ class LayoutEngine(val measurer: TextMeasurer) {
         val pb = px(s.paddingLeft) + px(s.paddingRight) + s.borderLeftWidth + s.borderRightWidth
         if (!ignoreWidth) (s.width as? Dim.Px)?.let {
             val w = maxOf(toBorderBox(it.px, s, pb), pb)
+            return floatArrayOf(w, w)
+        }
+        // aspect-ratio with a fixed height: the width follows.
+        val ratio = s.aspectRatio
+        if (!ignoreWidth && ratio != null && node.intrinsicWidth == null && s.width == Dim.Auto) (s.height as? Dim.Px)?.let {
+            // content-box: the ratio is between the content sizes; border-box (default): between the border-box sizes.
+            val w = if (s.boxSizing == BoxSizing.CONTENT_BOX) it.px * ratio + pb else maxOf(it.px * ratio, pb)
             return floatArrayOf(w, w)
         }
         var min: Float

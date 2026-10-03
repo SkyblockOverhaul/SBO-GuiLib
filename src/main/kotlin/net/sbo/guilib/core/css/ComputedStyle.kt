@@ -118,6 +118,16 @@ class ComputedStyle internal constructor(
     /** A [VerticalAlign] keyword or a [Dim] (length / percentage of the line height). */
     val verticalAlign: Any get() = values[Prop.VERTICAL_ALIGN.ordinal]!!
     val letterSpacing get() = (values[Prop.LETTER_SPACING.ordinal] as? Dim.Px)?.px ?: 0f
+    val textTransform get() = values[Prop.TEXT_TRANSFORM.ordinal] as TextTransform
+    val wordBreak get() = values[Prop.WORD_BREAK.ordinal] as WordBreak
+    val overflowWrap get() = values[Prop.OVERFLOW_WRAP.ordinal] as OverflowWrap
+    val lineClamp get() = values[Prop.LINE_CLAMP.ordinal] as Int
+    /** Width / height, or `null` for `auto`. */
+    val aspectRatio get() = values[Prop.ASPECT_RATIO.ordinal] as Float?
+    val outlineWidth get() = borderWidth(Prop.OUTLINE_WIDTH, Prop.OUTLINE_STYLE)
+    val outlineStyle get() = values[Prop.OUTLINE_STYLE.ordinal] as BorderStyle
+    val outlineColor get() = values[Prop.OUTLINE_COLOR.ordinal] as Int
+    val outlineOffset get() = (values[Prop.OUTLINE_OFFSET.ordinal] as? Dim.Px)?.px ?: 0f
     val borderCollapse get() = values[Prop.BORDER_COLLAPSE.ordinal] as BorderCollapse
     val borderSpacingX get() = (values[Prop.BORDER_SPACING_X.ordinal] as? Dim.Px)?.px ?: 0f
     val borderSpacingY get() = (values[Prop.BORDER_SPACING_Y.ordinal] as? Dim.Px)?.px ?: 0f
@@ -216,7 +226,7 @@ class ComputedStyle internal constructor(
         /** Properties whose change requires a new layout (all others only need a repaint). */
         private val PAINT_ONLY = setOf(
             Prop.BACKGROUND_COLOR, Prop.BACKGROUND_IMAGE, Prop.BACKGROUND_SIZE, Prop.BACKGROUND_POSITION, Prop.BACKGROUND_REPEAT,
-            Prop.BACKGROUND_ORIGIN, Prop.BACKGROUND_CLIP, Prop.COLOR, Prop.OPACITY, Prop.VISIBILITY, Prop.CURSOR,
+            Prop.BACKGROUND_ORIGIN, Prop.BACKGROUND_CLIP, Prop.OUTLINE_WIDTH, Prop.OUTLINE_STYLE, Prop.OUTLINE_COLOR, Prop.OUTLINE_OFFSET, Prop.COLOR, Prop.OPACITY, Prop.VISIBILITY, Prop.CURSOR,
             Prop.POINTER_EVENTS, Prop.USER_SELECT, Prop.OBJECT_FIT, Prop.TEXT_DECORATION, Prop.TEXT_SHADOW, Prop.BOX_SHADOW, Prop.Z_INDEX,
             Prop.BORDER_TOP_COLOR, Prop.BORDER_RIGHT_COLOR, Prop.BORDER_BOTTOM_COLOR, Prop.BORDER_LEFT_COLOR,
             Prop.BORDER_TOP_LEFT_RADIUS, Prop.BORDER_TOP_RIGHT_RADIUS, Prop.BORDER_BOTTOM_RIGHT_RADIUS, Prop.BORDER_BOTTOM_LEFT_RADIUS,

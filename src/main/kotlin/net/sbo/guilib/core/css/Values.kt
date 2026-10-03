@@ -100,6 +100,10 @@ enum class TextAlign { LEFT, CENTER, RIGHT }
 /** `vertical-align` keywords; a length/percentage is stored as a [Dim] instead (raises the box by that amount). */
 enum class VerticalAlign { BASELINE, SUB, SUPER, TEXT_TOP, TEXT_BOTTOM, MIDDLE, TOP, BOTTOM }
 enum class WhiteSpace { NORMAL, NOWRAP, PRE, PRE_WRAP }
+enum class TextTransform { NONE, UPPERCASE, LOWERCASE, CAPITALIZE }
+/** `word-break`; `KEEP_ALL` behaves like `NORMAL` (GuiLib doesn't break CJK text between characters anyway). */
+enum class WordBreak { NORMAL, BREAK_ALL, KEEP_ALL, BREAK_WORD }
+enum class OverflowWrap { NORMAL, BREAK_WORD, ANYWHERE }
 enum class TextOverflow { CLIP, ELLIPSIS }
 enum class Visibility { VISIBLE, HIDDEN }
 enum class BorderStyle { NONE, HIDDEN, SOLID, DASHED, DOTTED }

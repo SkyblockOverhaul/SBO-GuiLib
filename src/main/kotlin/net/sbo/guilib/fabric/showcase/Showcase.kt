@@ -487,6 +487,18 @@ object Showcase {
             div(className = "quote") { +"Generated content, styled like real elements." }
         }
         NthOfDemo()
+        h3 { +"outline and aspect-ratio" }
+        div(className = "row") {
+            div(className = "outline-demo") { +"outline" }
+            div(className = "outline-demo dashed") { +"dashed, offset" }
+            div(className = "outline-demo inset") { +"offset -3px" }
+            button(className = "outline-btn") { +"Tab to me" }
+        }
+        div(className = "ratio-row") {
+            div(className = "ratio-box") { +"16 / 9" }
+            div(className = "ratio-box square") { +"1 / 1" }
+            div(className = "ratio-box tall") { +"height + ratio" }
+        }
     }
 
     private val NthOfDemo = component("NthOfDemo") {
@@ -789,6 +801,18 @@ object Showcase {
             null
         }
         if (sword != null) p(className = "item-link") { text(Component.literal("Item link (hover it): ").append(sword.displayName)) }
+        h3 { +"text-transform, word-break, line-clamp" }
+        div(className = "row") {
+            span(className = "tt-upper") { +"uppercase label" }
+            span(className = "tt-cap") { +"capitalize every word" }
+        }
+        div(className = "wrap-row") {
+            div(className = "wrap-box") { p(className = "muted") { +"normal" }; +"Party_Finder_Dungeon_Master_Mode_7" }
+            div(className = "wrap-box break") { p(className = "muted") { +"overflow-wrap: anywhere" }; +"Party_Finder_Dungeon_Master_Mode_7" }
+            div(className = "wrap-box clamp") {
+                +"line-clamp: 2 keeps the first two lines of a long description and ends the second one with an ellipsis, the rest is hidden."
+            }
+        }
     }
 
     private val ScrollDemo = component("ScrollDemo") {

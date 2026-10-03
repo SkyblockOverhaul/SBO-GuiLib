@@ -191,6 +191,32 @@ class Painter(private val measurer: TextMeasurer) {
             emit(PaintCommand.PopClip)
             roundClip = outerRound
         }
+        if (visible && s.outlineWidth > 0f) paintOutline(s, rect, alpha, local)
+    }
+
+    /**
+     * `outline`: drawn after the element's content, outside its border box (moved out by `outline-offset`), following
+     * `border-radius` like current browsers. It takes no space and isn't clickable.
+     */
+    private fun paintOutline(s: ComputedStyle, layout: Rect, alpha: Float, xf: Transform2D) {
+        val w = s.outlineWidth
+        val grow = s.outlineOffset + w
+        val box = Rect(layout.x - grow, layout.y - grow, layout.width + 2 * grow, layout.height + 2 * grow)
+        if (box.width <= 0f || box.height <= 0f) return
+        val r = xf.map(box)
+        val sx = kotlin.math.abs(xf.sx)
+        val sy = kotlin.math.abs(xf.sy)
+        val widths = floatArrayOf(w * sy, w * sx, w * sy, w * sx)
+        val inner = radii(s, layout, xf)
+        val radii = FloatArray(4) { if (inner[it] > 0f) (inner[it] + grow * maxOf(sx, sy)).coerceAtLeast(0f) else 0f }
+        val color = Colors.withOpacity(s.outlineColor, alpha)
+        val colors = intArrayOf(color, color, color, color)
+        val style = s.outlineStyle
+        if (style == BorderStyle.DASHED || style == BorderStyle.DOTTED) {
+            emitBrokenBorders(r, widths, colors, Array(4) { style }, BooleanArray(4) { true }, radii)
+        } else {
+            emit(PaintCommand.Box(r.x, r.y, r.width, r.height, Colors.TRANSPARENT, radii, widths, colors))
+        }
     }
 
     private fun paintInlineElement(

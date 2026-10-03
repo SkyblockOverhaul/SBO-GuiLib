@@ -278,7 +278,8 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
 
         private fun resolve(p: Prop, v: Any?, fontSize: Float, color: Int, ctx: StyleContext): Any? = when (v) {
             is Length -> when {
-                p == Prop.BORDER_TOP_WIDTH || p == Prop.BORDER_RIGHT_WIDTH || p == Prop.BORDER_BOTTOM_WIDTH || p == Prop.BORDER_LEFT_WIDTH -> toPx(v, fontSize, ctx)
+                p == Prop.BORDER_TOP_WIDTH || p == Prop.BORDER_RIGHT_WIDTH || p == Prop.BORDER_BOTTOM_WIDTH || p == Prop.BORDER_LEFT_WIDTH ||
+                    p == Prop.OUTLINE_WIDTH -> toPx(v, fontSize, ctx)
                 v.isCalc -> {
                     val node = v.calc!!.resolveUnits(fontSize, ctx)
                     // Without percentages the result is a plain length.
@@ -289,6 +290,7 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
             }
             CurrentColor -> color
             Properties.NoImage -> null
+            Properties.AutoRatio -> null
             is Properties.LineHeightLength -> LineHeight.Px(toPx(v.length, fontSize, ctx))
             is Properties.BoxShadowList -> v.shadows.map { s ->
                 BoxShadow(

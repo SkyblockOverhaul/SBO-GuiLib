@@ -94,6 +94,17 @@ enum class Prop(val css: String, val inherited: Boolean, val initial: Any?) {
     LETTER_SPACING("letter-spacing", true, Dim.ZERO),
     VERTICAL_ALIGN("vertical-align", false, VerticalAlign.BASELINE),
     TEXT_SHADOW("text-shadow", true, null),
+    TEXT_TRANSFORM("text-transform", true, TextTransform.NONE),
+    WORD_BREAK("word-break", true, WordBreak.NORMAL),
+    OVERFLOW_WRAP("overflow-wrap", true, OverflowWrap.NORMAL),
+    /** `line-clamp` / `-webkit-line-clamp`: 0 = none. */
+    LINE_CLAMP("line-clamp", false, 0),
+    /** Width / height ratio, or `null` for `auto`. */
+    ASPECT_RATIO("aspect-ratio", false, null),
+    OUTLINE_WIDTH("outline-width", false, 1f),
+    OUTLINE_STYLE("outline-style", false, BorderStyle.NONE),
+    OUTLINE_COLOR("outline-color", false, CurrentColor),
+    OUTLINE_OFFSET("outline-offset", false, Dim.ZERO),
     BOX_SHADOW("box-shadow", false, emptyList<BoxShadow>()),
 
     BORDER_COLLAPSE("border-collapse", true, BorderCollapse.SEPARATE),
@@ -150,7 +161,12 @@ object Properties {
     private val longhandParsers: Map<Prop, (Values) -> Any?> = buildMap {
         fun enumParser(vararg props: Prop, parse: (Values) -> Any?) = props.forEach { put(it, parse) }
 
-        enumParser(Prop.DISPLAY) { single(it)?.let { v -> keyword<Display>(v) } }
+        enumParser(Prop.DISPLAY) {
+            single(it)?.let { v ->
+                // -webkit-box only appears in the line-clamp recipe; a block is what it needs here.
+                keyword<Display>(v) ?: if (isIdent(v, "-webkit-box")) Display.BLOCK else if (isIdent(v, "-webkit-inline-box")) Display.INLINE_BLOCK else null
+            }
+        }
         enumParser(Prop.POSITION) { single(it)?.let { v -> keyword<Position>(v) } }
         enumParser(Prop.TOP, Prop.RIGHT, Prop.BOTTOM, Prop.LEFT) { single(it)?.let(::lengthOrAuto) }
         enumParser(Prop.Z_INDEX) { single(it)?.let { v -> if (isIdent(v, "auto")) Z_INDEX_AUTO else integer(v) } }
@@ -201,6 +217,15 @@ object Properties {
         enumParser(Prop.TABLE_LAYOUT) { single(it)?.let { v -> keyword<TableLayoutMode>(v) } }
         enumParser(Prop.CAPTION_SIDE) { single(it)?.let { v -> keyword<CaptionSide>(v) } }
         enumParser(Prop.FONT_FAMILY) { fontFamily(it) }
+        enumParser(Prop.TEXT_TRANSFORM) { single(it)?.let { v -> keyword<TextTransform>(v) } }
+        enumParser(Prop.WORD_BREAK) { single(it)?.let { v -> keyword<WordBreak>(v) } }
+        enumParser(Prop.OVERFLOW_WRAP) { single(it)?.let { v -> keyword<OverflowWrap>(v) } }
+        enumParser(Prop.LINE_CLAMP) { single(it)?.let { v -> if (isIdent(v, "none")) 0 else integer(v)?.takeIf { n -> n > 0 } } }
+        enumParser(Prop.ASPECT_RATIO) { aspectRatio(it) }
+        enumParser(Prop.OUTLINE_WIDTH) { single(it)?.let(::borderWidth) }
+        enumParser(Prop.OUTLINE_STYLE) { single(it)?.let { v -> if (isIdent(v, "auto")) BorderStyle.SOLID else keyword<BorderStyle>(v) } }
+        enumParser(Prop.OUTLINE_COLOR) { single(it)?.let { v -> if (isIdent(v, "invert")) CurrentColor else color(v) } }
+        enumParser(Prop.OUTLINE_OFFSET) { single(it)?.let { v -> length(v)?.takeIf { l -> !l.isPercent } } }
         enumParser(Prop.FONT_SIZE) { single(it)?.let(::fontSize) }
         enumParser(Prop.FONT_WEIGHT) { single(it)?.let(::fontWeight) }
         enumParser(Prop.FONT_STYLE) { single(it)?.let { v -> if (isIdent(v, "oblique")) FontStyle.ITALIC else keyword<FontStyle>(v) } }
@@ -289,6 +314,23 @@ object Properties {
                 else -> null
             }
         }
+        put("outline") { v ->
+            var width: Any? = null; var style: Any? = null; var col: Any? = null
+            for (w in words(v)) when {
+                style == null && isIdent(w, "auto") -> style = BorderStyle.SOLID
+                style == null && keyword<BorderStyle>(w) != null -> style = keyword<BorderStyle>(w)
+                width == null && borderWidth(w) != null -> width = borderWidth(w)
+                col == null && isIdent(w, "invert") -> col = CurrentColor
+                col == null && color(w) != null -> col = color(w)
+                else -> return@put null
+            }
+            listOf(Prop.OUTLINE_WIDTH to (width ?: 1f), Prop.OUTLINE_STYLE to (style ?: BorderStyle.NONE), Prop.OUTLINE_COLOR to (col ?: CurrentColor))
+        }
+        // Old / prefixed names of standard properties.
+        put("word-wrap") { v -> longhandParsers.getValue(Prop.OVERFLOW_WRAP)(v)?.let { listOf(Prop.OVERFLOW_WRAP to it) } }
+        put("-webkit-line-clamp") { v -> longhandParsers.getValue(Prop.LINE_CLAMP)(v)?.let { listOf(Prop.LINE_CLAMP to it) } }
+        // Part of the -webkit-line-clamp recipe; accepted so it doesn't warn, nothing to do.
+        put("-webkit-box-orient") { v -> if (single(v)?.let { identIn(it, "vertical", "horizontal", "inline-axis", "block-axis") } != null) emptyList() else null }
         put("flex") { v -> flex(v) }
         put("flex-flow") { v ->
             var dir: Any? = null; var wrap: Any? = null
@@ -380,6 +422,8 @@ object Properties {
         sides.forEach { s -> put("border-$s", listOf("width", "style", "color").map { Prop.byName.getValue("border-$s-$it") }) }
         put("overflow", listOf(Prop.OVERFLOW_X, Prop.OVERFLOW_Y)); put("gap", listOf(Prop.ROW_GAP, Prop.COLUMN_GAP))
         put("border-spacing", listOf(Prop.BORDER_SPACING_X, Prop.BORDER_SPACING_Y))
+        put("outline", listOf(Prop.OUTLINE_WIDTH, Prop.OUTLINE_STYLE, Prop.OUTLINE_COLOR))
+        put("word-wrap", listOf(Prop.OVERFLOW_WRAP)); put("-webkit-line-clamp", listOf(Prop.LINE_CLAMP)); put("-webkit-box-orient", emptyList())
         put("flex", listOf(Prop.FLEX_GROW, Prop.FLEX_SHRINK, Prop.FLEX_BASIS)); put("flex-flow", listOf(Prop.FLEX_DIRECTION, Prop.FLEX_WRAP))
         put("background", listOf(Prop.BACKGROUND_COLOR, Prop.BACKGROUND_IMAGE, Prop.BACKGROUND_SIZE, Prop.BACKGROUND_POSITION,
             Prop.BACKGROUND_REPEAT, Prop.BACKGROUND_ORIGIN, Prop.BACKGROUND_CLIP)); put("place-items", listOf(Prop.ALIGN_ITEMS, Prop.JUSTIFY_ITEMS))
@@ -463,6 +507,22 @@ object Properties {
     private fun lengthOrAuto(v: ComponentValue): Any? = if (isIdent(v, "auto")) Dim.Auto else length(v)
 
     private fun nonNegativeLength(v: ComponentValue): Length? = length(v)?.takeIf { it.isCalc || it.value >= 0f }
+
+    /** `aspect-ratio`: `auto`, `16 / 9`, `1.5`, or `auto <ratio>` (the ratio is used; replaced elements keep their own). */
+    private fun aspectRatio(values: Values): Any? {
+        val w = words(values).filter { !isIdent(it, "auto") }
+        if (w.isEmpty()) return if (words(values).size == 1) AutoRatio else null
+        val a = number(w[0]) ?: return null
+        val ratio = when (w.size) {
+            1 -> a
+            3 -> if (tok(w[1])?.isDelim('/') == true) a / (number(w[2]) ?: return null) else return null
+            else -> return null
+        }
+        return ratio.takeIf { it.isFinite() && it > 0f }
+    }
+
+    /** Parsed `aspect-ratio: auto` (computes to `null`). */
+    data object AutoRatio
 
     private fun borderWidth(v: ComponentValue): Any? = when {
         isIdent(v, "thin") -> 1f

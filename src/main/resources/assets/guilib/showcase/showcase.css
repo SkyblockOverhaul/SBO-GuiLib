@@ -525,3 +525,22 @@ body.showcase-mc-font { font-family: minecraft; }
 .bg-space { background: url("minecraft:textures/item/emerald.png") center / 14px space no-repeat; }
 .bg-round { background: url("minecraft:textures/block/stone_bricks.png") 0 0 / 15px round; }
 .bg-dots { background: radial-gradient(circle, #ffffff40 1px, transparent 1.5px) 0 0 / 6px 6px, linear-gradient(135deg, #5b8def55, #ed424555); }
+
+/* outline / aspect-ratio */
+.outline-demo { padding: 4px 8px; margin: 4px; border-radius: 3px; background-color: var(--panel); outline: 1px solid var(--accent); }
+.outline-demo.dashed { outline: 1px dashed #faa61a; outline-offset: 2px; }
+.outline-demo.inset { outline: 1px solid #ffffff80; outline-offset: -3px; padding: 6px 10px; }
+.outline-btn:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
+.ratio-row { display: flex; gap: 6px; align-items: flex-start; margin-top: 4px; }
+.ratio-box { width: 96px; aspect-ratio: 16 / 9; background: linear-gradient(135deg, #5b8def66, #3ba55d66); border-radius: 3px; display: flex; align-items: center; justify-content: center; }
+.ratio-box.square { width: 40px; aspect-ratio: 1; }
+.ratio-box.tall { width: auto; height: 40px; aspect-ratio: 3 / 2; }
+
+/* text-transform / word-break / line-clamp */
+.tt-upper { text-transform: uppercase; font-size: 6px; letter-spacing: 0.5px; color: var(--muted); margin-right: 8px; }
+.tt-cap { text-transform: capitalize; }
+.wrap-row { display: flex; gap: 6px; align-items: flex-start; margin-top: 4px; }
+.wrap-box { width: 90px; overflow: hidden; padding: 3px; border: 1px solid var(--border); border-radius: 3px; }
+.wrap-box p { margin: 0; font-size: 6px; }
+.wrap-box.break { overflow-wrap: anywhere; }
+.wrap-box.clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }

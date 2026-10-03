@@ -3,10 +3,15 @@ package net.sbo.guilib.core.layout
 import net.sbo.guilib.core.css.ComputedStyle
 import net.sbo.guilib.core.css.Dim
 import net.sbo.guilib.core.css.Display
+import net.sbo.guilib.core.css.OverflowWrap
 import net.sbo.guilib.core.css.TextAlign
 import net.sbo.guilib.core.css.TextOverflow
+import net.sbo.guilib.core.css.TextTransform
 import net.sbo.guilib.core.css.VerticalAlign
 import net.sbo.guilib.core.css.WhiteSpace
+import net.sbo.guilib.core.css.WordBreak
+import java.text.BreakIterator
+import java.util.Locale
 
 /**
  * Inline formatting: turns text nodes, `display: inline` elements and atomic inline boxes (inline-block, images)
@@ -52,6 +57,36 @@ internal class InlineLayout(private val engine: LayoutEngine) {
                     node.style.display == Display.INLINE_GRID || node.style.display == Display.INLINE_TABLE)
 
         private val WORD = Regex("[^ ]+ *| +")
+
+        /** User-perceived characters of [text] (so emoji and accents are never split). */
+        fun graphemes(text: String): List<String> {
+            val it = BreakIterator.getCharacterInstance(Locale.ROOT)
+            it.setText(text)
+            val out = ArrayList<String>()
+            var start = it.first()
+            var end = it.next()
+            while (end != BreakIterator.DONE) {
+                out += text.substring(start, end); start = end; end = it.next()
+            }
+            return out
+        }
+
+        /** `text-transform`; `capitalize` upper-cases the first letter of every word (across inline elements). */
+        private fun transform(text: String, tt: TextTransform, before: List<Item>): String = when (tt) {
+            TextTransform.NONE -> text
+            TextTransform.UPPERCASE -> text.uppercase(Locale.ROOT)
+            TextTransform.LOWERCASE -> text.lowercase(Locale.ROOT)
+            TextTransform.CAPITALIZE -> {
+                val prev = (before.lastOrNull { it is Item.Text } as Item.Text?)?.text?.lastOrNull()
+                var boundary = prev == null || !prev.isLetterOrDigit()
+                val sb = StringBuilder(text.length)
+                for (ch in text) {
+                    sb.append(if (boundary && ch.isLetter()) ch.titlecaseChar() else ch)
+                    boundary = !ch.isLetterOrDigit() && ch != '\'' && ch != '’'
+                }
+                sb.toString()
+            }
+        }
         private const val ELLIPSIS = "…"
     }
 
@@ -70,8 +105,9 @@ internal class InlineLayout(private val engine: LayoutEngine) {
                 text != null -> {
                     if (mark) node.box.inParagraph = true
                     val base = TextStyle.of(node.style)
+                    val tt = node.style.textTransform
                     if (!node.formattingCodes) out += Item.Text(text, base, node, shift)
-                    else for ((t, s) in FormattingCodes.parse(text, base)) out += Item.Text(t, s, node, shift)
+                    else for ((t, s) in FormattingCodes.parse(text, base)) out += Item.Text(transform(t, tt, out), s, node, shift)
                 }
                 node.isLineBreak -> {
                     if (mark) node.box.inParagraph = true
@@ -96,7 +132,7 @@ internal class InlineLayout(private val engine: LayoutEngine) {
         }
     }
 
-    private fun chunks(items: List<Item>, ws: WhiteSpace): List<Chunk> {
+    private fun chunks(items: List<Item>, ws: WhiteSpace, breakAll: Boolean = false): List<Chunk> {
         val measurer = engine.measurer
         val collapse = ws == WhiteSpace.NORMAL || ws == WhiteSpace.NOWRAP
         val out = ArrayList<Chunk>()
@@ -131,12 +167,12 @@ internal class InlineLayout(private val engine: LayoutEngine) {
                             if (i > 0) {
                                 close(); out += Chunk.Break
                             }
-                            if (p.isNotEmpty()) addWords(p, item, current, ::close)
+                            if (p.isNotEmpty()) addWords(p, item, current, ::close, breakAll)
                         }
                         lastWasSpace = false
                         continue
                     }
-                    for (s in segments) addWords(s, item, current, ::close)
+                    for (s in segments) addWords(s, item, current, ::close, breakAll)
                 }
             }
         }
@@ -144,9 +180,21 @@ internal class InlineLayout(private val engine: LayoutEngine) {
         return out
     }
 
-    private inline fun addWords(text: String, item: Item.Text, current: MutableList<Piece>, close: () -> Unit) {
+    private inline fun addWords(text: String, item: Item.Text, current: MutableList<Piece>, close: () -> Unit, breakAll: Boolean) {
         for (m in WORD.findAll(text)) {
             val seg = m.value
+            if (breakAll && seg.isNotBlank()) {
+                // word-break: break-all: a line may break after any character.
+                val gs = graphemes(seg.trimEnd(' '))
+                for ((i, g) in gs.withIndex()) {
+                    val piece = if (i == gs.lastIndex) g + seg.substring(seg.trimEnd(' ').length) else g
+                    val full = engine.measurer.width(piece, item.style)
+                    val trail = if (piece.length == g.length) 0f else full - engine.measurer.width(g, item.style)
+                    current += Piece(piece, item.style, item.owner, full, trail, shift = item.shift)
+                    close()
+                }
+                continue
+            }
             val word = seg.trimEnd(' ')
             val full = engine.measurer.width(seg, item.style)
             val trail = if (word.length == seg.length) 0f else full - engine.measurer.width(word, item.style)
@@ -159,17 +207,18 @@ internal class InlineLayout(private val engine: LayoutEngine) {
     fun intrinsic(container: ComputedStyle, items: List<Item>): Pair<Float, Float> {
         val ws = container.whiteSpace
         val wraps = ws == WhiteSpace.NORMAL || ws == WhiteSpace.PRE_WRAP
+        val anywhere = container.overflowWrap == OverflowWrap.ANYWHERE || container.wordBreak == WordBreak.BREAK_WORD
         var min = 0f
         var max = 0f
         var line = 0f
         var lineTrail = 0f
-        for (c in chunks(items, ws)) {
+        for (c in chunks(items, ws, container.wordBreak == WordBreak.BREAK_ALL)) {
             when (c) {
                 is Chunk.Break -> {
                     max = maxOf(max, line - lineTrail); line = 0f; lineTrail = 0f
                 }
                 is Chunk.Words -> {
-                    if (wraps) min = maxOf(min, c.widthNoTrail)
+                    if (wraps) min = maxOf(min, if (anywhere) widestGrapheme(c) else c.widthNoTrail)
                     line += c.width; lineTrail = c.width - c.widthNoTrail
                 }
                 is Chunk.Atomic -> {
@@ -184,11 +233,24 @@ internal class InlineLayout(private val engine: LayoutEngine) {
         return min to max
     }
 
-    /** Lays out [items] into lines of at most [availWidth]; positions atomic boxes relative to the container. */
-    fun layout(container: ComputedStyle, items: List<Item>, availWidth: Float, x: Float, y: Float): Paragraph {
+    private fun widestGrapheme(c: Chunk.Words): Float = c.pieces.maxOfOrNull { p ->
+        if (p.edge != 0) p.width else graphemes(p.text.trimEnd(' ')).maxOfOrNull { engine.measurer.width(it, p.style) } ?: 0f
+    } ?: 0f
+
+    /** True when the last [layout] call dropped lines because of its `maxLines`. */
+    var clamped = false
+        private set
+
+    /**
+     * Lays out [items] into lines of at most [availWidth]; positions atomic boxes relative to the container.
+     * [maxLines] (`line-clamp`): later lines are dropped and the last kept one ends with "…".
+     */
+    fun layout(container: ComputedStyle, items: List<Item>, availWidth: Float, x: Float, y: Float, maxLines: Int = Int.MAX_VALUE): Paragraph {
         val measurer = engine.measurer
         val ws = container.whiteSpace
         val wraps = ws == WhiteSpace.NORMAL || ws == WhiteSpace.PRE_WRAP
+        // overflow-wrap: break-word / anywhere, word-break: break-word: a word wider than the line is broken anywhere.
+        val breakLong = wraps && (container.overflowWrap != OverflowWrap.NORMAL || container.wordBreak == WordBreak.BREAK_WORD)
         val strutStyle = TextStyle.of(container)
         val strutMetrics = measurer.metrics(strutStyle)
         val strutLineHeight = container.lineHeight.resolve(container.fontSize, strutMetrics.normalLineHeight / container.fontSize.coerceAtLeast(0.01f))
@@ -202,13 +264,26 @@ internal class InlineLayout(private val engine: LayoutEngine) {
             rawLines += cur; cur = ArrayList(); curX = 0f
         }
 
-        val chunks = chunks(items, ws)
+        val chunks = chunks(items, ws, container.wordBreak == WordBreak.BREAK_ALL)
         for (c in chunks) {
             when (c) {
                 is Chunk.Break -> finish()
                 is Chunk.Words -> {
                     if (wraps && cur.isNotEmpty() && curX + c.widthNoTrail > availWidth + 0.01f) finish()
                     if (cur.isEmpty() && c.isOnlySpace && ws == WhiteSpace.NORMAL) continue
+                    if (breakLong && c.widthNoTrail > availWidth + 0.01f) {
+                        for (p in c.pieces) {
+                            if (p.edge != 0) {
+                                cur += Placed(curX, p, null); curX += p.width; continue
+                            }
+                            for (g in graphemes(p.text)) {
+                                val gw = measurer.width(g, p.style)
+                                if (g != " " && cur.isNotEmpty() && curX + gw > availWidth + 0.01f) finish()
+                                cur += Placed(curX, Piece(g, p.style, p.owner, gw, if (g == " ") gw else 0f, shift = p.shift), null); curX += gw
+                            }
+                        }
+                        continue
+                    }
                     for (p in c.pieces) {
                         cur += Placed(curX, p, null); curX += p.width
                     }
@@ -222,11 +297,13 @@ internal class InlineLayout(private val engine: LayoutEngine) {
             }
         }
         if (cur.isNotEmpty() || rawLines.isEmpty()) finish()
+        clamped = rawLines.size > maxLines
+        if (clamped) while (rawLines.size > maxOf(maxLines, 0)) rawLines.removeAt(rawLines.lastIndex)
 
         val ellipsis = container.textOverflow == TextOverflow.ELLIPSIS && container.overflowX.clips
         val lines = ArrayList<Line>()
         var lineY = 0f
-        for (raw in rawLines) {
+        for ((lineIndex, raw) in rawLines.withIndex()) {
             // Hanging trailing whitespace doesn't count towards the line width.
             val last = raw.lastOrNull()
             var width = if (last == null) 0f else last.x + (last.piece?.let { it.width - it.trailingSpace } ?: last.atomic!!.box.marginBoxWidth)
@@ -265,7 +342,7 @@ internal class InlineLayout(private val engine: LayoutEngine) {
                 i = j
             }
 
-            if (ellipsis && width > availWidth + 0.01f) {
+            if (ellipsis && width > availWidth + 0.01f || clamped && lineIndex == rawLines.lastIndex && frags.any { it is Fragment.Text }) {
                 width = applyEllipsis(frags, availWidth)
             }
 
