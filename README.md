@@ -7,6 +7,9 @@
 A UI library for Minecraft Fabric mods that works like web development:
 **React-style components and hooks in a Kotlin DSL with HTML tag names, styled with real `.css` files.**
 
+📖 **Documentation: [skyblockoverhaul.github.io/maven/guilib](https://skyblockoverhaul.github.io/maven/guilib/)** — getting started, every element, control, CSS
+property and event, with in-game screenshots.
+
 ```kotlin
 val Counter = component("Counter") {
     var count by useState(0)
@@ -84,6 +87,8 @@ Releasing a new version is described in [docs/PUBLISHING.md](docs/PUBLISHING.md)
 
 ## Documentation
 
+- **[Docs site](https://skyblockoverhaul.github.io/maven/guilib/)** — guide and full reference with screenshots: [getting started](https://skyblockoverhaul.github.io/maven/guilib/getting-started.html),
+  [elements](https://skyblockoverhaul.github.io/maven/guilib/elements.html), [controls](https://skyblockoverhaul.github.io/maven/guilib/controls.html), [CSS](https://skyblockoverhaul.github.io/maven/guilib/css.html), [differences from the web](https://skyblockoverhaul.github.io/maven/guilib/differences.html), [changelog](https://skyblockoverhaul.github.io/maven/guilib/changelog.html).
 - [docs/AI_GUIDE.md](docs/AI_GUIDE.md) — complete reference: elements, props, hooks, events, CSS, web differences, recipes.
 - [llms.txt](llms.txt) — short entry point for AI tools.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — design and rendering pipeline (German).
@@ -92,7 +97,7 @@ Releasing a new version is described in [docs/PUBLISHING.md](docs/PUBLISHING.md)
 ## Development
 
 ```bash
-./gradlew build                     # both MC versions + unit tests
+./gradlew build                     # all MC versions + unit tests
 ./gradlew :26.2-fabric:runClient    # then /guilib showcase
 ```
 

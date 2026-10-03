@@ -18,6 +18,7 @@ Key facts:
 
 ## Docs
 
+- [Docs site](https://skyblockoverhaul.github.io/maven/guilib/): guide + reference with screenshots
 - [AI guide / full reference](docs/AI_GUIDE.md): every element, prop, hook, event, CSS property and web difference
 - [README](README.md): setup, dependency, dev workflow
 - [Architecture](docs/ARCHITECTURE.md): pipeline (tree → style → layout → paint → events), design decisions (German)
