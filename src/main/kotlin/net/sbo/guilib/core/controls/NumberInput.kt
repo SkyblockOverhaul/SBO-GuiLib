@@ -27,6 +27,8 @@ internal data class NumberInputProps(
     val nullable: Boolean,
     /** How many steps one click / wheel notch / arrow key moves for the held keys. */
     val stepMultiplier: (Modifiers) -> Int,
+    /** Turns the typed text into a number (`null` = invalid). */
+    val parse: (String) -> Double?,
     val className: String?,
     val id: String?,
     val style: String?,
@@ -42,6 +44,26 @@ internal fun formatNumber(v: Double, decimals: Int): String = BigDecimal(v).setS
 
 /** Parses what the user typed: `,` works as decimal point, empty/invalid → null. */
 internal fun parseNumber(text: String): Double? = text.trim().replace(',', '.').toDoubleOrNull()
+
+private val SHORTHAND = Regex("""([+-]?)(\d*(?:[.,]\d*)?)\s*([kmb])""", RegexOption.IGNORE_CASE)
+
+/**
+ * Default parser of [numberInput][net.sbo.guilib.core.dsl.numberInput]: plain numbers plus the shorthand `k` = 1,000,
+ * `m` = 1,000,000, `b` = 1,000,000,000 (any case) – `"100k"` → 100000, `"1.5m"` / `"1,5M"` → 1500000. `.` and `,` both
+ * work as decimal mark. Empty or invalid text → `null`.
+ */
+fun parseNumberShorthand(text: String): Double? {
+    val m = SHORTHAND.matchEntire(text.trim()) ?: return parseNumber(text)
+    val (sign, digits, unit) = m.destructured
+    if (digits.none { it.isDigit() }) return null
+    val factor = when (unit.lowercase()) {
+        "k" -> 1_000L
+        "m" -> 1_000_000L
+        else -> 1_000_000_000L
+    }
+    // BigDecimal so "1.1k" is exactly 1100, not 1100.0000000000002.
+    return BigDecimal(sign + digits.replace(',', '.')).multiply(BigDecimal.valueOf(factor)).toDouble()
+}
 
 /** Steps per click, wheel notch or arrow key for the held keys: Shift × 10, Ctrl × 100, Ctrl + Shift × 1000 (Cmd = Ctrl). */
 fun defaultStepMultiplier(m: Modifiers): Int {
@@ -60,7 +82,9 @@ private const val REPEAT_MS = 60L
 
 /**
  * Number field with − and + buttons. The value always stays within min..max: typed values are clamped when the field
- * loses focus or Enter is pressed; values inside the range are reported while typing. ArrowUp/ArrowDown and the mouse
+ * loses focus or Enter is pressed; values inside the range are reported while typing. Typed text goes through `parse`
+ * (default [parseNumberShorthand]: `100k`, `1.5m`, `2,5k`, `1b`); the field keeps the typed text until blur/Enter, then
+ * shows the formatted number; invalid text goes back to the last value. ArrowUp/ArrowDown and the mouse
  * wheel (while hovered) step by `step` × `stepMultiplier` (default Shift × 10, Ctrl × 100, Ctrl + Shift × 1000); holding
  * a button repeats with the multiplier of the press. With `nullable`, the field may be empty
  * (reported as `null`): + on an empty field starts at `step` (at least min), − on an empty field does nothing and − at
@@ -96,9 +120,11 @@ internal val NumberInputComponent = component<NumberInputProps>("NumberInput") {
         draft = null
     }
 
+    fun parsed(text: String): Double? = p.parse(text)?.takeIf { it.isFinite() }
+
     fun commitDraft() {
         val d = draft ?: return
-        val v = parseNumber(d)
+        val v = parsed(d)
         if (v != null) emit(v) else if (p.nullable && d.isBlank()) emit(null)
         draft = null
     }
@@ -141,14 +167,15 @@ internal val NumberInputComponent = component<NumberInputProps>("NumberInput") {
         button(className = "guilib-number-dec", tabIndex = -1, disabled = p.disabled || atMin, onMouseDown = holdButton(-1)) { +"−" }
         input(
             className = "guilib-number-input",
-            type = "number",
+            // A custom parser may need any characters; the default one only digits, signs, decimal marks and k/m/b.
+            type = if (p.parse == ::parseNumberShorthand) "number" else "text",
             value = draft ?: p.value?.let { formatNumber(it, p.decimals) } ?: "",
             placeholder = p.placeholder,
             disabled = p.disabled,
             onChange = { e ->
                 draft = e.value
                 // Report values inside the range right away; out-of-range values are clamped on blur/Enter.
-                val typed = parseNumber(e.value)
+                val typed = parsed(e.value)
                 if (typed != null && typed in p.min..p.max) emit(typed) else if (p.nullable && e.value.isBlank()) emit(null)
             },
             onBlur = { commitDraft() },

@@ -139,7 +139,8 @@ internal class InputControl(val el: Element) : EditableControl {
 
     private fun filter(s: String): String {
         var r = s.replace("\n", " ").replace("\r", "").filter { it >= ' ' }
-        if (type == "number") r = r.filter { it.isDigit() || it == '-' || it == '.' || it == ',' }
+        // Digits, sign, decimal marks and the k/m/b shorthand of numberInput ("1.5m").
+        if (type == "number") r = r.filter { it.isDigit() || it in "+-.,kmbKMB" }
         return r
     }
 

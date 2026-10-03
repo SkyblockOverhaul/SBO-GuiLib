@@ -228,6 +228,7 @@ object Showcase {
         var kills by useState(5000 to 20000)
         var mp by useState(1200)
         var cata by useState<Int?>(null)
+        var budget by useState(2_500_000.0)
         var slots by useState(3)
         var price by useState(1.5)
         h2 { +"Pickers" }
@@ -299,6 +300,12 @@ object Showcase {
             numberInput(value = price, onChange = { price = it }, min = 0.0, max = 10.0, step = 0.25)
             span(className = "form-label", style = "margin-left: 8px") { +"Cata" }
             numberInput(value = cata, onChange = { cata = it }, allowEmpty = true, min = 0, max = 50, placeholder = "any")
+        }
+        div(className = "form-row") {
+            span(className = "form-label") { +"Budget" }
+            // Type shorthand like 100k, 1.5m, 2,5k or 1b; it becomes the number on Enter / blur.
+            numberInput(value = budget, onChange = { budget = it }, min = 0.0, max = 100_000_000_000.0, step = 100_000.0, id = "budget", style = "width: 130px")
+            span(className = "muted", style = "margin-left: 8px") { +"%,.0f coins (try 1.5m)".format(budget) }
         }
         p(className = "muted") { +"size=$size · tier=$tier · fishing=$fishing · cats=$cats · item=$item · kills=$kills · mp=$mp · cata=$cata" }
     }

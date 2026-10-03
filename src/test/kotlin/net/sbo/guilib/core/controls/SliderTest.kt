@@ -410,6 +410,100 @@ class SliderTest {
         assertEquals("3", (field.control as InputControl).text)
     }
 
+    @Test
+    fun parseNumberShorthandReadsKMB() {
+        assertEquals(100_000.0, parseNumberShorthand("100k"))
+        assertEquals(1_500_000.0, parseNumberShorthand("1.5m"))
+        assertEquals(1_500_000.0, parseNumberShorthand("1,5M"))
+        assertEquals(2_500.0, parseNumberShorthand("2,5k"))
+        assertEquals(1_000_000_000.0, parseNumberShorthand("1B"))
+        assertEquals(1_100.0, parseNumberShorthand("1.1k"))
+        assertEquals(-500.0, parseNumberShorthand("-0.5k"))
+        assertEquals(500.0, parseNumberShorthand(".5k"))
+        assertEquals(42.5, parseNumberShorthand(" 42,5 "))
+        assertNull(parseNumberShorthand("k"))
+        assertNull(parseNumberShorthand("1kk"))
+        assertNull(parseNumberShorthand("1.2.3k"))
+        assertNull(parseNumberShorthand(""))
+    }
+
+    /** Selects everything in the focused field and types [text] char by char. */
+    private fun UiRoot.retype(text: String) {
+        input.keyDown("a", 65, Modifiers(ctrl = true))
+        for (c in text) input.charTyped(c.toString())
+        frame(300f, 200f)
+    }
+
+    @Test
+    fun numberInputAcceptsShorthandAndConvertsOnBlurOrEnter() {
+        var value = 0
+        val root = ui {
+            var v by useState(7)
+            value = v
+            numberInput(value = v, onChange = { v = it }, max = 2_000_000)
+        }
+        val field = root.el(".guilib-number-input")
+        fun text() = (field.control as InputControl).text
+        root.click(field)
+        root.retype("100k")
+        assertEquals("100k", text()) // stays as typed while editing
+        assertEquals(100_000, value)
+        root.key("Enter")
+        assertEquals("100000", text())
+        // Blur (click outside) converts too; out-of-range shorthand is clamped like any number.
+        root.retype("2,5m")
+        assertEquals("2,5m", text())
+        root.input.mouseDown(290f, 190f, 0); root.input.mouseUp(290f, 190f, 0); root.frame(300f, 200f)
+        assertEquals(2_000_000, value)
+        assertEquals("2000000", text())
+        // Invalid text goes back to the last value.
+        root.click(field)
+        root.retype("k")
+        root.key("Enter")
+        assertEquals(2_000_000, value)
+        assertEquals("2000000", text())
+        // Decimal fields round to the step's decimals.
+        var d = 0.0
+        val root2 = ui {
+            var v by useState(0.0)
+            d = v
+            numberInput(value = v, onChange = { v = it }, step = 0.5)
+        }
+        root2.click(root2.el(".guilib-number-input"))
+        root2.retype("1.2345k")
+        root2.key("Enter")
+        assertEquals(1234.5, d)
+        assertEquals("1234.5", (root2.el(".guilib-number-input").control as InputControl).text)
+    }
+
+    @Test
+    fun numberInputParseCanBeReplaced() {
+        var value = 0
+        val root = ui {
+            var v by useState(0)
+            value = v
+            // Durations like "1h" / "90s" in seconds, everything else the default way.
+            numberInput(value = v, onChange = { v = it }, parse = { t ->
+                when {
+                    t.endsWith("h") -> t.dropLast(1).toDoubleOrNull()?.times(3600)
+                    t.endsWith("s") -> t.dropLast(1).toDoubleOrNull()
+                    else -> parseNumberShorthand(t)
+                }
+            })
+        }
+        val field = root.el(".guilib-number-input")
+        root.click(field)
+        root.retype("1h")
+        root.key("Enter")
+        assertEquals(3600, value)
+        root.retype("2k")
+        root.key("Enter")
+        assertEquals(2000, value)
+        root.retype("xyz")
+        root.key("Enter")
+        assertEquals(2000, value)
+    }
+
     private fun UiRoot.click(el: Element) {
         val r = el.getBoundingClientRect()
         input.mouseDown(r.x + 2f, r.y + 2f, 0)

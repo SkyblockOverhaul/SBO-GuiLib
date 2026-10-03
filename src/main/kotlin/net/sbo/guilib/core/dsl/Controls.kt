@@ -30,6 +30,7 @@ import net.sbo.guilib.core.event.FocusEvent
 import net.sbo.guilib.core.event.InputEvent
 import net.sbo.guilib.core.event.KeyboardEvent
 import net.sbo.guilib.core.controls.defaultStepMultiplier
+import net.sbo.guilib.core.controls.parseNumberShorthand
 import net.sbo.guilib.core.event.Modifiers
 import net.sbo.guilib.core.event.UIEvent
 
@@ -254,7 +255,9 @@ fun NodeBuilder.rangeSlider(
  * Number field with − / + buttons that keeps the value within [min]..[max]:
  * `numberInput(value = size, onChange = { size = it }, min = 1, max = 5)`.
  * Typed values inside the range are reported while typing; anything else is clamped when the field loses focus or on
- * Enter. ArrowUp/ArrowDown and the mouse wheel over the field step by [step] (Shift: × 10, [wheel] = false turns the
+ * Enter. Typing accepts the shorthand `100k`, `1.5m`, `2,5k`, `1b` (k/m/b = thousand/million/billion, `.` or `,` as
+ * decimal mark): the text stays as typed until blur/Enter, then becomes the number; invalid text restores the last
+ * value. [parse] replaces the parser (`null` = invalid), e.g. `parse = { myFormat(it) ?: parseNumberShorthand(it) }`. ArrowUp/ArrowDown and the mouse wheel over the field step by [step] (Shift: × 10, [wheel] = false turns the
  * wheel off); holding a button repeats. Styled with `.guilib-number`, `.guilib-number-input`, `.guilib-number-dec`,
  * `.guilib-number-inc`.
  */
@@ -268,6 +271,7 @@ fun NodeBuilder.numberInput(
     disabled: Boolean = false,
     placeholder: String? = null,
     stepMultiplier: (Modifiers) -> Int = ::defaultStepMultiplier,
+    parse: (String) -> Double? = ::parseNumberShorthand,
     className: String? = null,
     id: String? = null,
     style: String? = null,
@@ -275,7 +279,7 @@ fun NodeBuilder.numberInput(
 ) = NumberInputComponent(
     NumberInputProps(
         value.toDouble(), onChange?.let { f -> { v: Double? -> f(Math.round(v!!).toInt()) } }, min.toDouble(), max.toDouble(),
-        step.toDouble(), 0, wheel, disabled, placeholder, false, stepMultiplier, className, id, style,
+        step.toDouble(), 0, wheel, disabled, placeholder, false, stepMultiplier, parse, className, id, style,
     ),
     key,
 )
@@ -291,6 +295,7 @@ fun NodeBuilder.numberInput(
     disabled: Boolean = false,
     placeholder: String? = null,
     stepMultiplier: (Modifiers) -> Int = ::defaultStepMultiplier,
+    parse: (String) -> Double? = ::parseNumberShorthand,
     className: String? = null,
     id: String? = null,
     style: String? = null,
@@ -298,7 +303,7 @@ fun NodeBuilder.numberInput(
 ) = NumberInputComponent(
     NumberInputProps(
         value, onChange?.let { f -> { v: Double? -> f(v!!) } }, min, max, step, decimalsOf(step), wheel, disabled, placeholder,
-        false, stepMultiplier, className, id, style,
+        false, stepMultiplier, parse, className, id, style,
     ),
     key,
 )
@@ -321,6 +326,7 @@ fun NodeBuilder.numberInput(
     disabled: Boolean = false,
     placeholder: String? = null,
     stepMultiplier: (Modifiers) -> Int = ::defaultStepMultiplier,
+    parse: (String) -> Double? = ::parseNumberShorthand,
     className: String? = null,
     id: String? = null,
     style: String? = null,
@@ -328,7 +334,7 @@ fun NodeBuilder.numberInput(
 ) = NumberInputComponent(
     NumberInputProps(
         value?.toDouble(), onChange?.let { f -> { v: Double? -> f(v?.let { Math.round(it).toInt() }) } }, min.toDouble(),
-        max.toDouble(), step.toDouble(), 0, wheel, disabled, placeholder, allowEmpty, stepMultiplier, className, id, style,
+        max.toDouble(), step.toDouble(), 0, wheel, disabled, placeholder, allowEmpty, stepMultiplier, parse, className, id, style,
     ),
     key,
 )
@@ -346,12 +352,13 @@ fun NodeBuilder.numberInput(
     disabled: Boolean = false,
     placeholder: String? = null,
     stepMultiplier: (Modifiers) -> Int = ::defaultStepMultiplier,
+    parse: (String) -> Double? = ::parseNumberShorthand,
     className: String? = null,
     id: String? = null,
     style: String? = null,
     key: Any? = null,
 ) = NumberInputComponent(
-    NumberInputProps(value, onChange, min, max, step, decimalsOf(step), wheel, disabled, placeholder, allowEmpty, stepMultiplier, className, id, style),
+    NumberInputProps(value, onChange, min, max, step, decimalsOf(step), wheel, disabled, placeholder, allowEmpty, stepMultiplier, parse, className, id, style),
     key,
 )
 
