@@ -226,7 +226,7 @@ internal class TextAreaControl(val el: Element) : EditableControl {
         val bx = el.box.border.left
         val by = el.box.border.top
         val blinkOn = ((now - blinkStart) / 500L) % 2L == 0L
-        setStyle(caretEl, "left: ${caretX - bx}px; top: ${top - by}px; height: ${height}px; visibility: ${if (focused && blinkOn && !hasSelection) "visible" else "hidden"}")
+        setStyle(caretEl, "left: ${caretX - bx}px; top: ${top - by}px; height: ${height}px; visibility: ${if (focused && blinkOn && !hasSelection) "visible" else "hidden"}${caretColorCss(el)}")
         for (i in lines.indices) {
             val sel = selectionEls.getOrNull(i) ?: continue
             val l = lines[i]

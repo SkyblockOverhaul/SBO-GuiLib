@@ -90,6 +90,8 @@ class ComputedStyle internal constructor(
     /** `(thumb, track)` colors, or `null` for the default. */
     @Suppress("UNCHECKED_CAST")
     val scrollbarColor get() = values[Prop.SCROLLBAR_COLOR.ordinal] as Pair<Int, Int>?
+    /** `caret-color`; `null` = `auto`. */
+    val caretColor get() = values[Prop.CARET_COLOR.ordinal] as Int?
 
     val flexDirection get() = values[Prop.FLEX_DIRECTION.ordinal] as FlexDirection
     val flexWrap get() = values[Prop.FLEX_WRAP.ordinal] as FlexWrap
@@ -231,7 +233,7 @@ class ComputedStyle internal constructor(
             Prop.POINTER_EVENTS, Prop.USER_SELECT, Prop.OBJECT_FIT, Prop.TEXT_DECORATION, Prop.TEXT_SHADOW, Prop.BOX_SHADOW, Prop.FILTER, Prop.Z_INDEX,
             Prop.BORDER_TOP_COLOR, Prop.BORDER_RIGHT_COLOR, Prop.BORDER_BOTTOM_COLOR, Prop.BORDER_LEFT_COLOR,
             Prop.BORDER_TOP_LEFT_RADIUS, Prop.BORDER_TOP_RIGHT_RADIUS, Prop.BORDER_BOTTOM_RIGHT_RADIUS, Prop.BORDER_BOTTOM_LEFT_RADIUS,
-            Prop.SCROLLBAR_COLOR, Prop.TRANSFORM, Prop.TRANSFORM_ORIGIN,
+            Prop.SCROLLBAR_COLOR, Prop.CARET_COLOR, Prop.TRANSFORM, Prop.TRANSFORM_ORIGIN,
             Prop.TRANSITION_PROPERTY, Prop.TRANSITION_DURATION, Prop.TRANSITION_TIMING_FUNCTION, Prop.TRANSITION_DELAY,
             Prop.ANIMATION_NAME, Prop.ANIMATION_DURATION, Prop.ANIMATION_TIMING_FUNCTION, Prop.ANIMATION_DELAY,
             Prop.ANIMATION_ITERATION_COUNT, Prop.ANIMATION_DIRECTION, Prop.ANIMATION_FILL_MODE, Prop.ANIMATION_PLAY_STATE,

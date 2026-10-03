@@ -121,7 +121,7 @@ internal class InputControl(val el: Element) : EditableControl {
 
         val focused = el.isFocused
         val blinkOn = ((now - blinkStart) / 500L) % 2L == 0L
-        setStyle(caretEl, "left: ${caretX}px; top: ${top}px; height: ${height}px; visibility: ${if (focused && blinkOn && !hasSelection) "visible" else "hidden"}")
+        setStyle(caretEl, "left: ${caretX}px; top: ${top}px; height: ${height}px; visibility: ${if (focused && blinkOn && !hasSelection) "visible" else "hidden"}${caretColorCss(el)}")
         if (hasSelection && focused) {
             val x0 = b.padding.left + shift + measure(shown.substring(0, selStart))
             val x1 = b.padding.left + shift + measure(shown.substring(0, selEnd))
@@ -325,6 +325,13 @@ internal class InputControl(val el: Element) : EditableControl {
         dragging = false
         anchor = caret
     }
+}
+
+/** Inline `background-color` for the caret of [el] when it sets `caret-color` (`auto` keeps the ua.css currentColor). */
+internal fun caretColorCss(el: Element): String {
+    val c = el.style.caretColor ?: return ""
+    val rgba = (c shl 8) or (c ushr 24)
+    return "; background-color: #" + Integer.toHexString(rgba).padStart(8, '0')
 }
 
 /** Offset of a line [width] wide inside [available] for [el]'s `text-align`; like the layout, never negative. */

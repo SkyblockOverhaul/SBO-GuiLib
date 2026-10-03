@@ -566,3 +566,6 @@ body.showcase-mc-font { font-family: minecraft; }
 /* Forms: ::placeholder */
 .fancy-placeholder::placeholder { color: #e0b04a; font-style: italic; }
 .fancy-placeholder:focus::placeholder { color: #e0b04a66; }
+
+/* Forms: caret-color */
+.gold-caret { caret-color: #e0b04a; }
