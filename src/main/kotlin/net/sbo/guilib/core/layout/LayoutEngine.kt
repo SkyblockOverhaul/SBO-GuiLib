@@ -9,6 +9,7 @@ import net.sbo.guilib.core.css.Display
 import net.sbo.guilib.core.css.FlexWrap
 import net.sbo.guilib.core.css.JustifyContent
 import net.sbo.guilib.core.css.Position
+import net.sbo.guilib.core.css.TableLayoutMode
 import net.sbo.guilib.core.css.WhiteSpace
 
 /**
@@ -21,6 +22,9 @@ class LayoutEngine(val measurer: TextMeasurer) {
 
     private val inline = InlineLayout(this)
     private val grid = GridLayout(this)
+    private val table = TableLayout(this)
+    /** Extra top padding of a table cell for `vertical-align` (set by [TableLayout] around the cell's final layout). */
+    internal val cellShift = HashMap<LayoutNode, Float>()
     private val intrinsicCache = HashMap<LayoutNode, FloatArray>()
     internal val parentOf = HashMap<LayoutNode, LayoutNode>()
 
@@ -35,6 +39,7 @@ class LayoutEngine(val measurer: TextMeasurer) {
         intrinsicCache.clear()
         contentMinCache.clear()
         parentOf.clear()
+        cellShift.clear()
         cbStack.clear()
         this.root = root
         this.viewportWidth = viewportWidth
@@ -56,6 +61,7 @@ class LayoutEngine(val measurer: TextMeasurer) {
         // Percent margins and paddings resolve against the containing block *width* on every side, like the web.
         b.margin.set(s.marginTop.px(cbWidth), s.marginRight.px(cbWidth), s.marginBottom.px(cbWidth), s.marginLeft.px(cbWidth))
         b.padding.set(s.paddingTop.px(cbWidth), s.paddingRight.px(cbWidth), s.paddingBottom.px(cbWidth), s.paddingLeft.px(cbWidth))
+        cellShift[node]?.let { b.padding.top += it }
         if (node.textContent != null) {
             // Text nodes share their parent's style but have no box decorations of their own.
             b.margin.set(0f, 0f, 0f, 0f); b.padding.set(0f, 0f, 0f, 0f); b.border.set(0f, 0f, 0f, 0f)
@@ -148,13 +154,17 @@ class LayoutEngine(val measurer: TextMeasurer) {
                 val contentH = specH?.let { it - pbV }
                 (if (contentH != null && ih != null && ih > 0f) contentH * iw / ih else iw) + pbH
             }
-            mode == WidthMode.FILL -> avail - box.margin.horizontal
+            mode == WidthMode.FILL && !s.display.isTable -> avail - box.margin.horizontal
             else -> {
                 val (min, max) = intrinsic(node)
                 minOf(maxOf(min, avail - box.margin.horizontal), max)
             }
         }
         if (forcedWidth == null) width = clampWidth(node, width, cbWidth)
+        // A table is never narrower than its columns' min-content (except with `table-layout: fixed`).
+        if (s.display.isTable && forcedWidth == null && !(s.tableLayout == TableLayoutMode.FIXED && s.width != Dim.Auto)) {
+            width = maxOf(width, intrinsicContentMin(node))
+        }
         box.width = maxOf(width, pbH)
         val contentWidth = box.contentWidth
 
@@ -170,6 +180,7 @@ class LayoutEngine(val measurer: TextMeasurer) {
             iw != null -> if (ih != null && iw > 0f) contentWidth * ih / iw else 0f
             s.display.isFlex -> layoutFlex(node, contentWidth, contentHeightDef)
             s.display.isGrid -> grid.layout(node, contentWidth, contentHeightDef)
+            s.display.isTable -> table.layout(node, contentWidth, contentHeightDef)
             else -> layoutBlockChildren(node, contentWidth, contentHeightDef)
         }
 
@@ -177,6 +188,7 @@ class LayoutEngine(val measurer: TextMeasurer) {
         if (forcedHeight == null) height = clampHeight(node, height, cbHeight)
         box.height = maxOf(height, pbV)
 
+        if (s.display.isTable && node.textContent == null) table.placeBottomCaptions(node)
         computeScrollSize(node)
 
         if (establishesCb) {
@@ -671,7 +683,7 @@ class LayoutEngine(val measurer: TextMeasurer) {
 
     // ---- scroll size -------------------------------------------------------------------------------------------
 
-    private fun computeScrollSize(node: LayoutNode) {
+    internal fun computeScrollSize(node: LayoutNode) {
         val b = node.box
         var maxX = b.paddingBoxWidth
         var maxY = b.paddingBoxHeight
@@ -709,7 +721,7 @@ class LayoutEngine(val measurer: TextMeasurer) {
     private val contentMinCache = HashMap<LayoutNode, Float>()
 
     /** Min-content width ignoring the node's own `width` (for the automatic minimum size of flex items). */
-    private fun intrinsicContentMin(node: LayoutNode): Float = contentMinCache.getOrPut(node) { computeIntrinsic(node, ignoreWidth = true)[0] }
+    internal fun intrinsicContentMin(node: LayoutNode): Float = contentMinCache.getOrPut(node) { computeIntrinsic(node, ignoreWidth = true)[0] }
 
     private fun computeIntrinsic(node: LayoutNode, ignoreWidth: Boolean = false): FloatArray {
         val s = node.style
@@ -732,6 +744,9 @@ class LayoutEngine(val measurer: TextMeasurer) {
             min = iw; max = iw
         } else if (s.display.isGrid) {
             val (a, b) = grid.intrinsic(node)
+            min = a; max = b
+        } else if (s.display.isTable) {
+            val (a, b) = table.intrinsic(node)
             min = a; max = b
         } else if (s.display.isFlex) {
             val children = node.layoutChildren.filter { !isHidden(it) && !isOutOfFlow(it) && !isWhitespaceText(it) }

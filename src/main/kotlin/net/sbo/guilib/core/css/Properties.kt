@@ -90,6 +90,13 @@ enum class Prop(val css: String, val inherited: Boolean, val initial: Any?) {
     TEXT_SHADOW("text-shadow", true, null),
     BOX_SHADOW("box-shadow", false, emptyList<BoxShadow>()),
 
+    BORDER_COLLAPSE("border-collapse", true, BorderCollapse.SEPARATE),
+    /** `border-spacing` is stored as two longhands (horizontal, vertical), like the gap properties. */
+    BORDER_SPACING_X("border-spacing-x", true, Dim.ZERO),
+    BORDER_SPACING_Y("border-spacing-y", true, Dim.ZERO),
+    TABLE_LAYOUT("table-layout", false, TableLayoutMode.AUTO),
+    CAPTION_SIDE("caption-side", true, CaptionSide.TOP),
+
     CURSOR("cursor", true, Cursor.AUTO),
     POINTER_EVENTS("pointer-events", true, PointerEvents.AUTO),
     CONTENT("content", false, Content.None),
@@ -179,6 +186,10 @@ object Properties {
         enumParser(Prop.FLEX_GROW, Prop.FLEX_SHRINK) { single(it)?.let(::number)?.takeIf { n -> n >= 0f } }
         enumParser(Prop.ORDER) { single(it)?.let(::integer) }
         enumParser(Prop.ROW_GAP, Prop.COLUMN_GAP) { single(it)?.let { v -> if (isIdent(v, "normal")) Length(0f, "px") else nonNegativeLength(v) } }
+        enumParser(Prop.BORDER_COLLAPSE) { single(it)?.let { v -> keyword<BorderCollapse>(v) } }
+        enumParser(Prop.BORDER_SPACING_X, Prop.BORDER_SPACING_Y) { single(it)?.let { v -> nonNegativeLength(v)?.takeIf { l -> !l.isPercent } } }
+        enumParser(Prop.TABLE_LAYOUT) { single(it)?.let { v -> keyword<TableLayoutMode>(v) } }
+        enumParser(Prop.CAPTION_SIDE) { single(it)?.let { v -> keyword<CaptionSide>(v) } }
         enumParser(Prop.FONT_FAMILY) { fontFamily(it) }
         enumParser(Prop.FONT_SIZE) { single(it)?.let(::fontSize) }
         enumParser(Prop.FONT_WEIGHT) { single(it)?.let(::fontWeight) }
@@ -255,6 +266,19 @@ object Properties {
                 else -> null
             }
         }
+        put("border-spacing") { v ->
+            // border-spacing: <horizontal> [<vertical>]
+            val w = words(v)
+            val parser = longhandParsers.getValue(Prop.BORDER_SPACING_X)
+            when (w.size) {
+                1 -> parser(w)?.let { listOf(Prop.BORDER_SPACING_X to it, Prop.BORDER_SPACING_Y to it) }
+                2 -> {
+                    val x = parser(listOf(w[0])); val y = parser(listOf(w[1]))
+                    if (x != null && y != null) listOf(Prop.BORDER_SPACING_X to x, Prop.BORDER_SPACING_Y to y) else null
+                }
+                else -> null
+            }
+        }
         put("flex") { v -> flex(v) }
         put("flex-flow") { v ->
             var dir: Any? = null; var wrap: Any? = null
@@ -319,6 +343,7 @@ object Properties {
         put("border", side("border", "-width") + side("border", "-style") + side("border", "-color"))
         sides.forEach { s -> put("border-$s", listOf("width", "style", "color").map { Prop.byName.getValue("border-$s-$it") }) }
         put("overflow", listOf(Prop.OVERFLOW_X, Prop.OVERFLOW_Y)); put("gap", listOf(Prop.ROW_GAP, Prop.COLUMN_GAP))
+        put("border-spacing", listOf(Prop.BORDER_SPACING_X, Prop.BORDER_SPACING_Y))
         put("flex", listOf(Prop.FLEX_GROW, Prop.FLEX_SHRINK, Prop.FLEX_BASIS)); put("flex-flow", listOf(Prop.FLEX_DIRECTION, Prop.FLEX_WRAP))
         put("background", listOf(Prop.BACKGROUND_COLOR, Prop.BACKGROUND_IMAGE)); put("place-items", listOf(Prop.ALIGN_ITEMS, Prop.JUSTIFY_ITEMS))
         put("place-content", listOf(Prop.ALIGN_CONTENT, Prop.JUSTIFY_CONTENT))

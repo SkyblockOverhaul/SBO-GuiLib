@@ -1401,6 +1401,477 @@ fun NodeBuilder.button(
     element("button", key, id, className, style, ref, attrs, handlers, children)
 }
 
+/** Table (`display: table`): sized to its content like the web, columns line up across rows. Children: `caption`, `colgroup`/`col`, `thead`, `tbody`, `tfoot`, `tr`. */
+fun NodeBuilder.table(
+    className: String? = null,
+    id: String? = null,
+    style: String? = null,
+    key: Any? = null,
+    title: String? = null,
+    ref: Ref<Element?>? = null,
+    tabIndex: Int? = null,
+    onClick: ((MouseEvent) -> Unit)? = null,
+    onDoubleClick: ((MouseEvent) -> Unit)? = null,
+    onContextMenu: ((MouseEvent) -> Unit)? = null,
+    onMouseDown: ((MouseEvent) -> Unit)? = null,
+    onMouseUp: ((MouseEvent) -> Unit)? = null,
+    onMouseMove: ((MouseEvent) -> Unit)? = null,
+    onMouseEnter: ((MouseEvent) -> Unit)? = null,
+    onMouseLeave: ((MouseEvent) -> Unit)? = null,
+    onWheel: ((WheelEvent) -> Unit)? = null,
+    onKeyDown: ((KeyboardEvent) -> Unit)? = null,
+    onKeyUp: ((KeyboardEvent) -> Unit)? = null,
+    onFocus: ((FocusEvent) -> Unit)? = null,
+    onBlur: ((FocusEvent) -> Unit)? = null,
+    onScroll: ((ScrollEvent) -> Unit)? = null,
+    children: (NodeBuilder.() -> Unit)? = null,
+) {
+    val attrs = HashMap<String, Any?>()
+    if (title != null) attrs["title"] = title
+    if (tabIndex != null) attrs["tabindex"] = tabIndex
+    val handlers = HashMap<String, (UIEvent) -> Unit>()
+    handlers.on("click", onClick)
+    handlers.on("dblclick", onDoubleClick)
+    handlers.on("contextmenu", onContextMenu)
+    handlers.on("mousedown", onMouseDown)
+    handlers.on("mouseup", onMouseUp)
+    handlers.on("mousemove", onMouseMove)
+    handlers.on("mouseenter", onMouseEnter)
+    handlers.on("mouseleave", onMouseLeave)
+    handlers.on("wheel", onWheel)
+    handlers.on("keydown", onKeyDown)
+    handlers.on("keyup", onKeyUp)
+    handlers.on("focus", onFocus)
+    handlers.on("blur", onBlur)
+    handlers.on("scroll", onScroll)
+    element("table", key, id, className, style, ref, attrs, handlers, children)
+}
+
+/** Table caption (`display: table-caption`), above the table (`caption-side: bottom` puts it below). */
+fun NodeBuilder.caption(
+    className: String? = null,
+    id: String? = null,
+    style: String? = null,
+    key: Any? = null,
+    title: String? = null,
+    ref: Ref<Element?>? = null,
+    tabIndex: Int? = null,
+    onClick: ((MouseEvent) -> Unit)? = null,
+    onDoubleClick: ((MouseEvent) -> Unit)? = null,
+    onContextMenu: ((MouseEvent) -> Unit)? = null,
+    onMouseDown: ((MouseEvent) -> Unit)? = null,
+    onMouseUp: ((MouseEvent) -> Unit)? = null,
+    onMouseMove: ((MouseEvent) -> Unit)? = null,
+    onMouseEnter: ((MouseEvent) -> Unit)? = null,
+    onMouseLeave: ((MouseEvent) -> Unit)? = null,
+    onWheel: ((WheelEvent) -> Unit)? = null,
+    onKeyDown: ((KeyboardEvent) -> Unit)? = null,
+    onKeyUp: ((KeyboardEvent) -> Unit)? = null,
+    onFocus: ((FocusEvent) -> Unit)? = null,
+    onBlur: ((FocusEvent) -> Unit)? = null,
+    onScroll: ((ScrollEvent) -> Unit)? = null,
+    children: (NodeBuilder.() -> Unit)? = null,
+) {
+    val attrs = HashMap<String, Any?>()
+    if (title != null) attrs["title"] = title
+    if (tabIndex != null) attrs["tabindex"] = tabIndex
+    val handlers = HashMap<String, (UIEvent) -> Unit>()
+    handlers.on("click", onClick)
+    handlers.on("dblclick", onDoubleClick)
+    handlers.on("contextmenu", onContextMenu)
+    handlers.on("mousedown", onMouseDown)
+    handlers.on("mouseup", onMouseUp)
+    handlers.on("mousemove", onMouseMove)
+    handlers.on("mouseenter", onMouseEnter)
+    handlers.on("mouseleave", onMouseLeave)
+    handlers.on("wheel", onWheel)
+    handlers.on("keydown", onKeyDown)
+    handlers.on("keyup", onKeyUp)
+    handlers.on("focus", onFocus)
+    handlers.on("blur", onBlur)
+    handlers.on("scroll", onScroll)
+    element("caption", key, id, className, style, ref, attrs, handlers, children)
+}
+
+/** Group of table columns; `span` = columns covered when it has no `col` children. Only `width` is used. */
+fun NodeBuilder.colgroup(
+    className: String? = null,
+    id: String? = null,
+    style: String? = null,
+    key: Any? = null,
+    title: String? = null,
+    ref: Ref<Element?>? = null,
+    tabIndex: Int? = null,
+    span: Int? = null,
+    onClick: ((MouseEvent) -> Unit)? = null,
+    onDoubleClick: ((MouseEvent) -> Unit)? = null,
+    onContextMenu: ((MouseEvent) -> Unit)? = null,
+    onMouseDown: ((MouseEvent) -> Unit)? = null,
+    onMouseUp: ((MouseEvent) -> Unit)? = null,
+    onMouseMove: ((MouseEvent) -> Unit)? = null,
+    onMouseEnter: ((MouseEvent) -> Unit)? = null,
+    onMouseLeave: ((MouseEvent) -> Unit)? = null,
+    onWheel: ((WheelEvent) -> Unit)? = null,
+    onKeyDown: ((KeyboardEvent) -> Unit)? = null,
+    onKeyUp: ((KeyboardEvent) -> Unit)? = null,
+    onFocus: ((FocusEvent) -> Unit)? = null,
+    onBlur: ((FocusEvent) -> Unit)? = null,
+    onScroll: ((ScrollEvent) -> Unit)? = null,
+    children: (NodeBuilder.() -> Unit)? = null,
+) {
+    val attrs = HashMap<String, Any?>()
+    if (title != null) attrs["title"] = title
+    if (tabIndex != null) attrs["tabindex"] = tabIndex
+    if (span != null) attrs["span"] = span
+    val handlers = HashMap<String, (UIEvent) -> Unit>()
+    handlers.on("click", onClick)
+    handlers.on("dblclick", onDoubleClick)
+    handlers.on("contextmenu", onContextMenu)
+    handlers.on("mousedown", onMouseDown)
+    handlers.on("mouseup", onMouseUp)
+    handlers.on("mousemove", onMouseMove)
+    handlers.on("mouseenter", onMouseEnter)
+    handlers.on("mouseleave", onMouseLeave)
+    handlers.on("wheel", onWheel)
+    handlers.on("keydown", onKeyDown)
+    handlers.on("keyup", onKeyUp)
+    handlers.on("focus", onFocus)
+    handlers.on("blur", onBlur)
+    handlers.on("scroll", onScroll)
+    element("colgroup", key, id, className, style, ref, attrs, handlers, children)
+}
+
+/** Table column; `span` = number of columns. Only `width` is used (e.g. `style = "width: 40px"`). */
+fun NodeBuilder.col(
+    className: String? = null,
+    id: String? = null,
+    style: String? = null,
+    key: Any? = null,
+    title: String? = null,
+    ref: Ref<Element?>? = null,
+    tabIndex: Int? = null,
+    span: Int? = null,
+    onClick: ((MouseEvent) -> Unit)? = null,
+    onDoubleClick: ((MouseEvent) -> Unit)? = null,
+    onContextMenu: ((MouseEvent) -> Unit)? = null,
+    onMouseDown: ((MouseEvent) -> Unit)? = null,
+    onMouseUp: ((MouseEvent) -> Unit)? = null,
+    onMouseMove: ((MouseEvent) -> Unit)? = null,
+    onMouseEnter: ((MouseEvent) -> Unit)? = null,
+    onMouseLeave: ((MouseEvent) -> Unit)? = null,
+    onWheel: ((WheelEvent) -> Unit)? = null,
+    onKeyDown: ((KeyboardEvent) -> Unit)? = null,
+    onKeyUp: ((KeyboardEvent) -> Unit)? = null,
+    onFocus: ((FocusEvent) -> Unit)? = null,
+    onBlur: ((FocusEvent) -> Unit)? = null,
+    onScroll: ((ScrollEvent) -> Unit)? = null,
+) {
+    val attrs = HashMap<String, Any?>()
+    if (title != null) attrs["title"] = title
+    if (tabIndex != null) attrs["tabindex"] = tabIndex
+    if (span != null) attrs["span"] = span
+    val handlers = HashMap<String, (UIEvent) -> Unit>()
+    handlers.on("click", onClick)
+    handlers.on("dblclick", onDoubleClick)
+    handlers.on("contextmenu", onContextMenu)
+    handlers.on("mousedown", onMouseDown)
+    handlers.on("mouseup", onMouseUp)
+    handlers.on("mousemove", onMouseMove)
+    handlers.on("mouseenter", onMouseEnter)
+    handlers.on("mouseleave", onMouseLeave)
+    handlers.on("wheel", onWheel)
+    handlers.on("keydown", onKeyDown)
+    handlers.on("keyup", onKeyUp)
+    handlers.on("focus", onFocus)
+    handlers.on("blur", onBlur)
+    handlers.on("scroll", onScroll)
+    element("col", key, id, className, style, ref, attrs, handlers, null)
+}
+
+/** Table header rows (`display: table-header-group`), always drawn first. */
+fun NodeBuilder.thead(
+    className: String? = null,
+    id: String? = null,
+    style: String? = null,
+    key: Any? = null,
+    title: String? = null,
+    ref: Ref<Element?>? = null,
+    tabIndex: Int? = null,
+    onClick: ((MouseEvent) -> Unit)? = null,
+    onDoubleClick: ((MouseEvent) -> Unit)? = null,
+    onContextMenu: ((MouseEvent) -> Unit)? = null,
+    onMouseDown: ((MouseEvent) -> Unit)? = null,
+    onMouseUp: ((MouseEvent) -> Unit)? = null,
+    onMouseMove: ((MouseEvent) -> Unit)? = null,
+    onMouseEnter: ((MouseEvent) -> Unit)? = null,
+    onMouseLeave: ((MouseEvent) -> Unit)? = null,
+    onWheel: ((WheelEvent) -> Unit)? = null,
+    onKeyDown: ((KeyboardEvent) -> Unit)? = null,
+    onKeyUp: ((KeyboardEvent) -> Unit)? = null,
+    onFocus: ((FocusEvent) -> Unit)? = null,
+    onBlur: ((FocusEvent) -> Unit)? = null,
+    onScroll: ((ScrollEvent) -> Unit)? = null,
+    children: (NodeBuilder.() -> Unit)? = null,
+) {
+    val attrs = HashMap<String, Any?>()
+    if (title != null) attrs["title"] = title
+    if (tabIndex != null) attrs["tabindex"] = tabIndex
+    val handlers = HashMap<String, (UIEvent) -> Unit>()
+    handlers.on("click", onClick)
+    handlers.on("dblclick", onDoubleClick)
+    handlers.on("contextmenu", onContextMenu)
+    handlers.on("mousedown", onMouseDown)
+    handlers.on("mouseup", onMouseUp)
+    handlers.on("mousemove", onMouseMove)
+    handlers.on("mouseenter", onMouseEnter)
+    handlers.on("mouseleave", onMouseLeave)
+    handlers.on("wheel", onWheel)
+    handlers.on("keydown", onKeyDown)
+    handlers.on("keyup", onKeyUp)
+    handlers.on("focus", onFocus)
+    handlers.on("blur", onBlur)
+    handlers.on("scroll", onScroll)
+    element("thead", key, id, className, style, ref, attrs, handlers, children)
+}
+
+/** Table body rows (`display: table-row-group`). */
+fun NodeBuilder.tbody(
+    className: String? = null,
+    id: String? = null,
+    style: String? = null,
+    key: Any? = null,
+    title: String? = null,
+    ref: Ref<Element?>? = null,
+    tabIndex: Int? = null,
+    onClick: ((MouseEvent) -> Unit)? = null,
+    onDoubleClick: ((MouseEvent) -> Unit)? = null,
+    onContextMenu: ((MouseEvent) -> Unit)? = null,
+    onMouseDown: ((MouseEvent) -> Unit)? = null,
+    onMouseUp: ((MouseEvent) -> Unit)? = null,
+    onMouseMove: ((MouseEvent) -> Unit)? = null,
+    onMouseEnter: ((MouseEvent) -> Unit)? = null,
+    onMouseLeave: ((MouseEvent) -> Unit)? = null,
+    onWheel: ((WheelEvent) -> Unit)? = null,
+    onKeyDown: ((KeyboardEvent) -> Unit)? = null,
+    onKeyUp: ((KeyboardEvent) -> Unit)? = null,
+    onFocus: ((FocusEvent) -> Unit)? = null,
+    onBlur: ((FocusEvent) -> Unit)? = null,
+    onScroll: ((ScrollEvent) -> Unit)? = null,
+    children: (NodeBuilder.() -> Unit)? = null,
+) {
+    val attrs = HashMap<String, Any?>()
+    if (title != null) attrs["title"] = title
+    if (tabIndex != null) attrs["tabindex"] = tabIndex
+    val handlers = HashMap<String, (UIEvent) -> Unit>()
+    handlers.on("click", onClick)
+    handlers.on("dblclick", onDoubleClick)
+    handlers.on("contextmenu", onContextMenu)
+    handlers.on("mousedown", onMouseDown)
+    handlers.on("mouseup", onMouseUp)
+    handlers.on("mousemove", onMouseMove)
+    handlers.on("mouseenter", onMouseEnter)
+    handlers.on("mouseleave", onMouseLeave)
+    handlers.on("wheel", onWheel)
+    handlers.on("keydown", onKeyDown)
+    handlers.on("keyup", onKeyUp)
+    handlers.on("focus", onFocus)
+    handlers.on("blur", onBlur)
+    handlers.on("scroll", onScroll)
+    element("tbody", key, id, className, style, ref, attrs, handlers, children)
+}
+
+/** Table footer rows (`display: table-footer-group`), always drawn last. */
+fun NodeBuilder.tfoot(
+    className: String? = null,
+    id: String? = null,
+    style: String? = null,
+    key: Any? = null,
+    title: String? = null,
+    ref: Ref<Element?>? = null,
+    tabIndex: Int? = null,
+    onClick: ((MouseEvent) -> Unit)? = null,
+    onDoubleClick: ((MouseEvent) -> Unit)? = null,
+    onContextMenu: ((MouseEvent) -> Unit)? = null,
+    onMouseDown: ((MouseEvent) -> Unit)? = null,
+    onMouseUp: ((MouseEvent) -> Unit)? = null,
+    onMouseMove: ((MouseEvent) -> Unit)? = null,
+    onMouseEnter: ((MouseEvent) -> Unit)? = null,
+    onMouseLeave: ((MouseEvent) -> Unit)? = null,
+    onWheel: ((WheelEvent) -> Unit)? = null,
+    onKeyDown: ((KeyboardEvent) -> Unit)? = null,
+    onKeyUp: ((KeyboardEvent) -> Unit)? = null,
+    onFocus: ((FocusEvent) -> Unit)? = null,
+    onBlur: ((FocusEvent) -> Unit)? = null,
+    onScroll: ((ScrollEvent) -> Unit)? = null,
+    children: (NodeBuilder.() -> Unit)? = null,
+) {
+    val attrs = HashMap<String, Any?>()
+    if (title != null) attrs["title"] = title
+    if (tabIndex != null) attrs["tabindex"] = tabIndex
+    val handlers = HashMap<String, (UIEvent) -> Unit>()
+    handlers.on("click", onClick)
+    handlers.on("dblclick", onDoubleClick)
+    handlers.on("contextmenu", onContextMenu)
+    handlers.on("mousedown", onMouseDown)
+    handlers.on("mouseup", onMouseUp)
+    handlers.on("mousemove", onMouseMove)
+    handlers.on("mouseenter", onMouseEnter)
+    handlers.on("mouseleave", onMouseLeave)
+    handlers.on("wheel", onWheel)
+    handlers.on("keydown", onKeyDown)
+    handlers.on("keyup", onKeyUp)
+    handlers.on("focus", onFocus)
+    handlers.on("blur", onBlur)
+    handlers.on("scroll", onScroll)
+    element("tfoot", key, id, className, style, ref, attrs, handlers, children)
+}
+
+/** Table row (`display: table-row`). */
+fun NodeBuilder.tr(
+    className: String? = null,
+    id: String? = null,
+    style: String? = null,
+    key: Any? = null,
+    title: String? = null,
+    ref: Ref<Element?>? = null,
+    tabIndex: Int? = null,
+    onClick: ((MouseEvent) -> Unit)? = null,
+    onDoubleClick: ((MouseEvent) -> Unit)? = null,
+    onContextMenu: ((MouseEvent) -> Unit)? = null,
+    onMouseDown: ((MouseEvent) -> Unit)? = null,
+    onMouseUp: ((MouseEvent) -> Unit)? = null,
+    onMouseMove: ((MouseEvent) -> Unit)? = null,
+    onMouseEnter: ((MouseEvent) -> Unit)? = null,
+    onMouseLeave: ((MouseEvent) -> Unit)? = null,
+    onWheel: ((WheelEvent) -> Unit)? = null,
+    onKeyDown: ((KeyboardEvent) -> Unit)? = null,
+    onKeyUp: ((KeyboardEvent) -> Unit)? = null,
+    onFocus: ((FocusEvent) -> Unit)? = null,
+    onBlur: ((FocusEvent) -> Unit)? = null,
+    onScroll: ((ScrollEvent) -> Unit)? = null,
+    children: (NodeBuilder.() -> Unit)? = null,
+) {
+    val attrs = HashMap<String, Any?>()
+    if (title != null) attrs["title"] = title
+    if (tabIndex != null) attrs["tabindex"] = tabIndex
+    val handlers = HashMap<String, (UIEvent) -> Unit>()
+    handlers.on("click", onClick)
+    handlers.on("dblclick", onDoubleClick)
+    handlers.on("contextmenu", onContextMenu)
+    handlers.on("mousedown", onMouseDown)
+    handlers.on("mouseup", onMouseUp)
+    handlers.on("mousemove", onMouseMove)
+    handlers.on("mouseenter", onMouseEnter)
+    handlers.on("mouseleave", onMouseLeave)
+    handlers.on("wheel", onWheel)
+    handlers.on("keydown", onKeyDown)
+    handlers.on("keyup", onKeyUp)
+    handlers.on("focus", onFocus)
+    handlers.on("blur", onBlur)
+    handlers.on("scroll", onScroll)
+    element("tr", key, id, className, style, ref, attrs, handlers, children)
+}
+
+/** Table header cell (`display: table-cell`, bold, centered). `colSpan` / `rowSpan` like HTML (`rowSpan = 0` = to the end of the group). */
+fun NodeBuilder.th(
+    className: String? = null,
+    id: String? = null,
+    style: String? = null,
+    key: Any? = null,
+    title: String? = null,
+    ref: Ref<Element?>? = null,
+    tabIndex: Int? = null,
+    colSpan: Int? = null,
+    rowSpan: Int? = null,
+    onClick: ((MouseEvent) -> Unit)? = null,
+    onDoubleClick: ((MouseEvent) -> Unit)? = null,
+    onContextMenu: ((MouseEvent) -> Unit)? = null,
+    onMouseDown: ((MouseEvent) -> Unit)? = null,
+    onMouseUp: ((MouseEvent) -> Unit)? = null,
+    onMouseMove: ((MouseEvent) -> Unit)? = null,
+    onMouseEnter: ((MouseEvent) -> Unit)? = null,
+    onMouseLeave: ((MouseEvent) -> Unit)? = null,
+    onWheel: ((WheelEvent) -> Unit)? = null,
+    onKeyDown: ((KeyboardEvent) -> Unit)? = null,
+    onKeyUp: ((KeyboardEvent) -> Unit)? = null,
+    onFocus: ((FocusEvent) -> Unit)? = null,
+    onBlur: ((FocusEvent) -> Unit)? = null,
+    onScroll: ((ScrollEvent) -> Unit)? = null,
+    children: (NodeBuilder.() -> Unit)? = null,
+) {
+    val attrs = HashMap<String, Any?>()
+    if (title != null) attrs["title"] = title
+    if (tabIndex != null) attrs["tabindex"] = tabIndex
+    if (colSpan != null) attrs["colspan"] = colSpan
+    if (rowSpan != null) attrs["rowspan"] = rowSpan
+    val handlers = HashMap<String, (UIEvent) -> Unit>()
+    handlers.on("click", onClick)
+    handlers.on("dblclick", onDoubleClick)
+    handlers.on("contextmenu", onContextMenu)
+    handlers.on("mousedown", onMouseDown)
+    handlers.on("mouseup", onMouseUp)
+    handlers.on("mousemove", onMouseMove)
+    handlers.on("mouseenter", onMouseEnter)
+    handlers.on("mouseleave", onMouseLeave)
+    handlers.on("wheel", onWheel)
+    handlers.on("keydown", onKeyDown)
+    handlers.on("keyup", onKeyUp)
+    handlers.on("focus", onFocus)
+    handlers.on("blur", onBlur)
+    handlers.on("scroll", onScroll)
+    element("th", key, id, className, style, ref, attrs, handlers, children)
+}
+
+/** Table cell (`display: table-cell`). `colSpan` / `rowSpan` like HTML (`rowSpan = 0` = to the end of the group). */
+fun NodeBuilder.td(
+    className: String? = null,
+    id: String? = null,
+    style: String? = null,
+    key: Any? = null,
+    title: String? = null,
+    ref: Ref<Element?>? = null,
+    tabIndex: Int? = null,
+    colSpan: Int? = null,
+    rowSpan: Int? = null,
+    onClick: ((MouseEvent) -> Unit)? = null,
+    onDoubleClick: ((MouseEvent) -> Unit)? = null,
+    onContextMenu: ((MouseEvent) -> Unit)? = null,
+    onMouseDown: ((MouseEvent) -> Unit)? = null,
+    onMouseUp: ((MouseEvent) -> Unit)? = null,
+    onMouseMove: ((MouseEvent) -> Unit)? = null,
+    onMouseEnter: ((MouseEvent) -> Unit)? = null,
+    onMouseLeave: ((MouseEvent) -> Unit)? = null,
+    onWheel: ((WheelEvent) -> Unit)? = null,
+    onKeyDown: ((KeyboardEvent) -> Unit)? = null,
+    onKeyUp: ((KeyboardEvent) -> Unit)? = null,
+    onFocus: ((FocusEvent) -> Unit)? = null,
+    onBlur: ((FocusEvent) -> Unit)? = null,
+    onScroll: ((ScrollEvent) -> Unit)? = null,
+    children: (NodeBuilder.() -> Unit)? = null,
+) {
+    val attrs = HashMap<String, Any?>()
+    if (title != null) attrs["title"] = title
+    if (tabIndex != null) attrs["tabindex"] = tabIndex
+    if (colSpan != null) attrs["colspan"] = colSpan
+    if (rowSpan != null) attrs["rowspan"] = rowSpan
+    val handlers = HashMap<String, (UIEvent) -> Unit>()
+    handlers.on("click", onClick)
+    handlers.on("dblclick", onDoubleClick)
+    handlers.on("contextmenu", onContextMenu)
+    handlers.on("mousedown", onMouseDown)
+    handlers.on("mouseup", onMouseUp)
+    handlers.on("mousemove", onMouseMove)
+    handlers.on("mouseenter", onMouseEnter)
+    handlers.on("mouseleave", onMouseLeave)
+    handlers.on("wheel", onWheel)
+    handlers.on("keydown", onKeyDown)
+    handlers.on("keyup", onKeyUp)
+    handlers.on("focus", onFocus)
+    handlers.on("blur", onBlur)
+    handlers.on("scroll", onScroll)
+    element("td", key, id, className, style, ref, attrs, handlers, children)
+}
+
 /** Line break inside text. */
 fun NodeBuilder.br(
     className: String? = null,

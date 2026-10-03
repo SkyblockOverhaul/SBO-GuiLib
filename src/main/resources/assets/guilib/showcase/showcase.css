@@ -494,3 +494,21 @@ body.showcase-mc-font { font-family: minecraft; }
 .async-result { min-width: 200px; }
 .async-result.loading { color: #949ba4; }
 .async-result.failed { color: #f23f42; }
+
+/* Tables */
+.party-table { width: 100%; border-spacing: 0; border: 1px solid var(--border); border-radius: 3px; }
+.party-table caption { text-align: left; color: var(--muted); padding-bottom: 3px; }
+.party-table th { text-align: left; padding: 3px 6px; border-bottom: 1px solid var(--border); }
+.party-table td { padding: 3px 6px; }
+.party-table .num { text-align: right; }
+.party-table tbody tr:nth-child(even) { background-color: #ffffff08; }
+.party-table tbody tr { cursor: pointer; transition: background-color 100ms; }
+.party-table tbody tr:hover { background-color: #ffffff14; }
+.party-table tbody tr.selected { background-color: rgba(91, 141, 239, 0.3); }
+.party-table tfoot td { border-top: 1px solid var(--border); font-weight: bold; }
+.party-table .ok { color: #3ba55d; }
+.party-table .bad { color: #ed4245; }
+.grid-table { border-collapse: collapse; margin-top: 2px; }
+.grid-table th, .grid-table td { border: 1px solid var(--border); padding: 2px 6px; text-align: center; }
+.grid-table th { background-color: #ffffff0d; }
+.grid-table .middle { font-weight: bold; color: var(--accent); }

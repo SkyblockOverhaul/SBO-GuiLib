@@ -52,11 +52,19 @@ sealed interface LineHeight {
 /** Marker used while parsing; replaced by the element's `color` during computation. */
 data object CurrentColor
 
-enum class Display { BLOCK, INLINE, INLINE_BLOCK, FLEX, INLINE_FLEX, GRID, INLINE_GRID, NONE;
+enum class Display {
+    BLOCK, INLINE, INLINE_BLOCK, FLEX, INLINE_FLEX, GRID, INLINE_GRID, NONE,
+    TABLE, INLINE_TABLE, TABLE_CAPTION, TABLE_HEADER_GROUP, TABLE_ROW_GROUP, TABLE_FOOTER_GROUP, TABLE_ROW, TABLE_CELL,
+    TABLE_COLUMN_GROUP, TABLE_COLUMN;
     val isFlex get() = this == FLEX || this == INLINE_FLEX
     val isGrid get() = this == GRID || this == INLINE_GRID
-    val isInlineLevel get() = this == INLINE || this == INLINE_BLOCK || this == INLINE_FLEX || this == INLINE_GRID
+    val isTable get() = this == TABLE || this == INLINE_TABLE
+    val isInlineLevel get() = this == INLINE || this == INLINE_BLOCK || this == INLINE_FLEX || this == INLINE_GRID || this == INLINE_TABLE
 }
+enum class BorderCollapse { SEPARATE, COLLAPSE }
+/** `table-layout` (named so it doesn't clash with the layout engine's `TableLayout`). */
+enum class TableLayoutMode { AUTO, FIXED }
+enum class CaptionSide { TOP, BOTTOM }
 enum class Position { STATIC, RELATIVE, ABSOLUTE, FIXED }
 enum class BoxSizing { BORDER_BOX, CONTENT_BOX }
 enum class FlexDirection { ROW, ROW_REVERSE, COLUMN, COLUMN_REVERSE;

@@ -16,6 +16,10 @@ interface LayoutNode {
     val intrinsicHeight: Float? get() = null
     /** Auto height in lines of text (`<textarea rows>`) instead of the children's height; `null` = normal. */
     val rows: Int? get() = null
+    /** Table cells: columns spanned (`colspan`); `<col>` / `<colgroup>`: columns covered (`span`). */
+    val colSpan: Int get() = 1
+    /** Table cells: rows spanned (`rowspan`); 0 = to the end of the row group, like HTML. */
+    val rowSpan: Int get() = 1
     /** True for `<br>`: forces a line break inside inline content. */
     val isLineBreak: Boolean get() = false
     /** Where the layout result is written. */

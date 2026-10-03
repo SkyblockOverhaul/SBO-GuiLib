@@ -107,6 +107,11 @@ class ComputedStyle internal constructor(
     /** A [VerticalAlign] keyword or a [Dim] (length / percentage of the line height). */
     val verticalAlign: Any get() = values[Prop.VERTICAL_ALIGN.ordinal]!!
     val letterSpacing get() = (values[Prop.LETTER_SPACING.ordinal] as? Dim.Px)?.px ?: 0f
+    val borderCollapse get() = values[Prop.BORDER_COLLAPSE.ordinal] as BorderCollapse
+    val borderSpacingX get() = (values[Prop.BORDER_SPACING_X.ordinal] as? Dim.Px)?.px ?: 0f
+    val borderSpacingY get() = (values[Prop.BORDER_SPACING_Y.ordinal] as? Dim.Px)?.px ?: 0f
+    val tableLayout get() = values[Prop.TABLE_LAYOUT.ordinal] as TableLayoutMode
+    val captionSide get() = values[Prop.CAPTION_SIDE.ordinal] as CaptionSide
     @Suppress("UNCHECKED_CAST")
     val boxShadow get() = values[Prop.BOX_SHADOW.ordinal] as List<BoxShadow>
 

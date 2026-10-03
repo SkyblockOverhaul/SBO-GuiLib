@@ -46,7 +46,15 @@ import net.sbo.guilib.core.dsl.span
 import net.sbo.guilib.core.dsl.sub
 import net.sbo.guilib.core.dsl.sup
 import net.sbo.guilib.core.dsl.switch
+import net.sbo.guilib.core.dsl.caption
+import net.sbo.guilib.core.dsl.table
 import net.sbo.guilib.core.dsl.tabs
+import net.sbo.guilib.core.dsl.tbody
+import net.sbo.guilib.core.dsl.td
+import net.sbo.guilib.core.dsl.tfoot
+import net.sbo.guilib.core.dsl.th
+import net.sbo.guilib.core.dsl.thead
+import net.sbo.guilib.core.dsl.tr
 import net.sbo.guilib.core.dsl.textarea
 import net.sbo.guilib.core.dsl.tooltip
 import net.sbo.guilib.core.dsl.useAsync
@@ -59,7 +67,7 @@ import net.sbo.guilib.fabric.useTranslation
 
 /** Demo UI showing every feature; open with `/guilib showcase`. */
 object Showcase {
-    val SECTIONS = listOf("Buttons", "Forms", "Pickers", "Panels", "Colors", "Boxes", "Animation", "Layout", "Grid", "Text", "Scroll", "Sortable", "Images", "Items", "Entities", "State")
+    val SECTIONS = listOf("Buttons", "Forms", "Pickers", "Panels", "Colors", "Boxes", "Animation", "Layout", "Grid", "Tables", "Text", "Scroll", "Sortable", "Images", "Items", "Entities", "State")
 
     private val App = component<String>("Showcase") { initialSection ->
         var section by useState(initialSection)
@@ -102,6 +110,7 @@ object Showcase {
                         "Boxes" -> BoxesDemo()
                         "Animation" -> AnimationDemo()
                         "Grid" -> GridDemo()
+                        "Tables" -> TablesDemo()
                         "Images" -> ImagesDemo()
                         "Layout" -> LayoutDemo()
                         "Text" -> TextDemo()
@@ -595,6 +604,39 @@ object Showcase {
         }
         div(className = "grid-tiles fit") {
             for (i in 1..2) div(key = i, className = "tile") { +"fit #$i" }
+        }
+    }
+
+    private class Member(val name: String, val clazz: String, val level: Int, val ready: Boolean)
+
+    private val TablesDemo = component("TablesDemo") {
+        val members = listOf(
+            Member("Notch", "Mage", 50, true), Member("jeb_", "Berserk", 47, true),
+            Member("Dinnerbone", "Healer", 38, false), Member("Grumm", "Tank", 44, true), Member("Alex", "Archer", 29, false),
+        )
+        var selected by useState<String?>(null)
+        h2 { +"Tables" }
+        p(className = "muted") { +"thead / tbody / tfoot, zebra rows with :nth-child(even), tr:hover, a selected row, right-aligned numbers" }
+        table(className = "party-table") {
+            caption { +"Party (click a row)" }
+            thead { tr { th { +"Player" }; th { +"Class" }; th(className = "num") { +"Level" }; th { +"Ready" } } }
+            tbody {
+                for (m in members) tr(key = m.name, className = classNames("selected" to (m.name == selected)), onClick = { selected = m.name }) {
+                    td { +m.name }
+                    td(className = "muted") { +m.clazz }
+                    td(className = "num") { +m.level.toString() }
+                    td(className = if (m.ready) "ok" else "bad") { +(if (m.ready) "✔" else "✘") }
+                }
+            }
+            tfoot { tr { td(colSpan = 2) { +"Average" }; td(className = "num") { +String.format(java.util.Locale.ROOT, "%.1f", members.map { it.level }.average()) }; td {} } }
+        }
+        p(className = "muted") { +"border-collapse: collapse, colspan / rowspan, vertical-align" }
+        table(className = "grid-table") {
+            tr { th(rowSpan = 2) { +"Floor" }; th(colSpan = 2) { +"Best time" }; th(rowSpan = 2) { +"Runs" } }
+            tr { th { +"Solo" }; th { +"Party" } }
+            tr { td { +"F5" }; td { +"4:12" }; td { +"2:58" }; td(rowSpan = 2, className = "middle") { +"128" } }
+            tr { td { +"F6" }; td { +"5:40" }; td { +"3:31" } }
+            tr { td { +"F7" }; td(colSpan = 2, className = "muted") { +"not cleared yet" }; td { +"3" } }
         }
     }
 

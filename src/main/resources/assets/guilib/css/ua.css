@@ -73,6 +73,19 @@ span, a, strong, b, em, i, small, sub, sup, code, label {
     display: inline;
 }
 
+/* Tables (like a browser's, at GuiLib's half-size px: 1px spacing and cell padding). */
+table { display: table; border-spacing: 1px; }
+caption { display: table-caption; text-align: center; }
+colgroup { display: table-column-group; }
+col { display: table-column; }
+thead { display: table-header-group; vertical-align: middle; }
+tbody { display: table-row-group; vertical-align: middle; }
+tfoot { display: table-footer-group; vertical-align: middle; }
+tr { display: table-row; vertical-align: inherit; }
+table > tr { vertical-align: middle; } /* browsers wrap these in a tbody */
+td, th { display: table-cell; vertical-align: inherit; padding: 1px; }
+th { font-weight: bold; text-align: center; }
+
 p { margin: 0 0 0.5em 0; }
 h1 { font-size: 2em; font-weight: bold; margin: 0 0 0.3em 0; }
 h2 { font-size: 1.5em; font-weight: bold; margin: 0 0 0.3em 0; }

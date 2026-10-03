@@ -57,6 +57,8 @@ ENTITY = [
     ("lookY", "Float", "0f", "looky"),
     ("scale", "Float", "1f", "scale"),
 ]
+CELL = [("colSpan", "Int?", "null", "colspan"), ("rowSpan", "Int?", "null", "rowspan")]
+COL = [("span", "Int?", "null", "span")]
 PLAYER_HEAD = [("player", "Any", None, "player"), ("hat", "Boolean", "true", "hat")]
 
 # tag -> (doc, extra props, has children)
@@ -91,6 +93,16 @@ TAGS = {
     "pre": ("Preformatted block (`white-space: pre`).", [], True),
     "scroll": ("Scroll container: a div with `overflow: auto` and a styled scrollbar. (Not an HTML tag.)", [], True),
     "button": ("Button (`display: inline-flex`, centered content). Disabled buttons receive no mouse events.", BUTTON, True),
+    "table": ("Table (`display: table`): sized to its content like the web, columns line up across rows. Children: `caption`, `colgroup`/`col`, `thead`, `tbody`, `tfoot`, `tr`.", [], True),
+    "caption": ("Table caption (`display: table-caption`), above the table (`caption-side: bottom` puts it below).", [], True),
+    "colgroup": ("Group of table columns; `span` = columns covered when it has no `col` children. Only `width` is used.", COL, True),
+    "col": ("Table column; `span` = number of columns. Only `width` is used (e.g. `style = \"width: 40px\"`).", COL, False),
+    "thead": ("Table header rows (`display: table-header-group`), always drawn first.", [], True),
+    "tbody": ("Table body rows (`display: table-row-group`).", [], True),
+    "tfoot": ("Table footer rows (`display: table-footer-group`), always drawn last.", [], True),
+    "tr": ("Table row (`display: table-row`).", [], True),
+    "th": ("Table header cell (`display: table-cell`, bold, centered). `colSpan` / `rowSpan` like HTML (`rowSpan = 0` = to the end of the group).", CELL, True),
+    "td": ("Table cell (`display: table-cell`). `colSpan` / `rowSpan` like HTML (`rowSpan = 0` = to the end of the group).", CELL, True),
     "br": ("Line break inside text.", [], False),
     "hr": ("Horizontal rule.", [], False),
     "img": ("Image: `src` is a resource location (`\"modid:textures/x.png\"`); PNG, SVG and (animated) GIF are supported.", IMG, False),
