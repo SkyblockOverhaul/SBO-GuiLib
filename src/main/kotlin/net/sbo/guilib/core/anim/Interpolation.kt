@@ -21,6 +21,7 @@ object Interpolation {
     private val COLOR_PROPS = setOf(
         Prop.COLOR, Prop.BACKGROUND_COLOR,
         Prop.BORDER_TOP_COLOR, Prop.BORDER_RIGHT_COLOR, Prop.BORDER_BOTTOM_COLOR, Prop.BORDER_LEFT_COLOR, Prop.CARET_COLOR,
+        Prop.ACCENT_COLOR, Prop.OUTLINE_COLOR,
     )
 
     /** Properties that are never animated (they configure animations themselves). */

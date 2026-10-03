@@ -215,7 +215,7 @@ input[type=checkbox] {
     overflow: visible;
     white-space: normal;
 }
-input[type=checkbox]:checked { background-color: var(--guilib-accent); border-color: var(--guilib-accent); }
+input[type=checkbox]:checked { background-color: var(--guilib-control-accent, var(--guilib-accent)); border-color: var(--guilib-control-accent, var(--guilib-accent)); }
 .guilib-check { font-size: 8px; line-height: 1; font-weight: bold; color: var(--guilib-on-accent); visibility: hidden; }
 input:checked > .guilib-check { visibility: visible; }
 .guilib-checkbox { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
@@ -251,7 +251,7 @@ input:checked > .guilib-check { visibility: visible; }
     transition: transform 150ms ease-out;
 }
 .guilib-switch:hover .guilib-switch-track { border-color: var(--guilib-border-strong); }
-.guilib-switch.checked .guilib-switch-track { background-color: var(--guilib-accent); border-color: var(--guilib-accent); }
+.guilib-switch.checked .guilib-switch-track { background-color: var(--guilib-control-accent, var(--guilib-accent)); border-color: var(--guilib-control-accent, var(--guilib-accent)); }
 .guilib-switch.checked .guilib-switch-thumb { transform: translateX(9px); }
 .guilib-switch:focus .guilib-switch-track { border-color: var(--guilib-focus); }
 .guilib-switch:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -282,7 +282,7 @@ input:checked > .guilib-check { visibility: visible; }
     left: -5px;
     top: 3px;
     height: 4px;
-    background-color: var(--guilib-accent);
+    background-color: var(--guilib-control-accent, var(--guilib-accent));
     border-radius: 2px;
 }
 .guilib-slider-thumb {
@@ -292,12 +292,12 @@ input:checked > .guilib-check { visibility: visible; }
     height: 10px;
     margin-left: -5px;
     background-color: var(--guilib-thumb);
-    border: 2px solid var(--guilib-accent);
+    border: 2px solid var(--guilib-control-accent, var(--guilib-accent));
     border-radius: 50%;
     transition: transform 100ms ease-out;
 }
 .guilib-slider:hover .guilib-slider-thumb, .guilib-slider.dragging .guilib-slider-thumb { transform: scale(1.2); }
-.guilib-slider:focus .guilib-slider-thumb { border-color: var(--guilib-focus); background-color: var(--guilib-accent); }
+.guilib-slider:focus .guilib-slider-thumb { border-color: var(--guilib-focus); background-color: var(--guilib-control-accent, var(--guilib-accent)); }
 .guilib-slider:disabled { opacity: 0.5; cursor: not-allowed; }
 .guilib-slider:disabled .guilib-slider-thumb { transform: none; }
 .guilib-slider-field { display: inline-flex; align-items: center; gap: 6px; }
@@ -444,9 +444,9 @@ select:disabled { opacity: 0.5; cursor: not-allowed; }
     transition: border-color 120ms ease, border-width 120ms ease;
 }
 .guilib-radio:hover .guilib-radio-dot { border-color: var(--guilib-border-strong); }
-.guilib-radio.checked .guilib-radio-dot { border: 3px solid var(--guilib-accent); background-color: var(--guilib-thumb); }
+.guilib-radio.checked .guilib-radio-dot { border: 3px solid var(--guilib-control-accent, var(--guilib-accent)); background-color: var(--guilib-thumb); }
 .guilib-radio:focus .guilib-radio-dot { border-color: var(--guilib-focus); }
-.guilib-radio.checked:focus .guilib-radio-dot { border-color: var(--guilib-accent); background-color: var(--guilib-thumb); }
+.guilib-radio.checked:focus .guilib-radio-dot { border-color: var(--guilib-control-accent, var(--guilib-accent)); background-color: var(--guilib-thumb); }
 .guilib-radio.disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ---- segmented buttons ---- */
@@ -463,7 +463,7 @@ select:disabled { opacity: 0.5; cursor: not-allowed; }
 .guilib-segmented.vertical { flex-direction: column; }
 .guilib-segment-indicator {
     position: absolute;
-    background-color: var(--guilib-accent);
+    background-color: var(--guilib-control-accent, var(--guilib-accent));
     border-radius: 3px;
     transition: left 160ms ease-out, top 160ms ease-out, width 160ms ease-out, height 160ms ease-out;
 }
@@ -502,8 +502,8 @@ select:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 .guilib-chip:hover { border-color: var(--guilib-border-strong); color: var(--guilib-text); }
 .guilib-chip:focus { border-color: var(--guilib-focus); }
-.guilib-chip.selected { background-color: var(--guilib-accent-soft); border-color: var(--guilib-accent); color: var(--guilib-text-strong); }
-.guilib-chip-check { display: none; font-weight: bold; color: var(--guilib-accent); }
+.guilib-chip.selected { background-color: var(--guilib-control-accent-soft, var(--guilib-accent-soft)); border-color: var(--guilib-control-accent, var(--guilib-accent)); color: var(--guilib-text-strong); }
+.guilib-chip-check { display: none; font-weight: bold; color: var(--guilib-control-accent, var(--guilib-accent)); }
 .guilib-chip.selected .guilib-chip-check { display: inline; }
 .guilib-chip.disabled { opacity: 0.5; cursor: not-allowed; }
 
@@ -525,7 +525,7 @@ select:disabled { opacity: 0.5; cursor: not-allowed; }
 .guilib-tab.disabled { opacity: 0.4; cursor: not-allowed; }
 .guilib-tab-indicator {
     position: absolute;
-    background-color: var(--guilib-accent);
+    background-color: var(--guilib-control-accent, var(--guilib-accent));
     transition: left 180ms ease-out, top 180ms ease-out, width 180ms ease-out, height 180ms ease-out;
 }
 .guilib-tabs.underline .guilib-tab-indicator { bottom: 0; height: 2px; border-radius: 1px; }
@@ -642,8 +642,8 @@ select:disabled { opacity: 0.5; cursor: not-allowed; }
 /* ---- range slider ---- */
 .guilib-range-slider .guilib-slider-fill { left: 0; }
 .guilib-range-slider .guilib-slider-thumb.active { z-index: 1; }
-.guilib-range-slider:focus .guilib-slider-thumb { border-color: var(--guilib-accent); background-color: var(--guilib-thumb); }
-.guilib-slider-thumb:focus { border-color: var(--guilib-focus); background-color: var(--guilib-accent); z-index: 1; }
+.guilib-range-slider:focus .guilib-slider-thumb { border-color: var(--guilib-control-accent, var(--guilib-accent)); background-color: var(--guilib-thumb); }
+.guilib-slider-thumb:focus { border-color: var(--guilib-focus); background-color: var(--guilib-control-accent, var(--guilib-accent)); z-index: 1; }
 
 /* ---- number input ---- */
 .guilib-number {

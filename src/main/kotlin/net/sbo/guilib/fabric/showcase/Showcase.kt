@@ -164,6 +164,7 @@ object Showcase {
         var name by useState("")
         var password by useState("")
         var agree by useState(false)
+        var accentCheck by useState(true)
         var mode by useState("normal")
         var dialog by useState(false)
         var sounds by useState(true)
@@ -187,6 +188,17 @@ object Showcase {
         label(className = "form-row") {
             span(className = "form-label") { +"caret-color" }
             input(className = "gold-caret", value = "Golden caret", onChange = {})
+        }
+        div(className = "form-row accent-demo") {
+            span(className = "form-label") { +"accent-color" }
+            div(className = "row") {
+                checkbox(checked = accentCheck, onChange = { accentCheck = it.checked })
+                switch(checked = sounds, onChange = { sounds = it.checked })
+                slider(value = volume, onChange = { volume = it }, step = 5f, style = "width: 90px")
+                segmented(value = mode, onChange = { mode = it }) {
+                    option("normal", "Normal"); option("hard", "Hard")
+                }
+            }
         }
         div(className = "form-row") {
             span(className = "form-label") { +"Aligned" }

@@ -70,6 +70,8 @@ enum class Prop(val css: String, val inherited: Boolean, val initial: Any?) {
     SCROLLBAR_COLOR("scrollbar-color", true, null),
     /** `null` = `auto` (the text colour). */
     CARET_COLOR("caret-color", true, null),
+    /** `null` = `auto` (the theme's `--guilib-accent`). The cascade also turns it into `--guilib-control-accent`. */
+    ACCENT_COLOR("accent-color", true, null),
 
     FLEX_DIRECTION("flex-direction", false, FlexDirection.ROW),
     FLEX_WRAP("flex-wrap", false, FlexWrap.NOWRAP),
@@ -195,7 +197,7 @@ object Properties {
         enumParser(Prop.VISIBILITY) { single(it)?.let { v -> if (isIdent(v, "collapse")) Visibility.HIDDEN else keyword<Visibility>(v) } }
         enumParser(Prop.OVERFLOW_X, Prop.OVERFLOW_Y) { single(it)?.let { v -> if (isIdent(v, "clip")) Overflow.HIDDEN else keyword<Overflow>(v) } }
         enumParser(Prop.SCROLLBAR_WIDTH) { single(it)?.let { v -> identIn(v, "auto", "thin", "none") } }
-        enumParser(Prop.CARET_COLOR) { single(it)?.let { v -> if (isIdent(v, "auto")) NoImage else color(v) } }
+        enumParser(Prop.CARET_COLOR, Prop.ACCENT_COLOR) { single(it)?.let { v -> if (isIdent(v, "auto")) NoImage else color(v) } }
         enumParser(Prop.SCROLLBAR_COLOR) { vs ->
             val w = words(vs)
             when {

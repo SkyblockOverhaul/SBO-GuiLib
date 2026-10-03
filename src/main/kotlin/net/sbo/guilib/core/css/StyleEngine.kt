@@ -209,11 +209,41 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
             Origin.USER_AGENT -> 5
         }
 
+        /**
+         * `accent-color` is applied through the variables the UA stylesheet's controls read: a color sets
+         * `--guilib-control-accent` (and `-soft`, the same color at 25 %), `auto` removes them again so the theme's
+         * `--guilib-accent` shows. Inherited like any custom property.
+         */
+        private fun applyAccentColor(d: Declaration, custom: MutableMap<String, List<ComponentValue>>) {
+            val values = VarResolver(custom).substitute(d.value) ?: return
+            val parsed = Properties.parse(d.property, CssParser.trimWhitespace(values))?.firstOrNull()?.second ?: return
+            when (parsed) {
+                Properties.NoImage, CssWide.INITIAL -> { custom.remove(ACCENT_VAR); custom.remove(ACCENT_SOFT_VAR) }
+                is Int -> {
+                    custom[ACCENT_VAR] = colorTokens(parsed)
+                    custom[ACCENT_SOFT_VAR] = colorTokens((parsed and 0xFFFFFF) or (((parsed ushr 24) * 64 / 255) shl 24))
+                }
+                else -> {}
+            }
+        }
+
+        private const val ACCENT_VAR = "--guilib-control-accent"
+        private const val ACCENT_SOFT_VAR = "--guilib-control-accent-soft"
+        private val colorTokenCache = HashMap<Int, List<ComponentValue>>()
+
+        private fun colorTokens(argb: Int): List<ComponentValue> = synchronized(colorTokenCache) {
+            colorTokenCache.getOrPut(argb) {
+                val hex = Integer.toHexString((argb shl 8) or (argb ushr 24)).padStart(8, '0')
+                CssParser.parseDeclarations("$ACCENT_VAR: #$hex").single().value
+            }
+        }
+
         /** Cascade already sorted ascending by priority → computed style. */
         internal fun computeFromCascade(sorted: List<Declaration>, parent: ComputedStyle?, ctx: StyleContext, where: String): ComputedStyle {
             // 1. Custom properties inherit and are applied first so var() can see them.
             val custom = LinkedHashMap<String, List<ComponentValue>>(parent?.customProperties ?: emptyMap())
             for (d in sorted) if (d.isCustom) custom[d.property] = d.value
+            sorted.lastOrNull { it.property == "accent-color" }?.let { applyAccentColor(it, custom) }
 
             // 2. Winning longhand value per property (later = higher priority).
             val winners = EnumMap<Prop, Any>(Prop::class.java)

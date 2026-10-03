@@ -569,3 +569,6 @@ body.showcase-mc-font { font-family: minecraft; }
 
 /* Forms: caret-color */
 .gold-caret { caret-color: #e0b04a; }
+
+/* Forms: accent-color recolors the checked / filled parts of the controls inside */
+.accent-demo { accent-color: #e0b04a; }
