@@ -239,6 +239,18 @@ class ComponentScope internal constructor(
     }
 
     /**
+     * Turns Minecraft's background blur behind this screen on or off while mounted (the dark overlay stays), e.g. bound
+     * to a settings switch: `useBackgroundBlur(settings.blur)`. Changes apply live; restored on unmount.
+     */
+    fun useBackgroundBlur(enabled: Boolean) {
+        useEffect(enabled) {
+            val before = document.backgroundBlur
+            document.backgroundBlur = enabled
+            onCleanup { document.backgroundBlur = before }
+        }
+    }
+
+    /**
      * Puts [className] on the body while [enabled] and this component is mounted (e.g. a theme or font switch that
      * also reaches modals and tooltips, without reopening the screen): `useBodyClass("font-mc", settings.mcFont)`.
      */

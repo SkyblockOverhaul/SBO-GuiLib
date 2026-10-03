@@ -66,6 +66,7 @@ body { display: flex; align-items: center; justify-content: center; }  /* body =
 | `useDocument()` | The `Document` (viewport size, `focusedElement`, `addEventListener`). |
 | `useDocumentEvent("keydown") { e -> … }` | Global listener while mounted (runs before element handlers). |
 | `useScreenScale(2.5f)` | The screen's own GUI scale while mounted, independent of Minecraft's (`null` = Minecraft's; fractions work). Everything incl. portals is laid out and drawn with it: viewport = window / scale, `vw`/`vh` and `@media (resolution)` follow, text and SVGs are re-rasterized sharp. Changes apply live. Also `GuiLib.open(App, scale = 2.5f)`, or `document.scale` from outside. |
+| `useBackgroundBlur(false)` | Turns Minecraft's blur behind the screen off while mounted (the dark overlay stays), e.g. bound to a settings switch; changes apply live, restored on unmount. Also `GuiLib.open(App, blurBackground = false)` / `GuiLib.screen(…)`, or `document.backgroundBlur`. `vanillaBackground = false` drops blur and overlay. |
 | `useBodyClass("font-mc", enabled)` | Puts a class on the body while mounted and `enabled` (theme / font switch without reopening; reaches portals too: modals, tooltips, toasts live under the body). |
 | `useBodyStyle("--accent", value)` | Sets an inline property or variable on the body while mounted (`null` = none). |
 

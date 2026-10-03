@@ -8,6 +8,8 @@ import net.sbo.guilib.core.layout.FontMetrics
 import net.sbo.guilib.core.layout.TextMeasurer
 import net.sbo.guilib.core.layout.TextStyle
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 
@@ -34,6 +36,28 @@ class ScreenScaleTest {
         assertNull(root.document.scale) // restored on unmount
         root.document.scale = Float.NaN
         assertNull(root.document.scale)
+    }
+
+    @Test
+    fun useBackgroundBlurSetsTheDocumentFlagWhileMounted() {
+        var blur = false
+        var show = true
+        lateinit var rerender: () -> Unit
+        val Blur = component<Boolean>("Blur") { b -> useBackgroundBlur(b) }
+        val root = UiRoot(FakeMeasurer())
+        assertTrue(root.document.backgroundBlur)
+        root.render(VComponent(component("App") {
+            rerender = useForceUpdate()
+            if (show) Blur(blur)
+        }, Unit, null))
+        root.frame(200f, 100f)
+        assertFalse(root.document.backgroundBlur)
+        blur = true; rerender(); root.frame(200f, 100f)
+        assertTrue(root.document.backgroundBlur)
+        blur = false; rerender(); root.frame(200f, 100f)
+        assertFalse(root.document.backgroundBlur)
+        show = false; rerender(); root.frame(200f, 100f)
+        assertTrue(root.document.backgroundBlur) // restored on unmount
     }
 
     /** Text widths depend on the pixel grid (glyph advances snap to physical pixels), like the real font backend. */

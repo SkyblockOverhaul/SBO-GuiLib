@@ -26,6 +26,8 @@ import net.sbo.guilib.fabric.resources.Stylesheets
  * @param stylesheets resource locations like `"mymod:ui/main.css"` (loaded from `assets/mymod/ui/main.css`)
  * @param scale the screen's own GUI scale (physical pixels per CSS px, fractions allowed), or `null` for Minecraft's;
  *   changeable later with `useScreenScale()` / `root.document.scale`
+ * @param blurBackground `false` = no blur behind the screen (the dark overlay stays); changeable later with
+ *   `useBackgroundBlur()` / `root.document.backgroundBlur`
  */
 open class GuiLibScreen(
     title: Component,
@@ -35,6 +37,7 @@ open class GuiLibScreen(
     private val vanillaBackground: Boolean = true,
     private val pauseGame: Boolean = false,
     scale: Float? = null,
+    blurBackground: Boolean = true,
 ) : Screen(title) {
 
     val root: UiRoot = UiRoot(FontManager, Stylesheets.loadAll(stylesheets))
@@ -42,6 +45,7 @@ open class GuiLibScreen(
 
     init {
         root.document.scale = scale
+        root.document.backgroundBlur = blurBackground
         GuiLib.initDocument(root)
         Stylesheets.watch(this)
     }
@@ -72,6 +76,11 @@ open class GuiLibScreen(
 
     override fun extractBackground(ctx: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, delta: Float) {
         if (vanillaBackground) super.extractBackground(ctx, mouseX, mouseY, delta)
+    }
+
+    /** Skipped when the document turns the blur off (`useBackgroundBlur(false)`); the dark overlay is drawn anyway. */
+    override fun extractBlurredBackground(ctx: GuiGraphicsExtractor) {
+        if (root.document.backgroundBlur) super.extractBlurredBackground(ctx)
     }
 
     // ---- own GUI scale ----------------------------------------------------------------------------------------

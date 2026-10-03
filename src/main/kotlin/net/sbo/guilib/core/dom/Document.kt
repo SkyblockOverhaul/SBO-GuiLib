@@ -120,6 +120,12 @@ class Document(
         }
     private var appliedResolution = 1f
 
+    /**
+     * Whether the backend blurs what is behind the screen (Minecraft's menu background blur; the dark overlay stays
+     * either way). Set it with `useBackgroundBlur()` or `GuiLib.open(blurBackground = …)`; read every frame.
+     */
+    var backgroundBlur = true
+
     var viewportWidth = 0f
         private set
     var viewportHeight = 0f

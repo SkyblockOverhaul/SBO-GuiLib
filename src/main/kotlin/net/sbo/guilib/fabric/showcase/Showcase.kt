@@ -68,6 +68,8 @@ object Showcase {
         var uiScale by useState<Float?>(null)
         var dragged by useState<Float?>(null)
         useScreenScale(uiScale)
+        var blur by useState(true)
+        useBackgroundBlur(blur)
         val shown = dragged ?: uiScale ?: net.minecraft.client.Minecraft.getInstance().window.guiScale.toFloat()
         div(className = "window") {
             div(className = "titlebar") {
@@ -80,6 +82,7 @@ object Showcase {
                         showValue = true, format = { String.format(java.util.Locale.ROOT, "%.2f×", it) },
                     )
                     button(className = classNames("scale-reset", "active" to (uiScale == null)), title = "Use Minecraft's GUI scale", onClick = { uiScale = null }) { +"MC" }
+                    button(className = classNames("scale-reset", "active" to blur), title = "Blur the game behind the screen", onClick = { blur = !blur }) { +"Blur" }
                     button(className = "close", title = "Close", onClick = { GuiLib.close() }) { +"✕" }
                 }
             }
