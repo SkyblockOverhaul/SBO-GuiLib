@@ -332,7 +332,11 @@ class Document(
         }
         styleAndLayout()
         // Transitions/animations write their current values, then layout catches up within the same frame.
-        if (animate && animator.isActive) animator.tick(animationTime(), ::animated)
+        if (animate && animator.isActive) {
+            val t = System.nanoTime()
+            animator.tick(animationTime(), ::animated)
+            net.sbo.guilib.core.FrameStats.styleNanos += System.nanoTime() - t
+        }
         // Controls position carets etc. from the layout; if that changed something, settle it in the same frame.
         val now = clock()
         for (h in frameHooks) h(now)
@@ -361,8 +365,13 @@ class Document(
     internal val frameHooks = ArrayList<(Long) -> Unit>()
 
     private fun styleAndLayout() {
-        if (styleDirty) recalcStyles()
+        if (styleDirty) {
+            val t = System.nanoTime()
+            recalcStyles()
+            net.sbo.guilib.core.FrameStats.styleNanos += System.nanoTime() - t
+        }
         if (layoutDirty) {
+            val t = System.nanoTime()
             net.sbo.guilib.core.FrameStats.layout()
             layoutEngine.layout(body, viewportWidth, viewportHeight)
             if (net.sbo.guilib.core.layout.LayoutCheck.enabled) net.sbo.guilib.core.layout.LayoutCheck.compareWithFullLayout(body) {
@@ -371,6 +380,7 @@ class Document(
             }
             layoutDirty = false
             clampScroll(body)
+            net.sbo.guilib.core.FrameStats.layoutNanos += System.nanoTime() - t
         }
     }
 

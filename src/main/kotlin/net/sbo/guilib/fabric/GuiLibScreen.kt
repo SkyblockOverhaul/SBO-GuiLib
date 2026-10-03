@@ -17,6 +17,8 @@ import net.sbo.guilib.fabric.font.FontManager
 import net.sbo.guilib.fabric.input.Cursors
 import net.sbo.guilib.fabric.input.Keys
 import net.sbo.guilib.fabric.render.CommandRenderer
+import net.sbo.guilib.core.dom.VComponent
+import net.sbo.guilib.fabric.debug.MetricsOverlay
 import net.sbo.guilib.fabric.resources.Stylesheets
 
 /**
@@ -28,6 +30,8 @@ import net.sbo.guilib.fabric.resources.Stylesheets
  *   changeable later with `useScreenScale()` / `root.document.scale`
  * @param blurBackground `false` = no blur behind the screen (the dark overlay stays); changeable later with
  *   `useBackgroundBlur()` / `root.document.backgroundBlur`
+ * @param metrics show the metrics overlay (frame time, CPU, memory, leak check) from the start; Ctrl + F12 toggles it
+ *   in every GuiLib screen, see [showMetrics]
  */
 open class GuiLibScreen(
     title: Component,
@@ -38,6 +42,7 @@ open class GuiLibScreen(
     private val pauseGame: Boolean = false,
     scale: Float? = null,
     blurBackground: Boolean = true,
+    metrics: Boolean = false,
 ) : Screen(title) {
 
     val root: UiRoot = UiRoot(FontManager, Stylesheets.loadAll(stylesheets))
@@ -65,10 +70,50 @@ open class GuiLibScreen(
         }
     }
 
+    /** Whether the metrics overlay is shown (Ctrl + F12 toggles it, unless [METRICS_SHORTCUT] is off). */
+    var showMetrics: Boolean = metrics
+        set(value) {
+            if (field != value) {
+                field = value
+                if (mounted) syncMetrics()
+            }
+        }
+
+    /**
+     * The metrics overlay: its own document (ua.css only, Minecraft's GUI scale), drawn over this screen's and left out
+     * of [FrameStats], so it neither shows up in its own numbers nor gets styled by the screen's CSS.
+     */
+    private var metricsRoot: UiRoot? = null
+
+    /** True while a press that started on the overlay is held: the release belongs to it too. */
+    private var metricsPressed = false
+
+    private fun syncMetrics() {
+        val show = showMetrics && mounted
+        if (show && metricsRoot == null) {
+            val r = UiRoot(FontManager, Stylesheets.loadAll(emptyList()))
+            GuiLib.initDocument(r)
+            FrameStats.uncounted { r.render(VComponent(MetricsOverlay.Window, MetricsOverlay.Props(root.document) { showMetrics = false }, null)) }
+            metricsRoot = r
+        } else if (!show && metricsRoot != null) {
+            metricsRoot?.document?.unmount()
+            metricsRoot = null
+            metricsPressed = false
+        }
+    }
+
+    /** True if Minecraft GUI position ([x], [y]) is on the overlay window. */
+    private fun onMetrics(x: Double, y: Double): Boolean {
+        val r = metricsRoot ?: return false
+        val box = r.document.body.querySelector(".guilib-metrics")?.getBoundingClientRect() ?: return false
+        return x >= box.x && y >= box.y && x < box.x + box.width && y < box.y + box.height
+    }
+
     private fun renderContent() {
         val t = Translator.current()
         translator = t
         root.render(VProvider(TranslatorContext, t, listOf(content), null))
+        syncMetrics()
     }
 
     /** Handles a chat [ClickEvent] (from [text]) like vanilla screens: links ask for confirmation, commands run … */
@@ -133,7 +178,14 @@ open class GuiLibScreen(
                 FrameStats.frame(t1 - t0, System.nanoTime() - t1)
             }
         }
-        Cursors.of(root.input.cursor)?.let(ctx::requestCursor)
+        metricsRoot?.let { m ->
+            FrameStats.uncounted {
+                m.document.resolution = mcScale
+                CommandRenderer.draw(ctx, m.frame(width.toFloat(), height.toFloat()), mouseX, mouseY)
+            }
+        }
+        val cursorOwner = metricsRoot?.takeIf { onMetrics(mouseX.toDouble(), mouseY.toDouble()) } ?: root
+        Cursors.of(cursorOwner.input.cursor)?.let(ctx::requestCursor)
         hoverTooltip(ctx, mouseX, mouseY)
         syncTextInput()
     }
@@ -187,16 +239,31 @@ open class GuiLibScreen(
 
     // Input handlers may measure text (caret placement), so they run with the screen's scale active too.
 
-    override fun mouseMoved(x: Double, y: Double) = scaled {
-        root.input.mouseMove(docX(x), docY(y))
+    override fun mouseMoved(x: Double, y: Double) {
+        metricsRoot?.let { m -> FrameStats.uncounted { m.input.mouseMove(x.toFloat(), y.toFloat()) } }
+        scaled { root.input.mouseMove(docX(x), docY(y)) }
     }
 
-    override fun mouseClicked(click: MouseButtonEvent, doubled: Boolean): Boolean = scaled {
-        root.input.mouseDown(docX(click.x()), docY(click.y()), Keys.domButton(click.button()), Keys.modifiers(click.modifiers()))
+    override fun mouseClicked(click: MouseButtonEvent, doubled: Boolean): Boolean {
+        val m = metricsRoot
+        if (m != null && onMetrics(click.x(), click.y())) {
+            metricsPressed = true
+            return FrameStats.uncounted { m.input.mouseDown(click.x().toFloat(), click.y().toFloat(), Keys.domButton(click.button()), Keys.modifiers(click.modifiers())) }
+        }
+        return scaled {
+            root.input.mouseDown(docX(click.x()), docY(click.y()), Keys.domButton(click.button()), Keys.modifiers(click.modifiers()))
+        }
     }
 
-    override fun mouseReleased(click: MouseButtonEvent): Boolean = scaled {
-        root.input.mouseUp(docX(click.x()), docY(click.y()), Keys.domButton(click.button()), Keys.modifiers(click.modifiers()))
+    override fun mouseReleased(click: MouseButtonEvent): Boolean {
+        val m = metricsRoot
+        if (m != null && metricsPressed) {
+            metricsPressed = false
+            return FrameStats.uncounted { m.input.mouseUp(click.x().toFloat(), click.y().toFloat(), Keys.domButton(click.button()), Keys.modifiers(click.modifiers())) }
+        }
+        return scaled {
+            root.input.mouseUp(docX(click.x()), docY(click.y()), Keys.domButton(click.button()), Keys.modifiers(click.modifiers()))
+        }
     }
 
     override fun mouseDragged(click: MouseButtonEvent, deltaX: Double, deltaY: Double): Boolean = scaled {
@@ -204,7 +271,17 @@ open class GuiLibScreen(
         true
     }
 
-    override fun mouseScrolled(mouseX: Double, mouseY: Double, horizontal: Double, vertical: Double): Boolean = scaled {
+    override fun mouseScrolled(mouseX: Double, mouseY: Double, horizontal: Double, vertical: Double): Boolean {
+        val m = metricsRoot
+        if (m != null && onMetrics(mouseX, mouseY)) {
+            return FrameStats.uncounted {
+                m.input.wheel(mouseX.toFloat(), mouseY.toFloat(), (-horizontal * SCROLL_STEP).toFloat(), (-vertical * SCROLL_STEP).toFloat(), Keys.currentModifiers())
+            }
+        }
+        return scrollDocument(mouseX, mouseY, horizontal, vertical)
+    }
+
+    private fun scrollDocument(mouseX: Double, mouseY: Double, horizontal: Double, vertical: Double): Boolean = scaled {
         root.input.wheel(
             docX(mouseX), docY(mouseY), (-horizontal * SCROLL_STEP).toFloat(), (-vertical * SCROLL_STEP).toFloat(),
             Keys.currentModifiers(), // Minecraft passes no modifiers with the wheel; Shift + wheel scrolls sideways
@@ -214,6 +291,10 @@ open class GuiLibScreen(
     override fun keyPressed(keyInput: KeyEvent): Boolean {
         val mods = Keys.modifiers(keyInput.modifiers())
         val key = Keys.keyName(keyInput, mods)
+        if (METRICS_SHORTCUT && key == "F12" && mods.ctrl && !mods.alt) {
+            showMetrics = !showMetrics
+            return true
+        }
         if (scaled { root.input.keyDown(key, keyInput.key(), mods) }) return true
         return super.keyPressed(keyInput) // Escape closes the screen
     }
@@ -230,12 +311,16 @@ open class GuiLibScreen(
     override fun removed() {
         root.document.unmount()
         mounted = false
+        syncMetrics()
         syncTextInput()
         Stylesheets.unwatch(this)
         super.removed()
     }
 
     companion object {
+        /** Ctrl + F12 toggles the metrics overlay in every GuiLib screen; set to `false` to turn the shortcut off. */
+        @JvmStatic var METRICS_SHORTCUT = true
+
         /** Pixels scrolled per mouse wheel notch. */
         var SCROLL_STEP = 20.0
     }

@@ -29,6 +29,7 @@ object GuiLib {
      * `null` = Minecraft's. Components can change it later with `useScreenScale()`.
      * [blurBackground]: `false` turns off Minecraft's background blur (the dark overlay stays; [vanillaBackground]
      * = `false` drops both); components can change it later with `useBackgroundBlur()`.
+     * [metrics]: show the metrics overlay from the start (Ctrl + F12 toggles it in any GuiLib screen).
      */
     fun open(
         app: ComponentType<Unit>,
@@ -38,8 +39,9 @@ object GuiLib {
         pauseGame: Boolean = false,
         scale: Float? = null,
         blurBackground: Boolean = true,
+        metrics: Boolean = false,
     ): GuiLibScreen {
-        val screen = GuiLibScreen(Component.literal(title), VComponent(app, Unit, null), stylesheets, vanillaBackground, pauseGame, scale, blurBackground)
+        val screen = GuiLibScreen(Component.literal(title), VComponent(app, Unit, null), stylesheets, vanillaBackground, pauseGame, scale, blurBackground, metrics)
         setScreen(screen)
         return screen
     }
@@ -55,8 +57,9 @@ object GuiLib {
         title: String = app.name,
         scale: Float? = null,
         blurBackground: Boolean = true,
+        metrics: Boolean = false,
     ): GuiLibScreen =
-        GuiLibScreen(Component.literal(title), VComponent(app, Unit, null), stylesheets, scale = scale, blurBackground = blurBackground)
+        GuiLibScreen(Component.literal(title), VComponent(app, Unit, null), stylesheets, scale = scale, blurBackground = blurBackground, metrics = metrics)
 
     fun screen(content: VNode, stylesheets: List<String> = emptyList(), title: String = "GuiLib", scale: Float? = null): GuiLibScreen =
         GuiLibScreen(Component.literal(title), content, stylesheets, scale = scale)

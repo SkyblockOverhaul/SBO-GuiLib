@@ -693,3 +693,34 @@ select.multiple .guilib-select-value { max-width: 140px; overflow: hidden; text-
 }
 .guilib-option.selected .guilib-option-check { background-color: var(--guilib-accent); border-color: var(--guilib-accent); color: var(--guilib-on-accent); }
 .guilib-select-menu.multiple .guilib-option.selected { color: var(--guilib-text); font-weight: normal; }
+
+/* Metrics overlay (Ctrl + F12 in any GuiLib screen, GuiLib.open(metrics = true)); resets what it inherits. */
+.guilib-metrics {
+    position: fixed; top: 6px; left: 6px; z-index: 1000; width: 150px; max-height: calc(100vh - 12px); overflow-y: auto;
+    padding: 4px 6px 6px; background-color: var(--guilib-surface-3); opacity: 0.95;
+    border: 1px solid var(--guilib-border-subtle); border-radius: 4px;
+    font-family: inter; font-size: 6px; font-weight: normal; font-style: normal; line-height: normal;
+    color: var(--guilib-text); text-align: left; letter-spacing: normal; text-transform: none; white-space: normal;
+}
+.guilib-metrics-head { display: flex; align-items: center; gap: 3px; margin-bottom: 2px; }
+.guilib-metrics-title { font-weight: bold; font-size: 7px; }
+.guilib-metrics-info {
+    width: 7px; height: 7px; margin-right: auto; line-height: 7px; text-align: center; flex-shrink: 0;
+    border: 1px solid var(--guilib-text-subtle); border-radius: 4px; color: var(--guilib-text-subtle);
+    font-size: 5px; font-weight: bold;
+}
+.guilib-metrics-btn { font-size: 6px; padding: 1px 3px; }
+.guilib-metrics-section { margin-top: 5px; margin-bottom: 1px; color: var(--guilib-accent); font-weight: bold; }
+.guilib-metrics-row { display: flex; justify-content: space-between; gap: 4px; line-height: 1.35; }
+.guilib-metrics-label { color: var(--guilib-text-muted); white-space: nowrap; }
+.guilib-metrics-value { white-space: nowrap; }
+.guilib-metrics-hint { color: var(--guilib-text-subtle); font-size: 5px; margin-top: 1px; }
+.guilib-metrics-graph {
+    display: flex; align-items: flex-end; height: 22px; margin-top: 2px;
+    background-color: var(--guilib-shade); border-radius: 2px; overflow: hidden;
+}
+.guilib-metrics-bar { flex: 1; min-width: 0; }
+.guilib-metrics-graph.frame .guilib-metrics-bar { background-color: var(--guilib-accent); }
+.guilib-metrics-graph.cpu .guilib-metrics-bar { background-color: var(--guilib-warning); }
+.guilib-metrics-graph.heap .guilib-metrics-bar { background-color: var(--guilib-success); }
+.guilib-metrics-graph.leak .guilib-metrics-bar { background-color: var(--guilib-danger); }

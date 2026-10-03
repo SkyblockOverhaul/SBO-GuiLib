@@ -31,13 +31,17 @@ class UiRoot(measurer: TextMeasurer, stylesheets: List<Stylesheet> = emptyList()
     fun frame(width: Float, height: Float): List<PaintCommand> {
         val changed = document.update(width, height)
         if (changed || !painted) {
+            var t = System.nanoTime()
             painter.paint(document.body)
+            FrameStats.paintNanos += System.nanoTime() - t
             FrameStats.paint()
             painted = true
             // Content may have moved under the mouse.
             input.refreshHover()
             if (document.update(width, height, animate = false)) {
+                t = System.nanoTime()
                 painter.paint(document.body)
+                FrameStats.paintNanos += System.nanoTime() - t
                 FrameStats.paint()
             }
             FrameStats.commands = painter.commands.size

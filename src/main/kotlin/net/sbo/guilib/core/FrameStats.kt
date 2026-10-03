@@ -34,16 +34,49 @@ object FrameStats {
     @JvmStatic
     fun reset() {
         frames = 0; updateNanos = 0; drawNanos = 0; styles = 0; layouts = 0; paints = 0; nodeLayouts = 0; layoutHits = 0
+        styleNanos = 0; layoutNanos = 0; paintNanos = 0
     }
 
     internal fun layoutNode() { nodeLayouts++ }
     internal fun layoutHit() { layoutHits++ }
+
+    /** Nanoseconds in style passes (incl. animation ticks), layout passes and display list builds. */
+    @JvmStatic var styleNanos = 0L
+        internal set
+    @JvmStatic var layoutNanos = 0L
+        internal set
+    @JvmStatic var paintNanos = 0L
+        internal set
 
     /** Paint commands in the last display list. */
     @JvmStatic var commands = 0
         internal set
 
     private var worstFrameNanos = 0L
+
+    /**
+     * Runs [block] without counting it: everything it does (another document's update and drawing, e.g. the metrics
+     * overlay) is taken out of the statistics again. The worst frame is not restored: [block] may read it.
+     */
+    inline fun <T> uncounted(block: () -> T): T {
+        val saved = save()
+        try {
+            return block()
+        } finally {
+            restore(saved)
+        }
+    }
+
+    @PublishedApi internal fun save() = longArrayOf(
+        frames, updateNanos, drawNanos, styles, layouts, paints, nodeLayouts, layoutHits, styleNanos, layoutNanos, paintNanos,
+        commands.toLong(),
+    )
+
+    @PublishedApi internal fun restore(v: LongArray) {
+        frames = v[0]; updateNanos = v[1]; drawNanos = v[2]; styles = v[3]; layouts = v[4]; paints = v[5]
+        nodeLayouts = v[6]; layoutHits = v[7]; styleNanos = v[8]; layoutNanos = v[9]; paintNanos = v[10]
+        commands = v[11].toInt()
+    }
 
     /** The slowest frame (update + draw) since the last call, then starts over. */
     @JvmStatic
