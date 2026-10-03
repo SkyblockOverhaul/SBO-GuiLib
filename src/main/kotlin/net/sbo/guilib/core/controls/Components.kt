@@ -158,13 +158,20 @@ internal val SelectComponent = component<SelectProps>("Select") { p ->
         span(className = "guilib-select-arrow") { +"▾" }
     }
 
+    // Opens downwards (upwards in the lower part of the screen), flips when it only fits on the other side and is
+    // shifted to stay inside the screen.
+    val menuStyle = useLayoutStyle(menuRef) {
+        val m = menuRef.current ?: return@useLayoutStyle null
+        val a = anchor ?: return@useLayoutStyle null
+        val side = if (a.bottom > doc.viewportHeight * 0.6f) "top" else "bottom"
+        "position: fixed; ${popupPosition(a, m.box.width, m.box.height, doc.viewportWidth, doc.viewportHeight, side, 1f)}; min-width: ${a.width}px"
+    }
     val a = anchor
     if (open && a != null) {
-        // Open upwards when the select sits in the lower part of the screen.
         val up = a.bottom > doc.viewportHeight * 0.6f
         val pos = if (up) "bottom: ${doc.viewportHeight - a.y + 1}px" else "top: ${a.bottom + 1}px"
         portal {
-            div(className = classNames("guilib-select-menu", "multiple" to p.multiple), ref = menuRef, style = "position: fixed; left: ${a.x}px; $pos; min-width: ${a.width}px") {
+            div(className = classNames("guilib-select-menu", "multiple" to p.multiple), ref = menuRef, style = menuStyle ?: "position: fixed; left: ${a.x}px; $pos; min-width: ${a.width}px") {
                 if (p.searchable) {
                     input(
                         className = "guilib-select-search",
@@ -233,6 +240,13 @@ internal val TooltipComponent = component<TooltipProps>("Tooltip") { p ->
         },
     ) { p.children(this) }
 
+    val tipRef = useElementRef()
+    // On the placement side, or the opposite one when it only fits there; shifted to stay inside the screen.
+    val tipStyle = useLayoutStyle(tipRef) {
+        val t = tipRef.current ?: return@useLayoutStyle null
+        val a = rect ?: return@useLayoutStyle null
+        "position: fixed; ${popupPosition(a, t.box.width, t.box.height, doc.viewportWidth, doc.viewportHeight, p.placement, 3f)}"
+    }
     val r = rect
     if (r != null) {
         val gap = 3f
@@ -243,7 +257,7 @@ internal val TooltipComponent = component<TooltipProps>("Tooltip") { p ->
             else -> "left: ${r.x}px; bottom: ${doc.viewportHeight - r.y + gap}px"
         }
         portal {
-            div(className = classNames("guilib-tooltip", p.className), style = "position: fixed; $pos") {
+            div(className = classNames("guilib-tooltip", p.className), ref = tipRef, style = tipStyle ?: "position: fixed; $pos") {
                 p.text?.let { +it }
                 p.content?.invoke(this)
             }

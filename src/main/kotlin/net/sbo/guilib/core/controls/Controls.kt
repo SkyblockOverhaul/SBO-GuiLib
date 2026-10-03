@@ -41,6 +41,7 @@ internal object Controls {
         var titled: Element? = null
         var since = 0L
         var shown = false
+        var tipAt = 0f to 0f
         val container = doc.openPortal("guilib-title-portal")
         doc.frameHooks += { now ->
             var e = input.hovered
@@ -51,10 +52,20 @@ internal object Controls {
                 if (shown) {
                     container.setChildren(emptyList()); shown = false
                 }
+            } else if (e != null && shown) {
+                // Laid out now: keep it inside the screen (beside the cursor on whichever side has room).
+                val tip = container.children.firstOrNull() as? Element
+                if (tip != null) {
+                    val pos = pointerPopupPosition(tipAt.first, tipAt.second, tip.box.width, tip.box.height, doc.viewportWidth, doc.viewportHeight)
+                    val style = "position: fixed; $pos"
+                    if (tip.inlineStyle != style) tip.inlineStyle = style
+                }
             } else if (e != null && !shown && now - since >= TITLE_DELAY_MS) {
                 val tip = Element("div")
                 tip.className = "guilib-tooltip"
-                tip.inlineStyle = "position: fixed; left: ${input.mouseX + 8f}px; top: ${input.mouseY + 10f}px"
+                tipAt = input.mouseX to input.mouseY
+                // Hidden until the next pass has measured it and moved it into the screen (same frame).
+                tip.inlineStyle = "position: fixed; left: 0; top: 0; visibility: hidden"
                 tip.setChildren(listOf(TextNode(e.getAttribute("title") as String)))
                 container.setChildren(listOf(tip))
                 doc.bringPortalToFront(container) // above menus and dropdowns opened after the tooltip layer

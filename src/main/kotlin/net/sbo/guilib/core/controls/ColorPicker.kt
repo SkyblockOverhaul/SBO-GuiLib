@@ -171,12 +171,18 @@ internal val ColorInputComponent = component<ColorInputProps>("ColorInput") { p 
         span(className = "guilib-color-swatch", style = "background-color: $hex")
         span(className = "guilib-color-hex") { +hex }
     }
+    val popStyle = useLayoutStyle(popRef) {
+        val pop = popRef.current ?: return@useLayoutStyle null
+        val a = anchor ?: return@useLayoutStyle null
+        val side = if (a.bottom > doc.viewportHeight * 0.55f) "top" else "bottom"
+        "position: fixed; ${popupPosition(a, pop.box.width, pop.box.height, doc.viewportWidth, doc.viewportHeight, side, 2f)}"
+    }
     val a = anchor
     if (open && a != null) {
         val up = a.bottom > doc.viewportHeight * 0.55f
         val pos = if (up) "bottom: ${doc.viewportHeight - a.y + 2}px" else "top: ${a.bottom + 2}px"
         portal {
-            div(className = "guilib-color-popover", ref = popRef, style = "position: fixed; left: ${a.x}px; $pos") {
+            div(className = "guilib-color-popover", ref = popRef, style = popStyle ?: "position: fixed; left: ${a.x}px; $pos") {
                 ColorPickerComponent(ColorPickerProps(p.value, p.onChange, p.alpha, null))
             }
         }

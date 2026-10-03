@@ -69,3 +69,52 @@ internal fun offsetIn(child: Element, container: Element): FloatArray {
 }
 
 internal fun px(v: Float) = String.format(Locale.ROOT, "%.2fpx", v)
+
+/** Minimum distance between a popup and the screen edges. */
+internal const val POPUP_MARGIN = 2f
+
+/**
+ * One axis of a popup of [size] in a viewport of [view]: its start edge at [after] (e.g. below the anchor) or its end
+ * edge at [before] (above it), whichever fits, [preferAfter] first; when neither fits it is pinned to the far edge (or
+ * the start edge if it is larger than the screen). Returns `(true, left/top)` or `(false, right/bottom)`. The end side
+ * is pinned with `right` / `bottom`, so the popup keeps its natural size: a `left` near the right edge would squeeze a
+ * wrapping popup and hide how wide it really is.
+ */
+private fun popupAxis(after: Float, before: Float, size: Float, view: Float, preferAfter: Boolean): Pair<Boolean, Float> {
+    val afterFits = after + size <= view - POPUP_MARGIN
+    val beforeFits = before - size >= POPUP_MARGIN
+    val useAfter = when {
+        preferAfter && afterFits -> true
+        !preferAfter && beforeFits -> false
+        afterFits -> true
+        beforeFits -> false
+        else -> return if (size >= view - 2 * POPUP_MARGIN) true to POPUP_MARGIN else false to POPUP_MARGIN
+    }
+    return if (useAfter) true to maxOf(POPUP_MARGIN, after) else false to view - before
+}
+
+private fun axisCss(start: String, end: String, a: Pair<Boolean, Float>) = if (a.first) "$start: ${px(a.second)}" else "$end: ${px(a.second)}"
+
+/**
+ * CSS position of a fixed popup of [w]×[h] next to [anchor] on [side] (`top` `bottom` `left` `right`) with [gap]: on
+ * the other side when it only fits there, shifted along the anchor's edge to stay inside the [vw]×[vh] screen.
+ */
+internal fun popupPosition(anchor: Rect, w: Float, h: Float, vw: Float, vh: Float, side: String, gap: Float): String {
+    val vertical = side == "top" || side == "bottom"
+    return if (vertical) {
+        val y = popupAxis(anchor.bottom + gap, anchor.y - gap, h, vh, side == "bottom")
+        val x = popupAxis(anchor.x, vw - POPUP_MARGIN, w, vw, true)
+        "${axisCss("left", "right", x)}; ${axisCss("top", "bottom", y)}"
+    } else {
+        val x = popupAxis(anchor.right + gap, anchor.x - gap, w, vw, side == "right")
+        val y = popupAxis(anchor.y, vh - POPUP_MARGIN, h, vh, true)
+        "${axisCss("left", "right", x)}; ${axisCss("top", "bottom", y)}"
+    }
+}
+
+/** CSS position of a fixed tooltip of [w]×[h] at the mouse ([mx], [my]): below right of it, else on the other side. */
+internal fun pointerPopupPosition(mx: Float, my: Float, w: Float, h: Float, vw: Float, vh: Float): String {
+    val x = popupAxis(mx + 8f, mx - 8f, w, vw, true)
+    val y = popupAxis(my + 10f, my - 4f, h, vh, true)
+    return "${axisCss("left", "right", x)}; ${axisCss("top", "bottom", y)}"
+}
