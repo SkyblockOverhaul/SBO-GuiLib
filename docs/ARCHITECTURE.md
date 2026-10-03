@@ -125,6 +125,13 @@ GuiLib.open(App, stylesheets = listOf("sbo:ui/partyfinder.css"))
 3. **Layout**: Box-Model (content/padding/border/margin, `box-sizing: border-box` als **Default** – bewusste Abweichung, dokumentiert),
    Block-Layout (vertikales Stapeln, Margin-Auto-Zentrierung, kein Margin-Collapsing) und Flexbox nach Spec (Basis, Grow/Shrink-Verteilung,
    min/max-Clamping, Justify/Align, Gap); Text über `TextMeasurer` (Wrap, Ellipsis). Nur bei Dirty-Flags oder Viewport-/GUI-Scale-Änderung.
+   **Inkrementell** (seit 0.12): `Document.invalidateLayout(node)` markiert Knoten + Vorfahren (`LayoutBox.dirty`); `LayoutEngine.layoutNode`
+   cached pro Knoten Ergebnis je Eingaben (`LayoutKey`: cb-Größe, Modus, avail, erzwungene Größen, cellShift). Sauberer Knoten + gleiche
+   Eingaben → Teilbaum wird übersprungen. Flex-Items werden gemessen und dann final gelayoutet: Größen-Treffer für andere Eingaben merken
+   den Knoten als „stale“, falls kein späterer Aufruf passt, legt `fixStaleNodes()` den Teilbaum am Ende neu aus. Knoten mit absolut
+   positionierten Nachfahren, deren Containing Block außerhalb liegt, werden nicht gecached. `invalidateLayout()` ohne Knoten (Fonts,
+   Viewport, GUI-Scale) verwirft alles (`epoch`). Tests laufen mit `-Dguilib.layout.verify=true` (`LayoutCheck`): jedes inkrementelle
+   Layout wird mit einem vollen verglichen.
 4. **Paint**: Element-Baum → `DisplayList` (nur bei Änderung neu gebaut; Hover-Wechsel → Restyle nur des Elements), sortiert nach Stacking-Context/z-index.
 5. **Backend**: DisplayList → `GuiGraphicsExtractor`: Rechtecke/Borders/Radius über eigene `RenderPipeline` mit SDF-Fragment-Shader als
    `GuiElementRenderState`; Clipping über `enableScissor` (Rechteck-Clip; runde Clips später); Text über SDF-Font-Pipeline oder Vanilla `text()` + `pose()`-Scale;

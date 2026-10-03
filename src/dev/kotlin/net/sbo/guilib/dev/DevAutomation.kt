@@ -107,8 +107,9 @@ object DevAutomation : ClientModInitializer {
         Log.info(
             String.format(
                 java.util.Locale.ROOT,
-                "GuiLib stats %-12s %5.0f fps | update %.3f ms + draw %.3f ms per frame | per s: %.1f styles, %.1f layouts, %.1f paints",
-                section, st.frames / secs, st.updateNanos / 1e6 / f, st.drawNanos / 1e6 / f, st.styles / secs, st.layouts / secs, st.paints / secs,
+                "GuiLib stats %-12s %5.0f fps | update %.3f ms + draw %.3f ms per frame | per s: %.1f styles, %.1f layouts (%.0f nodes, %.0f reused), %.1f paints",
+                section, st.frames / secs, st.updateNanos / 1e6 / f, st.drawNanos / 1e6 / f, st.styles / secs, st.layouts / secs,
+                st.nodeLayouts / secs, st.layoutHits / secs, st.paints / secs,
             ),
         )
         // -Dguilib.dev.heap=true: heap in use after a full GC (dev only, the GC itself causes a hitch), to spot leaks.

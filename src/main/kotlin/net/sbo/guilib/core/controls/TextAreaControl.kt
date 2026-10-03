@@ -140,7 +140,7 @@ internal class TextAreaControl(val el: Element) : EditableControl {
         while (selectionEls.size < lines.size) selectionEls += Element("div").also { it.className = "guilib-selection" }
         while (selectionEls.size > lines.size) selectionEls.removeAt(selectionEls.size - 1)
         el.setChildren(selectionEls + lineEls + caretEl)
-        el.ownerDocument?.invalidateLayout()
+        el.ownerDocument?.invalidateLayout(el)
     }
 
     // ---- positions -----------------------------------------------------------------------------------------------
@@ -284,7 +284,7 @@ internal class TextAreaControl(val el: Element) : EditableControl {
 
     private fun touch() {
         blinkStart = el.ownerDocument?.now() ?: 0L
-        el.ownerDocument?.invalidateLayout()
+        el.ownerDocument?.invalidateLayout(el)
     }
 
     private fun moveCaret(to: Int, extend: Boolean, keepGoal: Boolean = false) {

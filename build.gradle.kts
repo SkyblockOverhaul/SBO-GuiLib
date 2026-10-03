@@ -84,6 +84,8 @@ tasks.withType<Test> {
     workingDir(runDirectory)
     // Used by CoreIsolationTest to verify that net.sbo.guilib.core stays free of Minecraft imports.
     systemProperty("guilib.srcDir", rootProject.file("src/main/kotlin").absolutePath)
+    // Every incremental layout pass in the tests is compared with a full layout (LayoutCheck).
+    systemProperty("guilib.layout.verify", "true")
 }
 
 val archiveName = "guilib-$mcProject"

@@ -41,7 +41,7 @@ class Document(
 
     /** True while transitions or animations are running (the backend keeps repainting). */
     val isAnimating get() = animator.isActive
-    private val layoutEngine = LayoutEngine(measurer)
+    private val layoutEngine = LayoutEngine(measurer).also { it.incremental = true }
     private val reconciler = Reconciler(this)
 
     /** The root element (`<body>`; also matches `:root`). Always as large as the viewport. */
@@ -158,7 +158,25 @@ class Document(
         styleDirty = true
     }
 
+    /** Lays out everything again on the next update (use when something outside the nodes changed, e.g. fonts). */
     fun invalidateLayout() {
+        layoutEngine.invalidateAll()
+        layoutDirty = true; paintDirty = true
+    }
+
+    /**
+     * [node] changed in a way that affects layout (its style, text, children or content): it and its ancestors are
+     * laid out again on the next update, unchanged subtrees elsewhere keep their layout.
+     */
+    internal fun invalidateLayout(node: Node) {
+        node.box.markDirty()
+        // Text nodes share their element's style.
+        if (node is Element) for (c in node.children) if (c is TextNode) c.box.markDirty()
+        var p = node.parent
+        while (p != null) {
+            p.box.markDirty()
+            p = p.parent
+        }
         layoutDirty = true; paintDirty = true
     }
 
@@ -170,6 +188,7 @@ class Document(
         styleEngine.stylesheets = sheets
         measurer.fontFaces(sheets.flatMap { it.fontFaces })
         body.styleChanged(true)
+        invalidateLayout() // fonts may measure differently
     }
 
     // ---- rendering --------------------------------------------------------------------------------------------
@@ -330,7 +349,7 @@ class Document(
     }
 
     private fun animated(el: Element, props: Set<Prop>) {
-        if (props.any { !ComputedStyle.isPaintOnly(it) }) invalidateLayout() else invalidatePaint()
+        if (props.any { !ComputedStyle.isPaintOnly(it) }) invalidateLayout(el) else invalidatePaint()
         // Inherited values (e.g. color) must reach the children.
         if (props.any { it.inherited }) el.styleChanged(true)
     }
@@ -346,6 +365,10 @@ class Document(
         if (layoutDirty) {
             net.sbo.guilib.core.FrameStats.layout()
             layoutEngine.layout(body, viewportWidth, viewportHeight)
+            if (net.sbo.guilib.core.layout.LayoutCheck.enabled) net.sbo.guilib.core.layout.LayoutCheck.compareWithFullLayout(body) {
+                layoutEngine.invalidateAll()
+                layoutEngine.layout(body, viewportWidth, viewportHeight)
+            }
             layoutDirty = false
             clampScroll(body)
         }
@@ -372,7 +395,7 @@ class Document(
             val next = styleEngine.compute(el, el.inlineDeclarations, parentStyle, ctx, alsoPseudoOf = pseudoOf)
             val old = el.computed
             if (!next.sameAs(old)) {
-                if (next.layoutDiffers(old)) invalidateLayout() else invalidatePaint()
+                if (next.layoutDiffers(old)) invalidateLayout(el) else invalidatePaint()
                 animator.onStyleComputed(el, old, next, parentStyle, ctx, animationTime())
                 el.computed = next
                 forceChildren = true
@@ -418,7 +441,7 @@ class Document(
         })
         val old = box.computed
         if (!style.sameAs(old)) {
-            if (style.layoutDiffers(old)) invalidateLayout() else invalidatePaint()
+            if (style.layoutDiffers(old)) invalidateLayout(box) else invalidatePaint()
             animator.onStyleComputed(box, old, style, host, ctx, animationTime())
             box.computed = style
         }

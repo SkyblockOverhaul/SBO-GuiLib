@@ -25,8 +25,28 @@ class LayoutEngine(val measurer: TextMeasurer) {
     private val table = TableLayout(this)
     /** Extra top padding of a table cell for `vertical-align` (set by [TableLayout] around the cell's final layout). */
     internal val cellShift = HashMap<LayoutNode, Float>()
-    private val intrinsicCache = HashMap<LayoutNode, FloatArray>()
     internal val parentOf = HashMap<LayoutNode, LayoutNode>()
+
+    /**
+     * Incremental layout: a clean node (see [LayoutBox.dirty]) laid out with the same inputs as before keeps its
+     * result and its whole subtree is skipped. Only for callers that mark changed nodes dirty (the Document);
+     * otherwise every pass lays out everything.
+     */
+    var incremental = false
+
+    /** Bumped by [invalidateAll]: every cached result from an older epoch is ignored. */
+    private var epoch = 0
+
+    /** Forgets every cached result (fonts, viewport or anything outside the nodes changed). */
+    fun invalidateAll() {
+        epoch++
+    }
+
+    /** Nodes whose descendants were left laid out for other inputs by a size-only cache hit; fixed after the pass. */
+    private val staleNodes = ArrayList<LayoutNode>()
+
+    /** Lowest containing-block level (index in [cbStack]) an absolutely positioned box registered with. */
+    private var minRegistered = Int.MAX_VALUE
 
     private class Pending(val node: LayoutNode, val parent: LayoutNode, val staticX: Float, val staticY: Float)
     private val cbStack = ArrayDeque<LinkedHashMap<LayoutNode, Pending>>()
@@ -36,17 +56,41 @@ class LayoutEngine(val measurer: TextMeasurer) {
 
     /** Lays out [root] so that it exactly fills the viewport (the root always has the viewport's size). */
     fun layout(root: LayoutNode, viewportWidth: Float, viewportHeight: Float) {
-        intrinsicCache.clear()
-        contentMinCache.clear()
         parentOf.clear()
         cellShift.clear()
         cbStack.clear()
+        staleNodes.clear()
+        minRegistered = Int.MAX_VALUE
+        if (!incremental) epoch++
         this.root = root
         this.viewportWidth = viewportWidth
         this.viewportHeight = viewportHeight
         layoutNode(root, viewportWidth, viewportHeight, WidthMode.FILL, viewportWidth, viewportWidth, viewportHeight)
         root.box.x = 0f
         root.box.y = 0f
+        fixStaleNodes()
+    }
+
+    /**
+     * A size-only hit gave a node the size it has for some inputs while its descendants are still laid out for the
+     * inputs of its last full layout. If no later call in the pass used those inputs again, lay the subtree out for
+     * the inputs it was last used with. The node's own size doesn't change (same inputs, same result), so only its
+     * descendants move; what the parent decided about the node (position, auto margins, visibility) is kept.
+     */
+    private fun fixStaleNodes() {
+        var i = 0
+        while (i < staleNodes.size) {
+            val node = staleNodes[i++]
+            val key = node.box.cache?.staleKey ?: continue
+            val b = node.box
+            val x = b.x; val y = b.y; val visible = b.visible; val inParagraph = b.inParagraph; val shift = b.baselineShift
+            val margin = floatArrayOf(b.margin.top, b.margin.right, b.margin.bottom, b.margin.left)
+            if (key.cellShift != null) cellShift[node] = key.cellShift else cellShift.remove(node)
+            layoutNode(node, key.cbWidth, key.cbHeight, if (key.shrink) WidthMode.SHRINK else WidthMode.FILL, key.avail, key.forcedWidth, key.forcedHeight, force = true)
+            b.x = x; b.y = y; b.visible = visible; b.inParagraph = inParagraph; b.baselineShift = shift
+            b.margin.set(margin[0], margin[1], margin[2], margin[3])
+        }
+        staleNodes.clear()
     }
 
     internal enum class WidthMode { FILL, SHRINK }
@@ -135,6 +179,54 @@ class LayoutEngine(val measurer: TextMeasurer) {
         avail: Float,
         forcedWidth: Float? = null,
         forcedHeight: Float? = null,
+        force: Boolean = false,
+    ) {
+        val box = node.box
+        val key = LayoutKey(cbWidth, cbHeight, mode == WidthMode.SHRINK, avail, forcedWidth, forcedHeight, cellShift[node])
+        val cache = box.cache?.takeIf { !box.dirty && it.epoch == epoch }
+        if (cache != null && !force) {
+            if (key == cache.subtreeKey) {
+                cache.results.getValue(key).restore(box)
+                cache.staleKey = null
+                net.sbo.guilib.core.FrameStats.layoutHit()
+                return
+            }
+            val result = cache.results[key]
+            if (result != null) {
+                result.restore(box)
+                if (cache.staleKey == null) staleNodes += node
+                cache.staleKey = key
+                net.sbo.guilib.core.FrameStats.layoutHit()
+                return
+            }
+        }
+        net.sbo.guilib.core.FrameStats.layoutNode()
+        val depth = cbStack.size
+        val outerRegistered = minRegistered
+        minRegistered = Int.MAX_VALUE
+        layoutNodeFull(node, cbWidth, cbHeight, mode, avail, forcedWidth, forcedHeight)
+        // Boxes positioned against a containing block outside this node depend on more than its inputs.
+        val escapes = minRegistered < depth
+        minRegistered = minOf(outerRegistered, minRegistered)
+        box.dirty = false
+        if (escapes) {
+            box.cache = null
+        } else {
+            val c = cache ?: LayoutCache(epoch).also { box.cache = it }
+            c.subtreeKey = key
+            c.staleKey = null
+            c.remember(key, LayoutSnapshot(box))
+        }
+    }
+
+    private fun layoutNodeFull(
+        node: LayoutNode,
+        cbWidth: Float,
+        cbHeight: Float?,
+        mode: WidthMode,
+        avail: Float,
+        forcedWidth: Float?,
+        forcedHeight: Float?,
     ) {
         val box = node.box
         box.reset()
@@ -201,12 +293,13 @@ class LayoutEngine(val measurer: TextMeasurer) {
         box.height = maxOf(height, pbV)
 
         if (s.display.isTable && node.textContent == null) table.placeBottomCaptions(node)
-        computeScrollSize(node)
 
         if (establishesCb) {
             val pending = cbStack.removeLast()
             for (p in pending.values) layoutAbsolute(p, node)
         }
+        // After the positioned children: they count once placed.
+        computeScrollSize(node)
     }
 
     /** Shrink-to-fit layout (inline-block, floats, absolutely positioned boxes). */
@@ -233,7 +326,9 @@ class LayoutEngine(val measurer: TextMeasurer) {
 
     internal fun registerAbsolute(child: LayoutNode, parent: LayoutNode, staticX: Float, staticY: Float) {
         val p = Pending(child, parent, staticX, staticY)
-        if (child.style.position == Position.FIXED) cbStack.first()[child] = p else cbStack.last()[child] = p
+        val level = if (child.style.position == Position.FIXED) 0 else cbStack.size - 1
+        cbStack[level][child] = p
+        minRegistered = minOf(minRegistered, level)
     }
 
     // ---- block flow --------------------------------------------------------------------------------------------
@@ -715,6 +810,8 @@ class LayoutEngine(val measurer: TextMeasurer) {
         for (child in node.layoutChildren) {
             val cb = child.box
             if (!cb.visible || cb.inParagraph) continue
+            // A positioned child whose containing block is further out is placed later and doesn't scroll here.
+            if (isOutOfFlow(child) && !positionsAgainst(node, child)) continue
             maxX = maxOf(maxX, cb.x + cb.width + cb.margin.right - b.border.left + b.padding.right)
             maxY = maxOf(maxY, cb.y + cb.height + cb.margin.bottom - b.border.top + b.padding.bottom)
         }
@@ -727,10 +824,20 @@ class LayoutEngine(val measurer: TextMeasurer) {
         b.scrollHeight = maxY
     }
 
+    /** True if [node] is the containing block of its out-of-flow child [child]. */
+    private fun positionsAgainst(node: LayoutNode, child: LayoutNode): Boolean =
+        node === root || (child.style.position != Position.FIXED && node.textContent == null && node.style.position != Position.STATIC)
+
     // ---- intrinsic sizes ---------------------------------------------------------------------------------------
 
     /** Min-content and max-content border-box width of [node]. */
-    internal fun intrinsic(node: LayoutNode): FloatArray = intrinsicCache.getOrPut(node) { computeIntrinsic(node) }
+    internal fun intrinsic(node: LayoutNode): FloatArray {
+        val b = node.box
+        if (b.intrinsicEpoch != epoch) {
+            b.intrinsic = null; b.contentMin = Float.NaN; b.intrinsicEpoch = epoch
+        }
+        return b.intrinsic ?: computeIntrinsic(node).also { b.intrinsic = it }
+    }
 
     /** Intrinsic sizes including (non-percentage) margins. */
     internal fun intrinsicOuter(node: LayoutNode): Pair<Float, Float> {
@@ -743,10 +850,15 @@ class LayoutEngine(val measurer: TextMeasurer) {
     private operator fun FloatArray.component1() = this[0]
     private operator fun FloatArray.component2() = this[1]
 
-    private val contentMinCache = HashMap<LayoutNode, Float>()
-
     /** Min-content width ignoring the node's own `width` (for the automatic minimum size of flex items). */
-    internal fun intrinsicContentMin(node: LayoutNode): Float = contentMinCache.getOrPut(node) { computeIntrinsic(node, ignoreWidth = true)[0] }
+    internal fun intrinsicContentMin(node: LayoutNode): Float {
+        val b = node.box
+        if (b.intrinsicEpoch != epoch) {
+            b.intrinsic = null; b.contentMin = Float.NaN; b.intrinsicEpoch = epoch
+        }
+        if (b.contentMin.isNaN()) b.contentMin = computeIntrinsic(node, ignoreWidth = true)[0]
+        return b.contentMin
+    }
 
     private fun computeIntrinsic(node: LayoutNode, ignoreWidth: Boolean = false): FloatArray {
         val s = node.style

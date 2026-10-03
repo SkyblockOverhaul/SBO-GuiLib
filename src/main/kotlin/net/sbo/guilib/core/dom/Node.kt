@@ -102,7 +102,7 @@ class TextNode internal constructor(text: String) : Node() {
         internal set(value) {
             if (field != value) {
                 field = value
-                document?.invalidateLayout()
+                document?.invalidateLayout(this)
             }
         }
 
@@ -115,7 +115,7 @@ class TextNode internal constructor(text: String) : Node() {
         internal set(value) {
             if (field != value) {
                 field = value
-                document?.invalidateLayout()
+                document?.invalidateLayout(this)
             }
         }
 
@@ -298,7 +298,7 @@ class Element internal constructor(val tagName: String) : Node(), Selectable {
         }
         // Structural pseudo-classes (:first-child, +, ~) may change for every child.
         if (document?.styleEngineUsesStructural != false) for (n in nodes) if (n is Element) n.styleChanged(true)
-        document?.invalidateLayout()
+        document?.invalidateLayout(this)
     }
 
     // ---- style ----
@@ -362,7 +362,7 @@ class Element internal constructor(val tagName: String) : Node(), Selectable {
 
     var replaced: ReplacedContent? = null
         internal set(value) {
-            field = value; document?.invalidateLayout()
+            field = value; document?.invalidateLayout(this)
         }
 
     /** Generated `::before` / `::after` boxes; not part of [children], but laid out and painted around them. */
@@ -409,7 +409,7 @@ class Element internal constructor(val tagName: String) : Node(), Selectable {
         box?.document = document
         box?.children?.forEach { it.document = document }
         renderList = null
-        document?.invalidateLayout()
+        document?.invalidateLayout(this)
     }
 
     /** Text of a `::before` / `::after` box. */
@@ -522,6 +522,8 @@ class Element internal constructor(val tagName: String) : Node(), Selectable {
 internal fun Node.attach(doc: Document) {
     if (document === doc) return
     document = doc
+    // It may have changed while it was detached (no document to tell): lay it out again.
+    box.markDirty()
     if (this is Element) {
         styleChanged(true)
         children.forEach { it.attach(doc) }

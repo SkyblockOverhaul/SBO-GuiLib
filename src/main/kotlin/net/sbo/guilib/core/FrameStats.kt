@@ -24,10 +24,20 @@ object FrameStats {
     @JvmStatic var paints = 0L
         internal set
 
+    /** Nodes laid out (incremental layout skips unchanged subtrees). */
+    @JvmStatic var nodeLayouts = 0L
+        internal set
+    /** Nodes whose cached layout was reused (with their whole subtree). */
+    @JvmStatic var layoutHits = 0L
+        internal set
+
     @JvmStatic
     fun reset() {
-        frames = 0; updateNanos = 0; drawNanos = 0; styles = 0; layouts = 0; paints = 0
+        frames = 0; updateNanos = 0; drawNanos = 0; styles = 0; layouts = 0; paints = 0; nodeLayouts = 0; layoutHits = 0
     }
+
+    internal fun layoutNode() { nodeLayouts++ }
+    internal fun layoutHit() { layoutHits++ }
 
     internal fun frame(updateNanos: Long, drawNanos: Long) {
         frames++

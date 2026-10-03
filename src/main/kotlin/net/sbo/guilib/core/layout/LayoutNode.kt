@@ -85,7 +85,80 @@ class LayoutBox {
         visible = true
     }
 
+    // ---- incremental layout (owned by LayoutEngine) ----
+
+    /** True when this node, its style or something inside it changed since it was last laid out. */
+    internal var dirty = true
+
+    /** Results of earlier layouts of this (clean) node, by their inputs. */
+    internal var cache: LayoutCache? = null
+
+    /** Min-/max-content widths (`[min, max]`) and the content-min of flex items, valid for [intrinsicEpoch]. */
+    internal var intrinsic: FloatArray? = null
+    internal var contentMin = Float.NaN
+    internal var intrinsicEpoch = -1
+
+    /** Marks this box as changed: its cached layout and intrinsic sizes are no longer valid. */
+    internal fun markDirty() {
+        dirty = true
+        cache = null
+        intrinsic = null
+        contentMin = Float.NaN
+    }
+
     override fun toString() = "LayoutBox(x=$x, y=$y, w=$width, h=$height)"
+}
+
+/** The inputs of one `layoutNode` call; equal inputs on an unchanged subtree give the same result. */
+internal data class LayoutKey(
+    val cbWidth: Float, val cbHeight: Float?, val shrink: Boolean, val avail: Float,
+    val forcedWidth: Float?, val forcedHeight: Float?, val cellShift: Float?,
+)
+
+/** What a `layoutNode` call decides for the node's own box (its descendants are in their own boxes). */
+internal class LayoutSnapshot(box: LayoutBox) {
+    private val width = box.width
+    private val height = box.height
+    private val baseline = box.baseline
+    private val scrollWidth = box.scrollWidth
+    private val scrollHeight = box.scrollHeight
+    private val edges = floatArrayOf(
+        box.margin.top, box.margin.right, box.margin.bottom, box.margin.left,
+        box.padding.top, box.padding.right, box.padding.bottom, box.padding.left,
+        box.border.top, box.border.right, box.border.bottom, box.border.left,
+    )
+
+    fun restore(box: LayoutBox) {
+        box.x = 0f; box.y = 0f
+        box.width = width; box.height = height
+        box.baseline = baseline
+        box.scrollWidth = scrollWidth; box.scrollHeight = scrollHeight
+        box.margin.set(edges[0], edges[1], edges[2], edges[3])
+        box.padding.set(edges[4], edges[5], edges[6], edges[7])
+        box.border.set(edges[8], edges[9], edges[10], edges[11])
+        box.inParagraph = false
+        box.baselineShift = 0f
+        box.visible = true
+    }
+}
+
+internal class LayoutCache(val epoch: Int) {
+    /** The inputs the node's descendants are currently laid out for. */
+    var subtreeKey: LayoutKey? = null
+    /** Own-box results per inputs (a flex item is measured and then laid out with other inputs every pass). */
+    val results = LinkedHashMap<LayoutKey, LayoutSnapshot>()
+    /** Set when a size-only hit left the descendants laid out for [subtreeKey] instead; fixed up after the pass. */
+    var staleKey: LayoutKey? = null
+
+    fun remember(key: LayoutKey, snapshot: LayoutSnapshot) {
+        results.remove(key)
+        results[key] = snapshot
+        if (results.size > MAX_RESULTS) results.remove(results.keys.first())
+    }
+
+    companion object {
+        const val MAX_RESULTS = 6
+    }
 }
 
 /** A block of wrapped inline content. Coordinates are relative to the owning box's border box. */

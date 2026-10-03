@@ -172,7 +172,7 @@ internal class InputControl(val el: Element) : EditableControl {
 
     private fun touch() {
         blinkStart = el.ownerDocument?.now() ?: 0L
-        el.ownerDocument?.invalidateLayout()
+        el.ownerDocument?.invalidateLayout(el)
     }
 
     private fun moveCaret(to: Int, extend: Boolean) {
