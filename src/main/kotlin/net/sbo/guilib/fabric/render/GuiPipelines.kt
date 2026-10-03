@@ -27,7 +27,8 @@ object GuiPipelines {
 
     /**
      * Rounded rectangle: Position, Color, UV0 = position relative to the rect center, UV1 = half size × 8,
-     * UV2 = four corner radii × 2 packed as bytes, LineWidth = border width (≥ 0: fill inside the border, < 0: border ring).
+     * UV2 = four corner radii × 2 packed as bytes, LineWidth = border width (≥ 0: fill inside the border, < 0: border ring,
+     * ≥ [SideBorders.OFFSET]: one side of a border with different sides).
      */
     val ROUNDED_FORMAT: VertexFormat =
         //#if MC >= 26.2

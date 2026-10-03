@@ -252,8 +252,9 @@ in one stylesheet works in every screen. Weights map to the nearest face (400/50
 9. `overflow: hidden` clips **rectangularly**. With `border-radius` on the clipping element, child backgrounds that sit
    exactly in one of its corners (headers, footers, sidebars) are rounded to match; other content (text, images,
    children that only partly overlap a corner) is not cut to the curve.
-10. Per-side borders on a box with `border-radius` are drawn as straight strips that stop at rounded corners
-    (the border doesn't bend around the curve); uniform borders and sides between square corners are exact.
+10. Per-side borders on a box with `border-radius` (e.g. `border-left: 3px solid green` on a rounded card) bend around the
+    corners and meet on the diagonal like in browsers, but the inner corner is circular (browsers: elliptical when the
+    two widths differ) and sides wider than 15.5px fall back to straight strips that stop at the rounded corners.
 11. Inline elements (`span`, `code`, …) paint background, border, `border-radius` and `box-shadow` per line like the web
     (`box-decoration-break: slice`); horizontal margin/padding/border take space, vertical ones don't change the line height.
     Use `display: inline-block` when the box must not wrap or needs a width/height.

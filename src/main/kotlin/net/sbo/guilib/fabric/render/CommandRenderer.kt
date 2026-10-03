@@ -210,11 +210,19 @@ object CommandRenderer {
         }
 
         // Different widths/colors per side: rounded background under the border (like background-clip: border-box),
-        // then one straight strip per side. Strips stop where a rounded corner begins so they never stick out of it;
-        // sides between square corners (e.g. a header's border-bottom) are exact.
+        // then one SDF quad per side that bends around the corners like in browsers (see SideBorders).
         if (Colors.alpha(b.background) != 0) {
             add(ctx, RoundedRectState(pose, b.x, b.y, b.width, b.height, b.background, b.radii, 0f, scissor))
         }
+        if (SideBorders.fits(b.borders)) {
+            for (side in 0 until 4) {
+                val c = b.borderColors[side]
+                if (b.borders[side] <= 0f || Colors.alpha(c) == 0) continue
+                add(ctx, RoundedRectState(pose, b.x, b.y, b.width, b.height, c, b.radii, SideBorders.pack(b.borders, side), scissor))
+            }
+            return
+        }
+        // Wider borders: one straight strip per side that stops where a rounded corner begins.
         val (tl, tr, br, bl) = b.radii.toList()
         val x0 = b.x
         val y0 = b.y

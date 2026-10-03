@@ -23,6 +23,8 @@ out vec2 localPos;
 flat out vec2 halfSize;
 flat out vec4 radii;
 flat out float borderWidth;
+flat out vec4 sideWidths; // top, right, bottom, left; only with side >= 0
+flat out int side;        // -1, or the side this quad paints of a border with different sides (see SideBorders)
 
 void main() {
     gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);
@@ -33,4 +35,12 @@ void main() {
     int b = UV2.y & 0xFFFF;
     radii = vec4(float(a & 0xFF), float((a >> 8) & 0xFF), float(b & 0xFF), float((b >> 8) & 0xFF)) / 2.0;
     borderWidth = LineWidth;
+    side = -1;
+    sideWidths = vec4(0.0);
+    if (LineWidth >= 4194304.0) {
+        int v = int(LineWidth - 4194304.0 + 0.5);
+        side = v & 3;
+        sideWidths = vec4(float((v >> 2) & 31), float((v >> 7) & 31), float((v >> 12) & 31), float((v >> 17) & 31)) / 2.0;
+        borderWidth = 0.0;
+    }
 }

@@ -16,7 +16,8 @@ import kotlin.math.roundToInt
 
 /**
  * One anti-aliased rounded rectangle drawn with [GuiPipelines.ROUNDED_RECT].
- * [borderWidth] ≥ 0 draws the area inside the border, < 0 draws the border ring of width `-borderWidth`.
+ * [borderWidth] ≥ 0 draws the area inside the border, < 0 draws the border ring of width `-borderWidth`,
+ * ≥ [SideBorders.OFFSET] one side of a border with different widths/colors per side ([SideBorders.pack]).
  */
 class RoundedRectState(
     private val pose: Matrix3x2f,

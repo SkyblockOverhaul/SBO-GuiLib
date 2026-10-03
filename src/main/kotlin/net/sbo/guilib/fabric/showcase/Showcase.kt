@@ -469,6 +469,14 @@ object Showcase {
             div(className = "demo-box", style = "border-radius: 0; background-color: #5b8def33; border-bottom: 2px dashed #5b8def") { +"bottom" }
             div(className = "demo-box drop-zone") { +"Drop here" }
         }
+        h3 { +"Per-side borders" }
+        p { +"Sides with their own width or color follow rounded corners and meet on the diagonal, like in browsers." }
+        div(className = "box-grid") {
+            div(className = "demo-box", style = "border: 1px solid #3f4147; border-left: 3px solid #57c96b; border-radius: 6px") { +"accent" }
+            div(className = "demo-box", style = "border-top: 4px solid #ffd166; border-radius: 8px") { +"top" }
+            div(className = "demo-box", style = "border: 2px solid; border-color: #e5484d #ffd166 #06d6a0 #5b8def; border-radius: 10px") { +"4 colors" }
+            div(className = "demo-box", style = "border: solid #f2f3f5; border-width: 1px 4px; border-radius: 8px") { +"1px 4px" }
+        }
         h3 { +"Gradients" }
         div(className = "box-grid") {
             div(className = "demo-box grad", style = "background: linear-gradient(to right, #5b8def, #b16cea)") { +"linear" }
