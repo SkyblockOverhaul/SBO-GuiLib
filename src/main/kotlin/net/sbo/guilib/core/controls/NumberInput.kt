@@ -7,6 +7,7 @@ import net.sbo.guilib.core.dsl.classNames
 import net.sbo.guilib.core.dsl.div
 import net.sbo.guilib.core.dsl.input
 import net.sbo.guilib.core.event.EventType
+import net.sbo.guilib.core.event.Modifiers
 import net.sbo.guilib.core.event.MouseEvent
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -24,6 +25,8 @@ internal data class NumberInputProps(
     val placeholder: String?,
     /** The field may be empty: clearing it reports `null` instead of restoring the last value. */
     val nullable: Boolean,
+    /** How many steps one click / wheel notch / arrow key moves for the held keys. */
+    val stepMultiplier: (Modifiers) -> Int,
     val className: String?,
     val id: String?,
     val style: String?,
@@ -40,6 +43,17 @@ internal fun formatNumber(v: Double, decimals: Int): String = BigDecimal(v).setS
 /** Parses what the user typed: `,` works as decimal point, empty/invalid → null. */
 internal fun parseNumber(text: String): Double? = text.trim().replace(',', '.').toDoubleOrNull()
 
+/** Steps per click, wheel notch or arrow key for the held keys: Shift × 10, Ctrl × 100, Ctrl + Shift × 1000 (Cmd = Ctrl). */
+fun defaultStepMultiplier(m: Modifiers): Int {
+    val ctrl = m.ctrl || m.meta
+    return when {
+        ctrl && m.shift -> 1000
+        ctrl -> 100
+        m.shift -> 10
+        else -> 1
+    }
+}
+
 /** Delay before a held +/− button starts repeating, and the repeat interval. */
 private const val REPEAT_DELAY_MS = 400L
 private const val REPEAT_MS = 60L
@@ -47,7 +61,8 @@ private const val REPEAT_MS = 60L
 /**
  * Number field with − and + buttons. The value always stays within min..max: typed values are clamped when the field
  * loses focus or Enter is pressed; values inside the range are reported while typing. ArrowUp/ArrowDown and the mouse
- * wheel (while hovered) step by `step`, Shift × 10; holding a button repeats. With `nullable`, the field may be empty
+ * wheel (while hovered) step by `step` × `stepMultiplier` (default Shift × 10, Ctrl × 100, Ctrl + Shift × 1000); holding
+ * a button repeats with the multiplier of the press. With `nullable`, the field may be empty
  * (reported as `null`): + on an empty field starts at `step` (at least min), − on an empty field does nothing and − at
  * min empties the field again.
  * Styled with `.guilib-number` (`.disabled`), `.guilib-number-input`, `.guilib-number-dec`, `.guilib-number-inc`.
@@ -99,10 +114,11 @@ internal val NumberInputComponent = component<NumberInputProps>("NumberInput") {
     fun holdButton(dir: Int): (MouseEvent) -> Unit = { e ->
         if (e.button == 0 && !p.disabled) {
             commitDraft()
-            stepBy(dir * if (e.shiftKey) 10 else 1)
+            val times = dir * p.stepMultiplier(e.modifiers)
+            stepBy(times)
             stopRepeat()
             repeat.current = doc.setTimeout(REPEAT_DELAY_MS) {
-                repeat.current = doc.setInterval(REPEAT_MS) { stepBy(dir) }
+                repeat.current = doc.setInterval(REPEAT_MS) { stepBy(times) }
             }
         }
     }
@@ -117,7 +133,7 @@ internal val NumberInputComponent = component<NumberInputProps>("NumberInput") {
         onWheel = { e ->
             if (p.wheel && !p.disabled && e.deltaY != 0f) {
                 commitDraft()
-                stepBy((if (e.deltaY < 0f) 1 else -1) * if (e.shiftKey) 10 else 1)
+                stepBy((if (e.deltaY < 0f) 1 else -1) * p.stepMultiplier(e.modifiers))
                 e.preventDefault()
             }
         },
@@ -138,8 +154,8 @@ internal val NumberInputComponent = component<NumberInputProps>("NumberInput") {
             onBlur = { commitDraft() },
             onKeyDown = { e ->
                 when (e.key) {
-                    "ArrowUp" -> { commitDraft(); stepBy(if (e.shiftKey) 10 else 1); e.preventDefault() }
-                    "ArrowDown" -> { commitDraft(); stepBy(if (e.shiftKey) -10 else -1); e.preventDefault() }
+                    "ArrowUp" -> { commitDraft(); stepBy(p.stepMultiplier(e.modifiers)); e.preventDefault() }
+                    "ArrowDown" -> { commitDraft(); stepBy(-p.stepMultiplier(e.modifiers)); e.preventDefault() }
                     "Enter" -> commitDraft()
                 }
             },

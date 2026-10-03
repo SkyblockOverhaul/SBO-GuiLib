@@ -8,6 +8,7 @@ import net.sbo.guilib.core.dom.VComponent
 import net.sbo.guilib.core.dom.component
 import net.sbo.guilib.core.dsl.ComponentScope
 import net.sbo.guilib.core.dsl.numberInput
+import net.sbo.guilib.core.event.Modifiers
 import net.sbo.guilib.core.dsl.rangeSlider
 import net.sbo.guilib.core.dsl.slider
 import net.sbo.guilib.core.dsl.switch
@@ -33,8 +34,10 @@ class SliderTest {
         button { display: inline-block; width: 10px; height: 10px }
     """.trimIndent()
 
+    private var now = 0L
+
     private fun ui(content: ComponentScope.() -> Unit): UiRoot {
-        val root = UiRoot(FakeMeasurer, listOf(Stylesheet.parse(ua, "ua", Origin.USER_AGENT)), clock = { 0L })
+        val root = UiRoot(FakeMeasurer, listOf(Stylesheet.parse(ua, "ua", Origin.USER_AGENT)), clock = { now })
         root.render(VComponent(component("T") { content() }, Unit, null))
         root.frame(300f, 200f)
         return root
@@ -267,6 +270,71 @@ class SliderTest {
         root.input.charTyped("2")
         root.frame(300f, 200f)
         assertEquals(2, value)
+    }
+
+    @Test
+    fun numberInputStepsBy10WithShift100WithCtrlAnd1000WithBoth() {
+        var value = 0
+        val root = ui {
+            var v by useState(0)
+            value = v
+            numberInput(value = v, onChange = { v = it }, min = -100_000, max = 100_000)
+        }
+        val inc = root.el(".guilib-number-inc").getBoundingClientRect()
+        fun click(mods: Modifiers) {
+            root.input.mouseDown(inc.x + 1f, inc.y + 1f, 0, mods)
+            root.input.mouseUp(inc.x + 1f, inc.y + 1f, 0, mods)
+            root.frame(300f, 200f)
+        }
+        click(Modifiers(shift = true)); assertEquals(10, value)
+        click(Modifiers(ctrl = true)); assertEquals(110, value)
+        click(Modifiers(ctrl = true, shift = true)); assertEquals(1110, value)
+        click(Modifiers(meta = true)); assertEquals(1210, value) // Cmd on macOS counts as Ctrl
+        val field = root.el(".guilib-number-input").getBoundingClientRect()
+        root.input.wheel(field.x + 2f, field.y + 2f, 0f, 1f, Modifiers(ctrl = true))
+        root.frame(300f, 200f)
+        assertEquals(1110, value)
+        root.click(root.el(".guilib-number-input"))
+        root.input.keyDown("ArrowDown", 0, Modifiers(ctrl = true, shift = true))
+        root.frame(300f, 200f)
+        assertEquals(110, value)
+    }
+
+    @Test
+    fun numberInputStepMultiplierCanBeReplaced() {
+        var value = 0
+        val root = ui {
+            var v by useState(0)
+            value = v
+            numberInput(value = v, onChange = { v = it }, stepMultiplier = { m -> if (m.alt) 5 else 1 })
+        }
+        val inc = root.el(".guilib-number-inc").getBoundingClientRect()
+        root.input.mouseDown(inc.x + 1f, inc.y + 1f, 0, Modifiers(alt = true))
+        root.input.mouseUp(inc.x + 1f, inc.y + 1f, 0, Modifiers(alt = true))
+        root.frame(300f, 200f)
+        assertEquals(5, value)
+        root.input.mouseDown(inc.x + 1f, inc.y + 1f, 0, Modifiers(shift = true))
+        root.input.mouseUp(inc.x + 1f, inc.y + 1f, 0, Modifiers(shift = true))
+        root.frame(300f, 200f)
+        assertEquals(6, value)
+    }
+
+    @Test
+    fun holdingAButtonRepeatsWithTheMultiplierOfThePress() {
+        var value = 0
+        val root = ui {
+            var v by useState(0)
+            value = v
+            numberInput(value = v, onChange = { v = it })
+        }
+        val inc = root.el(".guilib-number-inc").getBoundingClientRect()
+        root.input.mouseDown(inc.x + 1f, inc.y + 1f, 0, Modifiers(shift = true))
+        root.frame(300f, 200f)
+        assertEquals(10, value)
+        now += 400; root.frame(300f, 200f)
+        now += 60; root.frame(300f, 200f)
+        assertEquals(20, value)
+        root.input.mouseUp(inc.x + 1f, inc.y + 1f, 0, Modifiers(shift = true))
     }
 
     @Test

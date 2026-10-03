@@ -29,6 +29,8 @@ import net.sbo.guilib.core.event.EventType
 import net.sbo.guilib.core.event.FocusEvent
 import net.sbo.guilib.core.event.InputEvent
 import net.sbo.guilib.core.event.KeyboardEvent
+import net.sbo.guilib.core.controls.defaultStepMultiplier
+import net.sbo.guilib.core.event.Modifiers
 import net.sbo.guilib.core.event.UIEvent
 
 /** Collects the `option(...)` entries of a [select]. */
@@ -255,6 +257,7 @@ fun NodeBuilder.numberInput(
     wheel: Boolean = true,
     disabled: Boolean = false,
     placeholder: String? = null,
+    stepMultiplier: (Modifiers) -> Int = ::defaultStepMultiplier,
     className: String? = null,
     id: String? = null,
     style: String? = null,
@@ -262,7 +265,7 @@ fun NodeBuilder.numberInput(
 ) = NumberInputComponent(
     NumberInputProps(
         value.toDouble(), onChange?.let { f -> { v: Double? -> f(Math.round(v!!).toInt()) } }, min.toDouble(), max.toDouble(),
-        step.toDouble(), 0, wheel, disabled, placeholder, false, className, id, style,
+        step.toDouble(), 0, wheel, disabled, placeholder, false, stepMultiplier, className, id, style,
     ),
     key,
 )
@@ -277,6 +280,7 @@ fun NodeBuilder.numberInput(
     wheel: Boolean = true,
     disabled: Boolean = false,
     placeholder: String? = null,
+    stepMultiplier: (Modifiers) -> Int = ::defaultStepMultiplier,
     className: String? = null,
     id: String? = null,
     style: String? = null,
@@ -284,7 +288,7 @@ fun NodeBuilder.numberInput(
 ) = NumberInputComponent(
     NumberInputProps(
         value, onChange?.let { f -> { v: Double? -> f(v!!) } }, min, max, step, decimalsOf(step), wheel, disabled, placeholder,
-        false, className, id, style,
+        false, stepMultiplier, className, id, style,
     ),
     key,
 )
@@ -306,6 +310,7 @@ fun NodeBuilder.numberInput(
     wheel: Boolean = true,
     disabled: Boolean = false,
     placeholder: String? = null,
+    stepMultiplier: (Modifiers) -> Int = ::defaultStepMultiplier,
     className: String? = null,
     id: String? = null,
     style: String? = null,
@@ -313,7 +318,7 @@ fun NodeBuilder.numberInput(
 ) = NumberInputComponent(
     NumberInputProps(
         value?.toDouble(), onChange?.let { f -> { v: Double? -> f(v?.let { Math.round(it).toInt() }) } }, min.toDouble(),
-        max.toDouble(), step.toDouble(), 0, wheel, disabled, placeholder, allowEmpty, className, id, style,
+        max.toDouble(), step.toDouble(), 0, wheel, disabled, placeholder, allowEmpty, stepMultiplier, className, id, style,
     ),
     key,
 )
@@ -330,12 +335,13 @@ fun NodeBuilder.numberInput(
     wheel: Boolean = true,
     disabled: Boolean = false,
     placeholder: String? = null,
+    stepMultiplier: (Modifiers) -> Int = ::defaultStepMultiplier,
     className: String? = null,
     id: String? = null,
     style: String? = null,
     key: Any? = null,
 ) = NumberInputComponent(
-    NumberInputProps(value, onChange, min, max, step, decimalsOf(step), wheel, disabled, placeholder, allowEmpty, className, id, style),
+    NumberInputProps(value, onChange, min, max, step, decimalsOf(step), wheel, disabled, placeholder, allowEmpty, stepMultiplier, className, id, style),
     key,
 )
 
