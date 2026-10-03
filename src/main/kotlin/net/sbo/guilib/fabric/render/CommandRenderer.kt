@@ -493,7 +493,7 @@ object CommandRenderer {
 
     /**
      * Draws an entity like the player model in the inventory, centered in and scaled to fit the element's box.
-     * Approach based on SkyHanni's `FakePlayerRenderable` (https://github.com/hannibal002/SkyHanni, LGPL-2.1).
+     * Inspired by SkyHanni's `FakePlayerRenderable` (https://github.com/hannibal002/SkyHanni).
      */
     private fun drawEntity(ctx: GuiGraphicsExtractor, cmd: PaintCommand.Replaced) {
         val el = cmd.element

@@ -1,8 +1,8 @@
 # GuiLib
 
-> **AI disclaimer:** GuiLib was developed with substantial help from an AI coding assistant (Claude by Anthropic).
-> The code is reviewed, tested (unit tests + in-game checks on both supported Minecraft versions) and maintained by
-> the SkyblockOverhaul team, but please report anything that looks off.
+> **AI disclaimer:** GuiLib was made with AI assistance: most of the code and docs were written with
+> **Claude Opus 5.5** (Anthropic) and proofread by **Saotzuri**, who reviews, tests (unit tests + in-game checks on
+> every supported Minecraft version) and maintains it. If anything looks off, please open an issue.
 
 A UI library for Minecraft Fabric mods that works like web development:
 **React-style components and hooks in a Kotlin DSL with HTML tag names, styled with real `.css` files.**
@@ -121,5 +121,5 @@ Bundled third-party components:
 - JSVG (bundled jar-in-jar) — MIT License
 
 Credits:
-- `FakePlayer` and the `entity` rendering are based on SkyHanni's `FakePlayer`/`FakePlayerRenderable`
-  ([hannibal002/SkyHanni](https://github.com/hannibal002/SkyHanni), LGPL-2.1).
+- `FakePlayer` and the `entity` rendering are inspired by SkyHanni's `FakePlayer`/`FakePlayerRenderable`
+  ([hannibal002/SkyHanni](https://github.com/hannibal002/SkyHanni)).

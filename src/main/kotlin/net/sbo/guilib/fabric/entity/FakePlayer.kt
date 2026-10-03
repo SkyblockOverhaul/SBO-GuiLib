@@ -9,8 +9,6 @@ import net.minecraft.world.entity.decoration.Mannequin
 import net.minecraft.world.entity.player.PlayerModelPart
 import net.minecraft.world.entity.player.PlayerSkin
 import net.minecraft.world.item.component.ResolvableProfile
-import net.minecraft.world.scores.PlayerTeam
-import net.minecraft.world.scores.Scoreboard
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -19,30 +17,30 @@ import java.util.concurrent.atomic.AtomicInteger
  * It is never added to the world, so it does not tick or move; the name tag and cape are hidden.
  * All factories need a loaded world and return `null` on the title screen.
  *
- * Based on SkyHanni's `FakePlayer` (https://github.com/hannibal002/SkyHanni, LGPL-2.1), extended to load
- * any player's skin from a name, UUID or profile.
+ * Inspired by SkyHanni's `FakePlayer` (https://github.com/hannibal002/SkyHanni).
  */
 class FakePlayer private constructor(
     level: ClientLevel,
-    /** Player whose skin and model parts are mirrored; `null` uses the profile's skin. */
+    /** Player whose skin is mirrored; `null` uses the profile's skin. */
     private val source: AbstractClientPlayer?,
 ) : ClientMannequin(level, Minecraft.getInstance().playerSkinRenderCache()) {
 
     init {
         // Unique negative ids keep fake entities apart from real ones (and from each other) in render state caches.
         id = nextId.getAndDecrement()
+        // Visible layers live in the avatar's synced customisation byte: the source's layers (all for a profile), never the cape.
+        val layers = PlayerModelPart.entries
+            .filter { it != PlayerModelPart.CAPE && source?.isModelPartShown(it) != false }
+            .fold(0) { mask, part -> mask or part.mask }
+        entityData.set(DATA_PLAYER_MODE_CUSTOMISATION, layers.toByte())
     }
 
     // ClientMannequin only applies a looked-up skin in tick(), which never runs for an entity outside the world.
     // The skin cache returns the default skin until the lookup finishes (like player heads).
     override fun getSkin(): PlayerSkin = source?.skin ?: Minecraft.getInstance().playerSkinRenderCache().getOrDefault(profile).playerSkin()
 
-    override fun getTeam(): PlayerTeam = object : PlayerTeam(Scoreboard(), "") {
-        override fun getNameTagVisibility() = Visibility.NEVER
-    }
-
-    override fun isModelPartShown(part: PlayerModelPart): Boolean =
-        part != PlayerModelPart.CAPE && (source?.isModelPartShown(part) ?: super.isModelPartShown(part))
+    // Avatars without a custom name only get a name tag when this is true.
+    override fun shouldShowName(): Boolean = false
 
     private fun setProfile(profile: ResolvableProfile) = apply {
         entityData.set(Mannequin.DATA_PROFILE, profile)
@@ -53,7 +51,7 @@ class FakePlayer private constructor(
 
         private fun level(): ClientLevel? = Minecraft.getInstance().level
 
-        /** Mirrors [player] (skin and visible model parts). */
+        /** Mirrors [player] (skin and the model layers visible when it is created). */
         fun of(player: AbstractClientPlayer): FakePlayer? = level()?.let { FakePlayer(it, player) }
 
         /** Mirrors the local player. */
