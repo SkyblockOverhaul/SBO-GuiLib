@@ -144,6 +144,7 @@ class ComputedStyle internal constructor(
     /** Empty for `transform: none`. */
     @Suppress("UNCHECKED_CAST")
     val transform get() = values[Prop.TRANSFORM.ordinal] as List<TransformFn>
+    val filter get() = values[Prop.FILTER.ordinal] as List<FilterFn>
     val transformOrigin get() = values[Prop.TRANSFORM_ORIGIN.ordinal] as TransformOrigin
 
     /** `transition` entries, with comma lists paired up like CSS (shorter lists repeat). */
@@ -227,7 +228,7 @@ class ComputedStyle internal constructor(
         private val PAINT_ONLY = setOf(
             Prop.BACKGROUND_COLOR, Prop.BACKGROUND_IMAGE, Prop.BACKGROUND_SIZE, Prop.BACKGROUND_POSITION, Prop.BACKGROUND_REPEAT,
             Prop.BACKGROUND_ORIGIN, Prop.BACKGROUND_CLIP, Prop.OUTLINE_WIDTH, Prop.OUTLINE_STYLE, Prop.OUTLINE_COLOR, Prop.OUTLINE_OFFSET, Prop.COLOR, Prop.OPACITY, Prop.VISIBILITY, Prop.CURSOR,
-            Prop.POINTER_EVENTS, Prop.USER_SELECT, Prop.OBJECT_FIT, Prop.TEXT_DECORATION, Prop.TEXT_SHADOW, Prop.BOX_SHADOW, Prop.Z_INDEX,
+            Prop.POINTER_EVENTS, Prop.USER_SELECT, Prop.OBJECT_FIT, Prop.TEXT_DECORATION, Prop.TEXT_SHADOW, Prop.BOX_SHADOW, Prop.FILTER, Prop.Z_INDEX,
             Prop.BORDER_TOP_COLOR, Prop.BORDER_RIGHT_COLOR, Prop.BORDER_BOTTOM_COLOR, Prop.BORDER_LEFT_COLOR,
             Prop.BORDER_TOP_LEFT_RADIUS, Prop.BORDER_TOP_RIGHT_RADIUS, Prop.BORDER_BOTTOM_RIGHT_RADIUS, Prop.BORDER_BOTTOM_LEFT_RADIUS,
             Prop.SCROLLBAR_COLOR, Prop.TRANSFORM, Prop.TRANSFORM_ORIGIN,

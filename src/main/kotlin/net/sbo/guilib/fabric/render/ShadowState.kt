@@ -10,6 +10,7 @@ import net.minecraft.client.gui.navigation.ScreenRectangle
 import net.minecraft.client.gui.render.TextureSetup
 import net.minecraft.client.renderer.state.gui.GuiElementRenderState
 import net.sbo.guilib.core.paint.PaintCommand
+import net.sbo.guilib.core.paint.ShadowMode
 import org.joml.Matrix3x2f
 import org.joml.Vector2f
 import kotlin.math.ceil
@@ -19,7 +20,7 @@ import kotlin.math.roundToInt
 /**
  * One `box-shadow` layer drawn with [GuiPipelines.BOX_SHADOW]. Uses the rounded-rect vertex format; the values that
  * don't fit are packed exactly into floats: Position.z holds the offset (¼ px steps, ±256 px), LineWidth the blur
- * sigma (½ px steps, up to 127.5) and the spread (½ px steps, ±128) with its sign marking inset shadows.
+ * sigma (½ px steps, up to 127.5), the spread (½ px steps, ±128) and the [ShadowMode].
  */
 class ShadowState(private val pose: Matrix3x2f, private val s: PaintCommand.Shadow, private val scissor: ScreenRectangle?) : GuiElementRenderState {
     private val area = s.bounds
@@ -37,9 +38,8 @@ class ShadowState(private val pose: Matrix3x2f, private val s: PaintCommand.Shad
         val oy = (s.offsetY * 4f).roundToInt().coerceIn(-1024, 1023) + 1024
         packedOffset = (ox + oy * 2048).toFloat()
         val sigma = (s.blur / 2f * 2f).roundToInt().coerceIn(0, 255)
-        val grow = ((if (s.inset) -s.spread else s.spread) * 2f).roundToInt().coerceIn(-256, 255) + 256
-        val p = (1 + sigma + grow * 256).toFloat()
-        packedParams = if (s.inset) -p else p
+        val grow = ((if (s.mode == ShadowMode.INSET) -s.spread else s.spread) * 2f).roundToInt().coerceIn(-256, 255) + 256
+        packedParams = (1 + sigma + grow * 256 + s.mode.ordinal * 262144).toFloat()
         val x0 = floor(area.x).toInt()
         val y0 = floor(area.y).toInt()
         val raw = ScreenRectangle(x0, y0, ceil(area.right).toInt() - x0, ceil(area.bottom).toInt() - y0).transformMaxBounds(pose)

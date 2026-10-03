@@ -10,6 +10,8 @@ import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.resources.Identifier
 import net.sbo.guilib.core.Log
 import net.sbo.guilib.core.dom.ReplacedContent
+import net.sbo.guilib.core.paint.ImageFilters
+import net.sbo.guilib.core.paint.ImageOp
 import java.awt.RenderingHints
 import java.awt.image.BufferedImage
 import java.awt.image.DataBufferInt
@@ -18,6 +20,7 @@ import java.io.DataInputStream
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import javax.imageio.ImageIO
 import kotlin.math.ceil
 
 /**
@@ -87,8 +90,8 @@ object Images {
         }
     }
 
-    /** A drawable texture region: the texture and its size in texels. */
-    class Texture(val id: Identifier, val width: Int, val height: Int)
+    /** A drawable texture region: the texture and its size in texels, including [pad] transparent texels per side. */
+    class Texture(val id: Identifier, val width: Int, val height: Int, val pad: Int = 0)
 
     /** Decodes GIFs (and warms up SVG support) off the render thread; one daemon thread is enough. */
     private val decoder: ExecutorService = Executors.newSingleThreadExecutor { r ->
@@ -237,22 +240,89 @@ object Images {
     }
 
     private fun rasterize(svg: SVGDocument, w: Int, h: Int): Texture? = try {
+        upload(rasterizeArgb(svg, w, h), w, h, "svg_${svgCounter++}", "GuiLib SVG")
+    } catch (e: Exception) {
+        Log.warnOnce("GuiLib: failed to rasterize SVG: $e")
+        null
+    }
+
+    private fun rasterizeArgb(svg: SVGDocument, w: Int, h: Int): IntArray {
         val img = BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB)
         val g = img.createGraphics()
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
         g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE)
         svg.render(null, g, ViewBox(0f, 0f, w.toFloat(), h.toFloat()))
         g.dispose()
-        val argb = (img.raster.dataBuffer as DataBufferInt).data // TYPE_INT_ARGB: one int per pixel, row by row
+        return (img.raster.dataBuffer as DataBufferInt).data // TYPE_INT_ARGB: one int per pixel, row by row
+    }
+
+    private fun upload(argb: IntArray, w: Int, h: Int, name: String, label: String, pad: Int = 0): Texture {
         val native = NativeImage(w, h, false)
         for (y in 0 until h) for (x in 0 until w) native.setPixel(x, y, argb[y * w + x])
-        val id = Identifier.fromNamespaceAndPath("guilib", "dynamic/svg_${svgCounter++}")
-        val texture = DynamicTexture({ "GuiLib SVG $id" }, native)
-        Minecraft.getInstance().textureManager.register(id, texture)
-        Texture(id, w, h)
-    } catch (e: Exception) {
-        Log.warnOnce("GuiLib: failed to rasterize SVG: $e")
-        null
+        val id = Identifier.fromNamespaceAndPath("guilib", "dynamic/$name")
+        Minecraft.getInstance().textureManager.register(id, DynamicTexture({ "$label $id" }, native))
+        return Texture(id, w, h, pad)
+    }
+
+    // ---- filter ------------------------------------------------------------------------------------------------
+
+    private data class FilterKey(val src: String, val w: Int, val h: Int, val color: Int, val ops: List<ImageOp>, val pxPerGui: Float)
+
+    private class Pixels(val argb: IntArray, val width: Int, val height: Int)
+
+    private val filteredTextures = LinkedHashMap<FilterKey, Texture>()
+    private val pngPixels = LinkedHashMap<String, Pixels>()
+    private var filterCounter = 0
+
+    /**
+     * [entry] with CSS `filter` operations applied to its pixels, drawn at [pixelWidth]x[pixelHeight] physical pixels.
+     * Color-only filters on PNGs keep the natural size (pixel art stays crisp); blurs and silhouettes work at the
+     * on-screen size (PNGs are scaled up nearest-neighbour first). Animated GIFs aren't filtered (`null`).
+     */
+    fun filtered(entry: Entry, pixelWidth: Int, pixelHeight: Int, color: Int, ops: List<ImageOp>): Texture? {
+        if (entry.gif != null) return null
+        val natural = entry.pngId != null && !ImageFilters.needsResolution(ops)
+        val w = if (natural) entry.width.toInt() else pixelWidth.coerceIn(1, 2048)
+        val h = if (natural) entry.height.toInt() else pixelHeight.coerceIn(1, 2048)
+        val pxPerGui = guiScale() * w / pixelWidth.coerceAtLeast(1)
+        val key = FilterKey(entry.src, w, h, if (entry.svgSource != null) color else 0, ops, pxPerGui)
+        filteredTextures[key]?.let { return it }
+        val src = try {
+            val pngId = entry.pngId
+            if (pngId != null) {
+                val png = pngPixels(pngId) ?: return null
+                if (png.width == w && png.height == h) png.argb else IntArray(w * h) { i ->
+                    png.argb[(i / w * png.height / h) * png.width + (i % w * png.width / w)]
+                }
+            } else {
+                val plain = entry.svg ?: return null
+                val source = entry.svgSource
+                rasterizeArgb(if (source == null) plain else coloredSvg(entry, source, color) ?: return null, w, h)
+            }
+        } catch (e: Exception) {
+            Log.warnOnce("GuiLib: failed to filter image '${entry.src}': $e")
+            return null
+        }
+        val result = ImageFilters.apply(src, w, h, ops, pxPerGui)
+        val tex = upload(result.argb, result.width, result.height, "filtered_${filterCounter++}", "GuiLib filtered image", result.pad)
+        filteredTextures[key] = tex
+        while (filteredTextures.size > 64) {
+            val oldest = filteredTextures.keys.first()
+            filteredTextures.remove(oldest)?.let { Minecraft.getInstance().textureManager.release(it.id) }
+        }
+        return tex
+    }
+
+    /** Decoded PNG pixels (a few, for filters whose values animate). */
+    private fun pngPixels(id: Identifier): Pixels? {
+        pngPixels[id.toString()]?.let { return it }
+        val resource = Minecraft.getInstance().resourceManager.getResource(id)
+        if (resource.isEmpty) return null
+        val img = resource.get().open().use { ImageIO.read(it) } ?: return null
+        val px = Pixels(img.getRGB(0, 0, img.width, img.height, null, 0, img.width), img.width, img.height)
+        pngPixels[id.toString()] = px
+        if (pngPixels.size > 8) pngPixels.remove(pngPixels.keys.first())
+        return px
     }
 
     fun guiScale(): Float = net.sbo.guilib.fabric.font.FontManager.guiScale()
@@ -266,5 +336,8 @@ object Images {
         svgTextures.values.forEach { Minecraft.getInstance().textureManager.release(it.id) }
         svgTextures.clear()
         coloredSvgs.clear()
+        filteredTextures.values.forEach { Minecraft.getInstance().textureManager.release(it.id) }
+        filteredTextures.clear()
+        pngPixels.clear()
     }
 }

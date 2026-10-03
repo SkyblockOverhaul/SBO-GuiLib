@@ -106,6 +106,7 @@ enum class Prop(val css: String, val inherited: Boolean, val initial: Any?) {
     OUTLINE_COLOR("outline-color", false, CurrentColor),
     OUTLINE_OFFSET("outline-offset", false, Dim.ZERO),
     BOX_SHADOW("box-shadow", false, emptyList<BoxShadow>()),
+    FILTER("filter", false, emptyList<FilterFn>()),
 
     BORDER_COLLAPSE("border-collapse", true, BorderCollapse.SEPARATE),
     /** `border-spacing` is stored as two longhands (horizontal, vertical), like the gap properties. */
@@ -238,6 +239,7 @@ object Properties {
         enumParser(Prop.LETTER_SPACING) { single(it)?.let { v -> if (isIdent(v, "normal")) Length(0f, "px") else length(v)?.takeIf { l -> !l.isPercent } } }
         enumParser(Prop.TEXT_SHADOW) { textShadow(it) }
         enumParser(Prop.BOX_SHADOW) { boxShadow(it) }
+        enumParser(Prop.FILTER) { FilterParser.filter(it) }
         enumParser(Prop.CURSOR) { single(it)?.let { v -> keyword<Cursor>(v) } }
         enumParser(Prop.POINTER_EVENTS) { single(it)?.let { v -> keyword<PointerEvents>(v) } }
         enumParser(Prop.CONTENT) { content(it) }

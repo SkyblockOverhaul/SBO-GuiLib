@@ -20,6 +20,7 @@ import net.sbo.guilib.core.css.ObjectFit
 import net.sbo.guilib.core.dom.Rect
 import net.sbo.guilib.core.dom.Transform2D
 import net.sbo.guilib.core.layout.LetterSpacing
+import net.sbo.guilib.core.paint.ImageOp
 import net.sbo.guilib.core.paint.PaintCommand
 import net.sbo.guilib.fabric.font.FontManager
 import net.sbo.guilib.fabric.font.GlyphAtlas
@@ -402,13 +403,28 @@ object CommandRenderer {
         // SVGs are rasterized so that the whole image maps 1:1 to physical pixels at this size.
         val fullW = Images.physical(dw * nw / sw)
         val fullH = Images.physical(dh * nh / sh)
-        val tex = Images.texture(entry, fullW, fullH, img.color) ?: return
-        val tx = tex.width / nw
-        val ty = tex.height / nh
+        val tex = if (img.filters.isEmpty()) {
+            Images.texture(entry, fullW, fullH, img.color)
+        } else {
+            // A drop-shadow silhouette of an image that can't be filtered must not draw the image itself.
+            Images.filtered(entry, fullW, fullH, img.color, img.filters)
+                ?: if (img.filters.any { it is ImageOp.Silhouette }) null else Images.texture(entry, fullW, fullH, img.color)
+        } ?: return
+        val pad = tex.pad
+        val tx = (tex.width - 2 * pad) / nw
+        val ty = (tex.height - 2 * pad) / nh
         val u = sx * tx
         val v = sy * ty
-        val regionW = maxOf(1, (sw * tx).roundToInt())
-        val regionH = maxOf(1, (sh * ty).roundToInt())
+        var regionW = maxOf(1, (sw * tx).roundToInt())
+        var regionH = maxOf(1, (sh * ty).roundToInt())
+        if (pad > 0) {
+            // A blurred image paints beyond its box: the region grows by the padding on every side.
+            val gx = dw / regionW
+            val gy = dh / regionH
+            dx -= pad * gx; dy -= pad * gy
+            dw += 2 * pad * gx; dh += 2 * pad * gy
+            regionW += 2 * pad; regionH += 2 * pad
+        }
 
         beforeQuad(ctx, tex.id, dx, dy, dx + dw, dy + dh)
         val pose = ctx.pose()

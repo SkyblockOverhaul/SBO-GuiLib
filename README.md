@@ -43,7 +43,7 @@ UIs can be written quickly and correctly. Differences from the web are documente
   relative/absolute/fixed positioning, `z-index`, scroll containers with clipping and scrollbars, `calc()`/`min()`/`max()`/`clamp()`.
 - **Animation:** CSS `transition` and `@keyframes` + `animation` (easing, delays, iterations, alternate, fill modes) for
   colors, sizes, opacity, gradients, `transform` (translate, scale, rotate, skew) and more; `presence { }` and `presenceList(items) { }` for exit animations.
-- **Rendering:** own anti-aliased SDF shader for `border-radius`, borders and blurred `box-shadow`s, exact `linear-gradient`/`radial-gradient`/`conic-gradient`
+- **Rendering:** own anti-aliased SDF shader for `border-radius`, borders and blurred `box-shadow`s, CSS `filter` (color functions, `blur()`, `drop-shadow()`), exact `linear-gradient`/`radial-gradient`/`conic-gradient`
   (also repeating) backgrounds (multiple layers), **TTF text** (Inter bundled; FreeType,
   pixel-exact at every GUI scale) with wrapping, ellipsis and Minecraft `§` codes, the vanilla font via
   `font-family: minecraft`, PNG, **SVG** and animated **GIF** images, item icons, opacity.

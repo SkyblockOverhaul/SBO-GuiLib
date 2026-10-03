@@ -316,6 +316,16 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
             is TransformParser.TransformValue -> v.fns.map { f ->
                 if (f is TransformParser.TranslateValue) TransformFn.Translate(resolveDim(f.x, fontSize, ctx), resolveDim(f.y, fontSize, ctx)) else f as TransformFn
             }
+            is FilterParser.FilterValue -> v.fns.map { f ->
+                when (f) {
+                    is FilterParser.BlurValue -> FilterFn.Blur(toPx(f.radius, fontSize, ctx).coerceAtLeast(0f))
+                    is FilterParser.DropShadowValue -> FilterFn.DropShadow(
+                        toPx(f.x, fontSize, ctx), toPx(f.y, fontSize, ctx), f.blur?.let { toPx(it, fontSize, ctx).coerceAtLeast(0f) } ?: 0f,
+                        if (f.color == CurrentColor) color else f.color as Int,
+                    )
+                    else -> f as FilterFn
+                }
+            }
             is TransformParser.OriginValue -> TransformOrigin(resolveDim(v.x, fontSize, ctx), resolveDim(v.y, fontSize, ctx))
             else -> v
         }

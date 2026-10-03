@@ -17,7 +17,7 @@ layout(location = 3) flat in vec4 radii;   // top-left, top-right, bottom-right,
 layout(location = 4) flat in vec2 offset;
 layout(location = 5) flat in float sigma;
 layout(location = 6) flat in float grow;
-layout(location = 7) flat in float inset;
+layout(location = 7) flat in float mode;  // 0 outer, 1 inset, 2 plain (the blurred shape), 3 ring (shape minus shape grown by grow)
 
 layout(location = 0) out vec4 fragColor;
 
@@ -71,24 +71,33 @@ float blurredBox(vec2 p, vec2 hs, float corner, float s) {
     return value;
 }
 
-void main() {
-    // The shadow shape: the box moved by the offset and grown by the spread (rounded corners grow with it).
-    vec2 p = localPos - offset;
-    vec2 hs = max(halfSize + grow, vec2(0.0));
+// The shadow shape: the box moved by the offset and grown by g (rounded corners grow with it), blurred.
+float shapeAt(vec2 p, float g) {
+    vec2 hs = max(halfSize + g, vec2(0.0));
     vec4 r = vec4(
-        radii.x > 0.0 ? max(radii.x + grow, 0.0) : 0.0, radii.y > 0.0 ? max(radii.y + grow, 0.0) : 0.0,
-        radii.z > 0.0 ? max(radii.z + grow, 0.0) : 0.0, radii.w > 0.0 ? max(radii.w + grow, 0.0) : 0.0);
-    float shape;
+        radii.x > 0.0 ? max(radii.x + g, 0.0) : 0.0, radii.y > 0.0 ? max(radii.y + g, 0.0) : 0.0,
+        radii.z > 0.0 ? max(radii.z + g, 0.0) : 0.0, radii.w > 0.0 ? max(radii.w + g, 0.0) : 0.0);
     if (hs.x <= 0.0 || hs.y <= 0.0) {
-        shape = 0.0;
+        return 0.0;
     } else if (sigma < 0.25) {
-        shape = hard(roundedBox(p, hs, r));
-    } else {
-        shape = blurredBox(p, hs, min(cornerRadius(p, r), min(hs.x, hs.y)), sigma);
+        return hard(roundedBox(p, hs, r));
     }
-    float box = hard(roundedBox(localPos, halfSize, radii));
-    // Outer shadows are never drawn under the box; inset shadows only inside it, around the shape.
-    float coverage = inset > 0.5 ? box * (1.0 - shape) : shape * (1.0 - box);
+    return blurredBox(p, hs, min(cornerRadius(p, r), min(hs.x, hs.y)), sigma);
+}
+
+void main() {
+    vec2 p = localPos - offset;
+    float coverage;
+    if (mode > 2.5) {
+        coverage = max(shapeAt(p, 0.0) - shapeAt(p, grow), 0.0);
+    } else if (mode > 1.5) {
+        coverage = shapeAt(p, grow);
+    } else {
+        float shape = shapeAt(p, grow);
+        float box = hard(roundedBox(localPos, halfSize, radii));
+        // Outer shadows are never drawn under the box; inset shadows only inside it, around the shape.
+        coverage = mode > 0.5 ? box * (1.0 - shape) : shape * (1.0 - box);
+    }
     vec4 color = vec4(vertexColor.rgb, vertexColor.a * coverage);
     if (color.a <= 0.0) {
         discard;

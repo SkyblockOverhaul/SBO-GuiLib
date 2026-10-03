@@ -5,6 +5,7 @@ import net.sbo.guilib.core.css.BoxShadow
 import net.sbo.guilib.core.css.CalcNode
 import net.sbo.guilib.core.css.Colors
 import net.sbo.guilib.core.css.Dim
+import net.sbo.guilib.core.css.FilterFn
 import net.sbo.guilib.core.css.Length
 import net.sbo.guilib.core.css.LineHeight
 import net.sbo.guilib.core.css.Prop
@@ -140,6 +141,26 @@ object Interpolation {
     }
 
     /**
+     * Filter lists interpolate function by function when the functions match pairwise; the shorter list is padded
+     * with the functions' "no effect" values (so `none` ↔ `blur(4px)` works). Different functions switch discretely.
+     */
+    private fun filters(a: List<*>, b: List<*>, t: Float): List<FilterFn>? {
+        val n = maxOf(a.size, b.size)
+        return (0 until n).map { i ->
+            val x = (a.getOrNull(i) ?: (b[i] as FilterFn).identity()) as FilterFn
+            val y = (b.getOrNull(i) ?: x.identity()) as FilterFn
+            when {
+                x is FilterFn.ColorFn && y is FilterFn.ColorFn && x.kind == y.kind -> FilterFn.ColorFn(x.kind, lerp(x.amount, y.amount, t).coerceAtLeast(0f))
+                x is FilterFn.Blur && y is FilterFn.Blur -> FilterFn.Blur(lerp(x.radius, y.radius, t).coerceAtLeast(0f))
+                x is FilterFn.DropShadow && y is FilterFn.DropShadow -> FilterFn.DropShadow(
+                    lerp(x.offsetX, y.offsetX, t), lerp(x.offsetY, y.offsetY, t), lerp(x.blur, y.blur, t).coerceAtLeast(0f), color(x.color, y.color, t),
+                )
+                else -> return null
+            }
+        }
+    }
+
+    /**
      * Value of [p] at [t] (0..1) between [a] and [b], or `null` if the values can't be interpolated
      * (callers then switch discretely).
      */
@@ -160,6 +181,7 @@ object Interpolation {
                 TextShadow(lerp(sa.offsetX, sb.offsetX, t), lerp(sa.offsetY, sb.offsetY, t), color(sa.color as Int, sb.color as Int, t))
             }
             p == Prop.BOX_SHADOW && a is List<*> && b is List<*> -> boxShadows(a, b, t)
+            p == Prop.FILTER && a is List<*> && b is List<*> -> filters(a, b, t)
             p == Prop.SCROLLBAR_COLOR && a is Pair<*, *> && b is Pair<*, *> ->
                 Pair(color(a.first as Int, b.first as Int, t), color(a.second as Int, b.second as Int, t))
             p == Prop.BACKGROUND_IMAGE && a is List<*> && b is List<*> -> backgrounds(a, b, t)

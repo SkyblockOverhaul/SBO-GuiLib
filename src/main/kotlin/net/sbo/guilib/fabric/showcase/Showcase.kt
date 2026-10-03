@@ -547,6 +547,23 @@ object Showcase {
             img("guilib:showcase/refresh.svg", className = "tint-icon", style = "color: #faa61a")
             img("guilib:showcase/refresh.svg", className = "tint-icon", style = "color: #ed4245")
         }
+        h3 { +"filter" }
+        p(className = "muted") { +"Color functions recolor everything inside. blur() and drop-shadow() work on boxes and images; text keeps sharp." }
+        div(className = "filter-row") {
+            for (f in listOf("none", "grayscale(1)", "sepia(1)", "hue-rotate(120deg)", "invert(1)", "brightness(1.6)", "blur(1.5px)", "drop-shadow(2px 2px 1px #000c)")) {
+                div(key = f, className = "filter-cell") {
+                    img("minecraft:textures/item/diamond.png", className = "filter-img", style = "filter: $f")
+                    span(className = "muted") { +f }
+                }
+            }
+        }
+        div(className = "row") {
+            div(className = "filter-card") { +"Card"; button(className = "primary") { +"Join" } }
+            div(className = "filter-card gray") { +"grayscale(1)"; button(className = "primary") { +"Join" } }
+            div(className = "filter-card glow") { +"drop-shadow glow"; button(className = "primary") { +"Join" } }
+            div(className = "filter-card hover-color") { +"Hover: color"; button(className = "primary") { +"Join" } }
+            div(className = "blob-stage") { div(className = "blob a"); div(className = "blob b"); span { +"blur(6px)" } }
+        }
     }
 
     private val AnimationDemo = component("AnimationDemo") {

@@ -94,6 +94,11 @@ class Painter(private val measurer: TextMeasurer) {
     private fun paintLayer(el: Element, x: Float, y: Float, clip: Rect?, alpha: Float, parentXf: Transform2D) {
         val layers = ArrayList<Layer>()
         paintElement(el, x, y, clip, alpha, layers, parentXf)
+        paintLayers(layers)
+    }
+
+    /** Paints positioned descendants collected by [paintElement], sorted by `z-index`. */
+    private fun paintLayers(layers: MutableList<Layer>) {
         layers.sortWith(compareBy<Layer>({ it.z }, { it.order }))
         for (l in layers) {
             val saved = roundClip
@@ -121,6 +126,14 @@ class Painter(private val measurer: TextMeasurer) {
         pose = elPose
         val rect = Rect(x, y, b.width, b.height)
         val visible = s.visibility == Visibility.VISIBLE
+        // `filter` rewrites everything the element paints, so (like CSS, where it creates a stacking context) its
+        // positioned descendants are painted with it instead of joining the outer layers.
+        val filter = s.filter
+        val filterStart = commands.size
+        val poseAtStart = emittedPose
+        val outerLayers = layers
+        @Suppress("NAME_SHADOWING")
+        val layers = if (filter.isEmpty()) outerLayers else ArrayList()
 
         if (visible) {
             paintBox(el, s, rect, alpha, local)
@@ -192,6 +205,12 @@ class Painter(private val measurer: TextMeasurer) {
             roundClip = outerRound
         }
         if (visible && s.outlineWidth > 0f) paintOutline(s, rect, alpha, local)
+        if (filter.isNotEmpty()) {
+            paintLayers(layers)
+            pose = elPose
+            val space = if (aligned) FilterPass.Space(kotlin.math.abs(xf.sx), kotlin.math.abs(xf.sy), xf.scale, null) else FilterPass.Space(1f, 1f, 1f, xf)
+            FilterPass.apply(commands, filterStart, filter, space, poseAtStart)
+        }
     }
 
     /**

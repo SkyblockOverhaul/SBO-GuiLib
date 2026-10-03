@@ -292,6 +292,24 @@ button.primary:hover { background-color: #6f9cf2; }
 .icon-btn.light:hover { background-color: #e4e8eb; color: #0969da; }
 .tint-icon { width: 16px; height: 16px; }
 
+/* ---- filter ---- */
+.filter-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.filter-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 86px; }
+.filter-img { width: 32px; height: 32px; }
+.filter-card {
+    display: flex; flex-direction: column; gap: 4px; padding: 8px; border-radius: 6px;
+    background-color: #2b2d31; border: 1px solid #5865f2; color: #f2f3f5;
+}
+.filter-card.gray { filter: grayscale(1); }
+.filter-card.glow { filter: drop-shadow(0 0 6px #5865f2); }
+.filter-card.hover-color { filter: grayscale(1) brightness(0.8); transition: filter 300ms; }
+.filter-card.hover-color:hover { filter: grayscale(0) brightness(1); }
+.blob-stage { position: relative; width: 90px; height: 50px; }
+.blob { position: absolute; width: 30px; height: 30px; border-radius: 15px; filter: blur(6px); }
+.blob.a { left: 10px; top: 8px; background-color: #ed4245; }
+.blob.b { left: 40px; top: 14px; background-color: #3ba55d; }
+.blob-stage span { position: absolute; left: 0; bottom: 0; }
+
 /* ---- theme variables ---- */
 /* Variables set on a subtree restyle its controls; the panel sets its own color, because body's
    color: var(--guilib-text) was already resolved on body. */

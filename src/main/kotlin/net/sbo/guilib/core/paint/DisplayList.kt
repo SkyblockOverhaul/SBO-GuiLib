@@ -28,16 +28,20 @@ sealed interface PaintCommand {
      * outer shadows (the shadow is never drawn inside it) and its padding box for [inset] shadows (drawn only inside).
      * The shadow shape is that box moved by [offsetX]/[offsetY] and grown by [spread] (shrunk for inset shadows),
      * blurred with a Gaussian of standard deviation [blur] / 2.
+     *
+     * [mode] [ShadowMode.PLAIN] and [ShadowMode.RING] are used by `filter`: the blurred shape itself, or the blurred
+     * ring between the shape and the shape grown by [spread] (negative = the border width).
      */
     class Shadow(
         val x: Float, val y: Float, val width: Float, val height: Float, val radii: FloatArray,
         val offsetX: Float, val offsetY: Float, val blur: Float, val spread: Float, val color: Int, val inset: Boolean,
+        val mode: ShadowMode = if (inset) ShadowMode.INSET else ShadowMode.OUTER,
     ) : PaintCommand {
         /** Area the shadow can paint (for outer shadows: the shifted, grown and blurred shape). */
         val bounds: Rect
             get() {
-                if (inset) return Rect(x, y, width, height)
-                val e = spread + blur * 1.5f + 1f
+                if (mode == ShadowMode.INSET) return Rect(x, y, width, height)
+                val e = spread.coerceAtLeast(0f) + blur * 1.5f + 1f
                 return Rect(x + offsetX - e, y + offsetY - e, width + 2 * e, height + 2 * e)
             }
     }
@@ -45,10 +49,14 @@ sealed interface PaintCommand {
     /** A run of text; [y] is the top of the glyph box (baseline − ascent). */
     class Text(val x: Float, val y: Float, val text: String, val style: TextStyle, val color: Int, val alpha: Float) : PaintCommand
 
-    /** Image from a `src` URL/resource location, fitted into the rect; [color] is `currentColor` for SVGs. */
+    /**
+     * Image from a `src` URL/resource location, fitted into the rect; [color] is `currentColor` for SVGs. [filters]
+     * (from CSS `filter`) are applied to the image's pixels in order; blurred images paint beyond the rect.
+     */
     class Image(
         val x: Float, val y: Float, val width: Float, val height: Float,
         val src: String, val fit: ObjectFit, val alpha: Float, val radii: FloatArray, val color: Int,
+        val filters: List<ImageOp> = emptyList(),
     ) : PaintCommand
 
     /**
@@ -74,6 +82,20 @@ sealed interface PaintCommand {
      * (`null` = screen coordinates). Emitted for rotated, skewed and mirrored elements.
      */
     class SetTransform(val transform: Transform2D?) : PaintCommand
+}
+
+/** How a [PaintCommand.Shadow] covers its box: see there. */
+enum class ShadowMode { OUTER, INSET, PLAIN, RING }
+
+/** A pixel operation on an image (from CSS `filter`), see [ImageFilters]. */
+sealed interface ImageOp {
+    data class Matrix(val matrix: net.sbo.guilib.core.css.ColorMatrix) : ImageOp
+
+    /** Gaussian blur with standard deviation [sigma] in GUI px. */
+    data class Blur(val sigma: Float) : ImageOp
+
+    /** Every pixel becomes [color] with its alpha multiplied by the pixel's alpha (the shape of a `drop-shadow`). */
+    data class Silhouette(val color: Int) : ImageOp
 }
 
 /**
