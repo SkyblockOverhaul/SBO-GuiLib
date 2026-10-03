@@ -39,10 +39,21 @@ object FrameStats {
     internal fun layoutNode() { nodeLayouts++ }
     internal fun layoutHit() { layoutHits++ }
 
+    /** Paint commands in the last display list. */
+    @JvmStatic var commands = 0
+        internal set
+
+    private var worstFrameNanos = 0L
+
+    /** The slowest frame (update + draw) since the last call, then starts over. */
+    @JvmStatic
+    fun takeWorstFrameNanos(): Long = worstFrameNanos.also { worstFrameNanos = 0L }
+
     internal fun frame(updateNanos: Long, drawNanos: Long) {
         frames++
         this.updateNanos += updateNanos
         this.drawNanos += drawNanos
+        worstFrameNanos = maxOf(worstFrameNanos, updateNanos + drawNanos)
     }
 
     internal fun style() { styles++ }

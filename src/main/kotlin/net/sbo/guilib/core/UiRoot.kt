@@ -40,6 +40,7 @@ class UiRoot(measurer: TextMeasurer, stylesheets: List<Stylesheet> = emptyList()
                 painter.paint(document.body)
                 FrameStats.paint()
             }
+            FrameStats.commands = painter.commands.size
         }
         return painter.commands
     }

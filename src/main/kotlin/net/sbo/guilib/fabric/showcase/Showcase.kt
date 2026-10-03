@@ -78,11 +78,14 @@ object Showcase {
         useScreenScale(uiScale)
         var blur by useState(true)
         useBackgroundBlur(blur)
+        var metrics by useState(false)
+        if (metrics) Metrics.Window({ metrics = false })
         val shown = dragged ?: uiScale ?: net.minecraft.client.Minecraft.getInstance().window.guiScale.toFloat()
         div(className = "window") {
             div(className = "titlebar") {
                 span(className = "title") { +"GuiLib Showcase" }
                 div(className = "titlebar-actions") {
+                    button(className = classNames("scale-reset", "active" to metrics), title = "Frame time, CPU, memory and leak check", onClick = { metrics = !metrics }) { +"Metrics" }
                     span(className = "scale-label") { +"UI scale" }
                     slider(
                         value = shown, min = 1f, max = 4f, step = 0.25f, className = "scale-slider",

@@ -31,6 +31,9 @@ object GlyphAtlas {
         private set
     private val glyphs = HashMap<Key, Glyph>()
 
+    /** Atlas pages and glyphs in them (for the showcase's metrics). */
+    internal val stats get() = pages.size to glyphs.size
+
     fun glyph(font: TrueTypeFont, px: Int, codepoint: Int): Glyph = glyphs.getOrPut(Key(font, px, codepoint)) {
         val bmp = font.render(codepoint, px)
         if (bmp == null || bmp.width == 0 || bmp.rows == 0) return@getOrPut Glyph(null, 0f, 0f, 0f, 0f, 0, 0, 0, 0)

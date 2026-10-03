@@ -125,6 +125,9 @@ object Images {
     }
 
     private val entries = HashMap<String, Entry?>()
+
+    /** Loaded images and cached SVG rasters / filtered textures (for the showcase's metrics). */
+    internal val stats get() = Triple(entries.size, svgTextures.size, filteredTextures.size)
     private val svgTextures = LinkedHashMap<String, Texture>()
     private val coloredSvgs = LinkedHashMap<String, SVGDocument>()
     private var svgCounter = 0
