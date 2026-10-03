@@ -767,7 +767,7 @@ object Showcase {
             span(style = "color: #ff7b72") { +"spans " }
             span(style = "font-weight: bold") { +"bold " }
             span(style = "font-style: italic; text-decoration: underline") { +"italic underlined " }
-            +"and §6Minecraft §lcolor §r§bcodes§r work in any text."
+            +"and §6Minecraft §lcolor §r§bcodes§r work in any text, §kobfuscated§r ones too."
         }
         p {
             +"Inline boxes: press "

@@ -245,6 +245,10 @@ object CommandRenderer {
 
     private fun drawText(ctx: GuiGraphicsExtractor, t: PaintCommand.Text) {
         if (Colors.alpha(t.color) == 0) return
+        if (t.style.obfuscated) {
+            drawObfuscated(ctx, t)
+            return
+        }
         if (t.style.letterSpacing != 0f) {
             // letter-spacing: each grapheme on its own, followed by the spacing (matches LetterSpacing's measuring).
             val plain = t.style.copy(letterSpacing = 0f)
@@ -270,6 +274,39 @@ object CommandRenderer {
             }
         }
     }
+
+    /**
+     * `§k`: every character is replaced by a random one of about the same width, centered in the real character's
+     * place, so the text keeps its measured size. The characters change every [OBFUSCATED_MS].
+     */
+    private fun drawObfuscated(ctx: GuiGraphicsExtractor, t: PaintCommand.Text) {
+        val plain = t.style.copy(obfuscated = false, letterSpacing = 0f)
+        val slot = System.currentTimeMillis() / OBFUSCATED_MS
+        var x = t.x
+        for ((i, g) in LetterSpacing.graphemes(t.text).withIndex()) {
+            val w = FontManager.width(g, plain)
+            if (!g.isBlank()) {
+                var seed = slot * 0x9E3779B97F4A7C15uL.toLong() + i * 0x632BE59BD9B4E019L + t.x.toBits() * 31L + t.y.toBits()
+                var best = OBFUSCATED_CHARS[0].toString()
+                var bestDiff = Float.MAX_VALUE
+                repeat(4) {
+                    seed = seed * 6364136223846793005L + 1442695040888963407L
+                    val c = OBFUSCATED_CHARS[((seed ushr 33) % OBFUSCATED_CHARS.length).toInt()].toString()
+                    val diff = abs(FontManager.width(c, plain) - w)
+                    if (diff < bestDiff) {
+                        best = c
+                        bestDiff = diff
+                    }
+                }
+                val rx = x + (w - FontManager.width(best, plain)) / 2f
+                drawText(ctx, PaintCommand.Text(rx, t.y, best, plain, t.color, t.alpha))
+            }
+            x += w + t.style.letterSpacing
+        }
+    }
+
+    private const val OBFUSCATED_MS = 50L
+    private const val OBFUSCATED_CHARS = "ABCDEFGHJKLMNOPQRSTUVWXYZabcdeghknopqrsuvwxyz0123456789#$%&?"
 
     /** Draws with the Minecraft font; returns the advance in GUI px. */
     private fun drawVanillaText(ctx: GuiGraphicsExtractor, text: String, t: PaintCommand.Text, x: Float): Float {

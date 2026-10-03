@@ -15,6 +15,8 @@ data class TextStyle(
     val shadow: TextShadow? = null,
     /** `letter-spacing` in px, added after every character (grapheme). Measurers never see it: see [LetterSpacing]. */
     val letterSpacing: Float = 0f,
+    /** `§k`: drawn as random characters that keep changing, like Minecraft; measured as the real text. */
+    val obfuscated: Boolean = false,
 ) {
     val bold get() = fontWeight >= 600
 
@@ -119,8 +121,9 @@ object FormattingCodes {
                     'o' -> style.copy(italic = true)
                     'n' -> style.copy(decoration = style.decoration.copy(underline = true))
                     'm' -> style.copy(decoration = style.decoration.copy(lineThrough = true))
+                    'k' -> style.copy(obfuscated = true)
                     'r' -> base
-                    else -> style // §k (obfuscated) and unknown codes are ignored
+                    else -> style // unknown codes are ignored
                 }
                 if (next != style) {
                     if (sb.isNotEmpty()) {

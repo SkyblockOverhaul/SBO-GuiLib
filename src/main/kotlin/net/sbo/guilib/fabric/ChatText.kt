@@ -48,11 +48,12 @@ private fun NodeBuilder.segment(style: Style, s: String) {
         val decorations = listOfNotNull("underline".takeIf { style.isUnderlined }, "line-through".takeIf { style.isStrikethrough })
         if (decorations.isNotEmpty()) append("text-decoration: ${decorations.joinToString(" ")}; ")
     }.trim()
+    val text = if (style.isObfuscated) "§k$s" else s
     val hover = style.hoverEvent
     val title = (hover as? HoverEvent.ShowText)?.value?.string
     val click = style.clickEvent
     if (css.isEmpty() && hover == null && click == null) {
-        +s
+        +text
         return
     }
     val attrs = HashMap<String, Any?>()
@@ -63,7 +64,7 @@ private fun NodeBuilder.segment(style: Style, s: String) {
     if (click != null) handlers["click"] = { GuiLib.handleClickEvent(click) }
     element(
         "span", null, null, if (click != null) "guilib-text-link" else null, css.ifEmpty { null }, null, attrs, handlers,
-    ) { +s }
+    ) { +text }
 }
 
 /** Attribute holding a `show_item` / `show_entity` [HoverEvent] whose tooltip Minecraft draws while hovered. */
