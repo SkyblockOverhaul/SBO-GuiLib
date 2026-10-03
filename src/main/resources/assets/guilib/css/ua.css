@@ -702,7 +702,9 @@ select.multiple .guilib-select-value { max-width: 140px; overflow: hidden; text-
     font-family: inter; font-size: 6px; font-weight: normal; font-style: normal; line-height: normal;
     color: var(--guilib-text); text-align: left; letter-spacing: normal; text-transform: none; white-space: normal;
 }
-.guilib-metrics-head { display: flex; align-items: center; gap: 3px; margin-bottom: 2px; }
+.guilib-metrics-head { display: flex; align-items: center; gap: 3px; margin: -4px -6px 2px; padding: 4px 6px 2px; cursor: move; }
+.guilib-metrics.dragging .guilib-metrics-head { cursor: move; }
+.guilib-metrics-head .guilib-metrics-btn { cursor: pointer; }
 .guilib-metrics-title { font-weight: bold; font-size: 7px; }
 .guilib-metrics-info {
     width: 7px; height: 7px; margin-right: auto; line-height: 7px; text-align: center; flex-shrink: 0;

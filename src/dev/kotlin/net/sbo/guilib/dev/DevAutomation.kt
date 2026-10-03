@@ -176,6 +176,17 @@ object DevAutomation : ClientModInitializer {
                 screen.mouseClicked(event, false)
                 screen.mouseReleased(event)
             }
+            // "mcpress:x,y" / "mcdrag:x,y" / "mcrelease:x,y": raw Minecraft GUI coordinates through the screen's mouse
+            // methods (reaches everything the screen routes itself, e.g. the metrics overlay).
+            "mcpress", "mcdrag", "mcrelease" -> {
+                val (x, y) = arg.split(',').map { it.trim().toDouble() }
+                val event = net.minecraft.client.input.MouseButtonEvent(x, y, net.minecraft.client.input.MouseButtonInfo(net.sbo.guilib.fabric.input.Keys.MOUSE_LEFT, 0))
+                when (verb) {
+                    "mcpress" -> screen.mouseClicked(event, false)
+                    "mcdrag" -> screen.mouseDragged(event, 0.0, 0.0)
+                    else -> screen.mouseReleased(event)
+                }
+            }
             // "type:abc"; U+65E5 escapes for text the Windows command line would mangle. Typed per code point, like GLFW does.
             "type" -> unescape(arg).codePoints().forEach { root.input.charTyped(String(Character.toChars(it))) }
             // "key:Enter", with modifiers "key:shift+Home" / "key:ctrl+a".

@@ -184,7 +184,7 @@ open class GuiLibScreen(
                 CommandRenderer.draw(ctx, m.frame(width.toFloat(), height.toFloat()), mouseX, mouseY)
             }
         }
-        val cursorOwner = metricsRoot?.takeIf { onMetrics(mouseX.toDouble(), mouseY.toDouble()) } ?: root
+        val cursorOwner = metricsRoot?.takeIf { metricsPressed || onMetrics(mouseX.toDouble(), mouseY.toDouble()) } ?: root
         Cursors.of(cursorOwner.input.cursor)?.let(ctx::requestCursor)
         hoverTooltip(ctx, mouseX, mouseY)
         syncTextInput()
@@ -266,9 +266,17 @@ open class GuiLibScreen(
         }
     }
 
-    override fun mouseDragged(click: MouseButtonEvent, deltaX: Double, deltaY: Double): Boolean = scaled {
-        root.input.mouseMove(docX(click.x()), docY(click.y()), Keys.modifiers(click.modifiers()))
-        true
+    override fun mouseDragged(click: MouseButtonEvent, deltaX: Double, deltaY: Double): Boolean {
+        val m = metricsRoot
+        if (m != null && metricsPressed) {
+            // A drag that started on the metrics overlay (moving its window) belongs to it alone.
+            FrameStats.uncounted { m.input.mouseMove(click.x().toFloat(), click.y().toFloat(), Keys.modifiers(click.modifiers())) }
+            return true
+        }
+        return scaled {
+            root.input.mouseMove(docX(click.x()), docY(click.y()), Keys.modifiers(click.modifiers()))
+            true
+        }
     }
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, horizontal: Double, vertical: Double): Boolean {

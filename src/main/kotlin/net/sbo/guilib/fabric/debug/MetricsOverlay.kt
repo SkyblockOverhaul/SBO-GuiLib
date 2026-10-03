@@ -10,6 +10,7 @@ import net.sbo.guilib.core.dsl.NodeBuilder
 import net.sbo.guilib.core.dsl.button
 import net.sbo.guilib.core.dsl.div
 import net.sbo.guilib.core.dsl.span
+import net.sbo.guilib.core.event.MouseEvent
 import net.sbo.guilib.fabric.font.GlyphAtlas
 import net.sbo.guilib.fabric.image.Images
 import java.lang.management.ManagementFactory
@@ -32,6 +33,10 @@ internal object MetricsOverlay {
     private const val MB = 1024.0 * 1024.0
 
     class Props(val target: Document, val onClose: () -> Unit)
+
+    /** Where the window was dragged to (GUI px), kept while the game runs; `null` = top left. */
+    private var lastPosition: Pair<Float, Float>? = null
+    private const val MARGIN = 6f
 
     private const val INFO = "This window is not measured: it is a separate document whose styles, layout, display list and " +
         "drawing are left out of Frame, Work and DOM (they show this screen only). CPU and Memory are the whole game's " +
@@ -166,6 +171,33 @@ internal object MetricsOverlay {
         val baseline = useRef(-1.0)
         val gcRequested = useRef(false)
         var tick by useState(0)
+
+        // Dragged by its title bar like a normal window; stays fully on screen.
+        val doc = useDocument()
+        val window = useElementRef()
+        var position by useState(lastPosition ?: (MARGIN to MARGIN))
+        val grab = useRef<Pair<Float, Float>?>(null)
+        fun clamped(x: Float, y: Float): Pair<Float, Float> {
+            val box = window.current?.box
+            val maxX = (doc.body.box.width - (box?.width ?: 0f)).coerceAtLeast(0f)
+            val maxY = (doc.body.box.height - (box?.height ?: 0f)).coerceAtLeast(0f)
+            return x.coerceIn(0f, maxX) to y.coerceIn(0f, maxY)
+        }
+        useDocumentEvent("mousemove") { e ->
+            val g = grab.current ?: return@useDocumentEvent
+            e as MouseEvent
+            position = clamped(e.clientX - g.first, e.clientY - g.second)
+        }
+        useDocumentEvent("mouseup") {
+            if (grab.current != null) {
+                grab.current = null
+                lastPosition = position
+            }
+        }
+        // A smaller window (resize, GUI scale) must not leave it outside.
+        val onScreen = clamped(position.first, position.second)
+        if (onScreen != position && window.current != null) position = onScreen
+
         useEffect {
             val p = JvmProbe(Thread.currentThread().threadId())
             probe.current = p
@@ -184,8 +216,16 @@ internal object MetricsOverlay {
         }
         val h = history.current.toList()
         val s = h.lastOrNull()
-        div(className = "guilib-metrics") {
-            div(className = "guilib-metrics-head") {
+        div(
+            className = if (grab.current != null) "guilib-metrics dragging" else "guilib-metrics", ref = window,
+            style = "left: ${position.first}px; top: ${position.second}px",
+        ) {
+            div(className = "guilib-metrics-head", onMouseDown = { e ->
+                if (e.button == 0 && e.target.tagName != "button") {
+                    grab.current = (e.clientX - position.first) to (e.clientY - position.second)
+                    tick++ // show the grabbing cursor
+                }
+            }) {
                 span(className = "guilib-metrics-title") { +"Metrics" }
                 span(className = "guilib-metrics-info", title = INFO) { +"i" }
                 button(
