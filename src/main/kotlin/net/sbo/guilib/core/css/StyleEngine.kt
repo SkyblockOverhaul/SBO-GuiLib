@@ -50,7 +50,8 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
     /** True if some rule targets `::[name]`. */
     fun hasPseudoRules(name: String) = name in pseudoRules
 
-    val hasPseudoElements get() = pseudoRules.isNotEmpty()
+    /** True if some rule targets `::before` or `::after` (the pseudo-elements that generate boxes). */
+    val hasPseudoElements get() = "before" in pseudoRules || "after" in pseudoRules
 
     /** True if some selector tests an interactive state (`:hover` …) on an ancestor/sibling, e.g. `.card:hover .title`. */
     var dependsOnAncestorState = false
@@ -172,24 +173,33 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
     /**
      * Computes the style of [el]. [inline] are the declarations from its `style` attribute,
      * [parent] the computed style of its parent (or `null` for the root). With [pseudoElement] the style of that
-     * pseudo-element of [el] (pass [el]'s style as [parent]).
+     * pseudo-element of [el] (pass [el]'s style as [parent]). [alsoPseudoOf] = (host, name) cascades the
+     * `::name` rules of host together with [el]'s own rules (an internal element that *is* that pseudo-element, like
+     * the placeholder text of an input).
      */
-    fun compute(el: Selectable, inline: List<Declaration>, parent: ComputedStyle?, ctx: StyleContext, pseudoElement: String? = null): ComputedStyle {
+    fun compute(
+        el: Selectable, inline: List<Declaration>, parent: ComputedStyle?, ctx: StyleContext, pseudoElement: String? = null,
+        alsoPseudoOf: Pair<Selectable, String>? = null,
+    ): ComputedStyle {
+        val matched = ArrayList<Matched>()
+        collect(el, ctx, pseudoElement, matched)
+        if (alsoPseudoOf != null) collect(alsoPseudoOf.first, ctx, alsoPseudoOf.second, matched)
+        for (d in inline) matched += Matched(d, rank(Origin.INLINE, d.important), Int.MAX_VALUE, Int.MAX_VALUE)
+        matched.sortWith(compareBy<Matched>({ it.rank }, { it.specificity }, { it.order }))
+        return computeFromCascade(matched.map { it.decl }, parent, ctx, if (pseudoElement == null) el.styleTag else "${el.styleTag}::$pseudoElement")
+    }
+
+    private fun collect(el: Selectable, ctx: StyleContext, pseudoElement: String?, into: MutableList<Matched>) {
         val originOf = HashMap<StyleRule, Origin>()
         val orderOf = HashMap<StyleRule, Int>()
         // Recover origin/order for matched rules (cheap; the index keeps them per selector).
         fun remember(list: List<IndexedRule>?) = list?.forEach { originOf[it.rule] = it.origin; orderOf[it.rule] = it.order }
-        (if (pseudoElement == null) elementRules else pseudoRules[pseudoElement])?.forCandidates(el) { remember(it) }
-
-        val matched = ArrayList<Matched>()
+        (if (pseudoElement == null) elementRules else pseudoRules[pseudoElement] ?: return).forCandidates(el) { remember(it) }
         for ((rule, spec) in matchingRules(el, ctx, pseudoElement)) {
             val origin = originOf.getValue(rule)
             val order = orderOf.getValue(rule)
-            for (d in rule.declarations) matched += Matched(d, rank(origin, d.important), spec, order)
+            for (d in rule.declarations) into += Matched(d, rank(origin, d.important), spec, order)
         }
-        for (d in inline) matched += Matched(d, rank(Origin.INLINE, d.important), Int.MAX_VALUE, Int.MAX_VALUE)
-        matched.sortWith(compareBy<Matched>({ it.rank }, { it.specificity }, { it.order }))
-        return computeFromCascade(matched.map { it.decl }, parent, ctx, if (pseudoElement == null) el.styleTag else "${el.styleTag}::$pseudoElement")
     }
 
     companion object {

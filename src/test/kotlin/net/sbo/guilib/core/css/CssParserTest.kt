@@ -72,7 +72,7 @@ class CssParserTest {
 
     @Test
     fun invalidSelectorDropsOnlyThatRule() {
-        val sheet = Stylesheet.parse("a::placeholder { color: red } .ok { color: blue } a:nth-of-type(2n of .x) { color: red }", "x.css")
+        val sheet = Stylesheet.parse("a::selection { color: red } .ok { color: blue } a:nth-of-type(2n of .x) { color: red }", "x.css")
         assertEquals(1, sheet.rules.size)
         assertEquals(".ok", sheet.rules[0].selectors[0].toString())
         assertEquals(2, warnings.size)

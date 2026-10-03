@@ -180,6 +180,10 @@ object Showcase {
             span(className = "form-label") { +"Password" }
             input(type = "password", value = password, onChange = { password = it.value })
         }
+        label(className = "form-row") {
+            span(className = "form-label") { +"::placeholder" }
+            input(className = "fancy-placeholder", placeholder = "Search the bazaar…")
+        }
         div(className = "form-row") {
             span(className = "form-label") { +"Aligned" }
             div(className = "row") {

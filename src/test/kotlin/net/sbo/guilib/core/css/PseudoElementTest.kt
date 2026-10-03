@@ -8,6 +8,7 @@ import net.sbo.guilib.core.dsl.ComponentScope
 import net.sbo.guilib.core.dsl.div
 import net.sbo.guilib.core.dsl.input
 import net.sbo.guilib.core.dsl.span
+import net.sbo.guilib.core.dsl.textarea
 import net.sbo.guilib.core.layout.FakeMeasurer
 import net.sbo.guilib.core.layout.Fragment
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -42,7 +43,7 @@ class PseudoElementTest {
         assertEquals(SimpleSelector.Universal, bare.subject.parts.single())
         assertEquals("after", Selector.parse(".list > ::after")[0].pseudoElement)
         assertEquals(".a:hover::before", Selector.parse(".a:hover::before")[0].toString())
-        assertThrows(IllegalArgumentException::class.java) { Selector.parse(".a::placeholder") }
+        assertThrows(IllegalArgumentException::class.java) { Selector.parse(".a::marker") }
         assertThrows(IllegalArgumentException::class.java) { Selector.parse(".a::before .b") }
     }
 
@@ -146,5 +147,47 @@ class PseudoElementTest {
         on(true); root.frame(200f, 200f)
         now += 50; root.frame(200f, 200f)
         assertEquals(0.5f, dot.pseudoAfter!!.style.opacity, 0.01f)
+    }
+
+    @Test
+    fun placeholderRulesStyleThePlaceholderTextOnly() {
+        val root = ui(
+            """
+            input, textarea { color: #ffffff }
+            .guilib-placeholder { color: #808080 }
+            .name::placeholder { color: #ff0000; font-style: italic }
+            input:focus::placeholder { color: #00ff00 }
+            """,
+        ) {
+            input(className = "name", placeholder = "IGN")
+            input(className = "other", placeholder = "x")
+            textarea(className = "name", placeholder = "Note")
+        }
+        val body = root.document.body
+        fun text(sel: String) = body.querySelector(sel)!!.descendants().first { "guilib-placeholder" in it.classList }
+        assertEquals("placeholder", Selector.parse("input::placeholder")[0].pseudoElement)
+        // The author ::placeholder rule beats the UA-like class rule; other inputs keep the class colour.
+        assertEquals(0xFFFF0000.toInt(), text("input.name").style.color)
+        assertEquals(FontStyle.ITALIC, text("input.name").style.fontStyle)
+        assertEquals(0xFF808080.toInt(), text("input.other").style.color)
+        assertEquals(0xFFFF0000.toInt(), text("textarea.name").style.color)
+
+        // State of the host: :focus::placeholder.
+        val name = body.querySelector("input.name")!!
+        name.focus()
+        root.frame(200f, 200f)
+        assertEquals(0xFF00FF00.toInt(), text("input.name").style.color)
+        name.blur()
+        root.frame(200f, 200f)
+        assertEquals(0xFFFF0000.toInt(), text("input.name").style.color)
+    }
+
+    @Test
+    fun typedTextIsNotStyledAsPlaceholder() {
+        val root = ui("input { color: #ffffff } input::placeholder { color: #ff0000 }") {
+            input(value = "Steve", placeholder = "IGN")
+        }
+        val span = root.document.body.querySelector("input")!!.descendants().first { "guilib-input-text" in it.classList }
+        assertEquals(0xFFFFFFFF.toInt(), span.style.color)
     }
 }

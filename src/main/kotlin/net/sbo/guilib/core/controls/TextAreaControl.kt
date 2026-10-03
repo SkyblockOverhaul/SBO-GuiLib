@@ -133,6 +133,7 @@ internal class TextAreaControl(val el: Element) : EditableControl {
         shown.forEachIndexed { i, s ->
             val e = lineEls[i]
             e.className = if (showPlaceholder) "guilib-textarea-line guilib-placeholder" else "guilib-textarea-line"
+            e.pseudoOfParent = if (showPlaceholder) "placeholder" else null
             // An empty line still needs its height.
             (e.children.first() as TextNode).data = s.ifEmpty { " " }
         }

@@ -23,7 +23,8 @@ import java.text.BreakIterator
  * its own text (uncontrolled). Unlike the DOM, `onChange` fires on every edit (React semantics).
  *
  * The input's children are generated here (like a shadow DOM) and can be styled with
- * `.guilib-input-text`, `.guilib-placeholder`, `.guilib-caret`, `.guilib-selection` and `.guilib-check`.
+ * `.guilib-input-text`, `.guilib-placeholder`, `.guilib-caret`, `.guilib-selection` and `.guilib-check`. The
+ * placeholder text also takes `input::placeholder` rules.
  */
 internal class InputControl(val el: Element) : EditableControl {
     var text = ""
@@ -90,7 +91,9 @@ internal class InputControl(val el: Element) : EditableControl {
             else -> " " // keep one line of height
         }
         textNode.data = shown
-        textSpan.className = if (text.isEmpty() && !placeholder.isNullOrEmpty()) "guilib-input-text guilib-placeholder" else "guilib-input-text"
+        val showPlaceholder = text.isEmpty() && !placeholder.isNullOrEmpty()
+        textSpan.className = if (showPlaceholder) "guilib-input-text guilib-placeholder" else "guilib-input-text"
+        textSpan.pseudoOfParent = if (showPlaceholder) "placeholder" else null
     }
 
     private fun measure(s: String): Float {

@@ -366,8 +366,10 @@ class Document(
 
     private fun recalc(el: Element, parentStyle: ComputedStyle?, force: Boolean, ctx: StyleContext) {
         var forceChildren = force || el.subtreeStyleDirty
-        if (force || el.styleDirty) {
-            val next = styleEngine.compute(el, el.inlineDeclarations, parentStyle, ctx)
+        val restyled = force || el.styleDirty
+        if (restyled) {
+            val pseudoOf = el.pseudoOfParent?.let { name -> el.parent?.let { it to name } }
+            val next = styleEngine.compute(el, el.inlineDeclarations, parentStyle, ctx, alsoPseudoOf = pseudoOf)
             val old = el.computed
             if (!next.sameAs(old)) {
                 if (next.layoutDiffers(old)) invalidateLayout() else invalidatePaint()
@@ -384,8 +386,11 @@ class Document(
         el.styleDirty = false
         el.subtreeStyleDirty = false
         el.childStyleDirty = false
-        if (visitChildren) {
-            for (c in el.children) if (c is Element) recalc(c, el.style, forceChildren, ctx)
+        if (visitChildren || restyled) {
+            // `input:focus::placeholder` follows the host's state even when the host's own style didn't change.
+            for (c in el.children) if (c is Element && (visitChildren || c.pseudoOfParent != null)) {
+                recalc(c, el.style, forceChildren || (restyled && c.pseudoOfParent != null), ctx)
+            }
         }
     }
 

@@ -374,6 +374,18 @@ class Element internal constructor(val tagName: String) : Node(), Selectable {
     /** For a `::before` / `::after` box: the element it belongs to (events and hit-testing go there). */
     internal var pseudoHost: Element? = null
 
+    /**
+     * For an internal element of a control that *is* one of its parent's pseudo-elements (`"placeholder"` for the
+     * placeholder text of an input): the parent's `::name` rules apply to it too.
+     */
+    internal var pseudoOfParent: String? = null
+        set(value) {
+            if (field != value) {
+                field = value
+                styleChanged(true)
+            }
+        }
+
     private var renderList: List<Node>? = null
 
     /** Replaced elements, controls with their own content (inputs) and `<br>` get no `::before` / `::after`. */

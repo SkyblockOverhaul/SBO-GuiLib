@@ -562,3 +562,7 @@ body.showcase-mc-font { font-family: minecraft; }
 .wrap-box p { margin: 0; font-size: 6px; }
 .wrap-box.break { overflow-wrap: anywhere; }
 .wrap-box.clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+
+/* Forms: ::placeholder */
+.fancy-placeholder::placeholder { color: #e0b04a; font-style: italic; }
+.fancy-placeholder:focus::placeholder { color: #e0b04a66; }

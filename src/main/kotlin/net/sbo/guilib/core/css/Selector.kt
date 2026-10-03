@@ -267,8 +267,8 @@ object SelectorParser {
         return out
     }
 
-    /** Pseudo-elements GuiLib generates boxes for. */
-    val PSEUDO_ELEMENTS = setOf("before", "after")
+    /** Pseudo-elements GuiLib supports: generated `::before` / `::after` boxes and the `::placeholder` of inputs. */
+    val PSEUDO_ELEMENTS = setOf("before", "after", "placeholder")
 
     private fun parseComplex(raw: List<Token>): Selector {
         var tokens = raw.dropWhile { it.type == TokenType.WHITESPACE }.dropLastWhile { it.type == TokenType.WHITESPACE }
