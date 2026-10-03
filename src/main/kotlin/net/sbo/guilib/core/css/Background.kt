@@ -37,6 +37,26 @@ sealed interface BackgroundLayer {
     enum class RadialSize { CLOSEST_SIDE, CLOSEST_CORNER, FARTHEST_SIDE, FARTHEST_CORNER }
 }
 
+/**
+ * `background-size` of one layer. A layer whose size, position and repeat are all unset (the initial values) is
+ * stretched over its `background-clip` box instead – GuiLib's default, which keeps `url()` backgrounds filling the box.
+ */
+sealed interface BgSize {
+    data object Cover : BgSize
+    data object Contain : BgSize
+    /** [Dim.Auto] = `auto` (natural size, or the ratio of the other side). */
+    data class Explicit(val width: Dim, val height: Dim) : BgSize
+}
+
+/** `background-position` of one layer: offsets from the left/top edge, or from the right/bottom ([fromRight], [fromBottom]). */
+data class BgPosition(val x: Dim, val y: Dim, val fromRight: Boolean = false, val fromBottom: Boolean = false)
+
+enum class BgRepeat { REPEAT, NO_REPEAT, SPACE, ROUND }
+data class BgRepeatXY(val x: BgRepeat, val y: BgRepeat)
+
+/** `background-origin` / `background-clip` boxes. */
+enum class BgBox { BORDER_BOX, PADDING_BOX, CONTENT_BOX }
+
 /** Parsing of `background-image` values (url, gradients, layer lists). */
 internal object BackgroundParser {
 
@@ -210,6 +230,104 @@ internal object BackgroundParser {
         }
         return (x ?: Length(50f, "%")) to (y ?: Length(50f, "%"))
     }
+
+    // ---- background-size / -position / -repeat / -origin / -clip ---------------------------------------------------
+
+    /** Parsed `background-size` with lengths still unresolved (`null` = auto). */
+    data class SizeValue(val width: Length?, val height: Length?)
+
+    /** Parsed `background-position`, lengths unresolved. */
+    data class PositionValue(val x: Length, val y: Length, val fromRight: Boolean, val fromBottom: Boolean)
+
+    /** One layer of `background-size`: `cover`, `contain`, or one or two of `auto` / a length / a percentage. */
+    fun size(words: List<ComponentValue>): Any? {
+        if (words.size == 1 && Properties.isIdent(words[0], "cover")) return BgSize.Cover
+        if (words.size == 1 && Properties.isIdent(words[0], "contain")) return BgSize.Contain
+        if (words.isEmpty() || words.size > 2) return null
+        fun side(v: ComponentValue): Pair<Boolean, Length?>? = when {
+            Properties.isIdent(v, "auto") -> true to null
+            else -> Properties.length(v)?.takeIf { it.isCalc || it.value >= 0f }?.let { true to it }
+        }
+        val w = side(words[0]) ?: return null
+        val h = if (words.size == 2) side(words[1]) ?: return null else true to null
+        return SizeValue(w.second, h.second)
+    }
+
+    /**
+     * One layer of `background-position`: 1–2 values (`center`, `left top`, `25% 75%`, `10px bottom`) or the 3–4 value
+     * edge-offset form (`right 10px bottom 5px`, `right 8px top`).
+     */
+    fun bgPosition(words: List<ComponentValue>): PositionValue? {
+        fun kw(v: ComponentValue): String? = listOf("left", "right", "top", "bottom", "center").firstOrNull { Properties.isIdent(v, it) }
+        fun pct(p: Float) = Length(p, "%")
+        fun xKw(k: String) = when (k) { "left" -> pct(0f); "right" -> pct(100f); "center" -> pct(50f); else -> null }
+        fun yKw(k: String) = when (k) { "top" -> pct(0f); "bottom" -> pct(100f); "center" -> pct(50f); else -> null }
+        when (words.size) {
+            1 -> {
+                val k = kw(words[0])
+                return when {
+                    k == null -> PositionValue(Properties.length(words[0]) ?: return null, pct(50f), false, false)
+                    k == "top" || k == "bottom" -> PositionValue(pct(50f), yKw(k)!!, false, false)
+                    else -> PositionValue(xKw(k)!!, pct(50f), false, false)
+                }
+            }
+            2 -> {
+                val a = kw(words[0]); val b = kw(words[1])
+                // Keywords may come in either order ("top left"); lengths are always x then y.
+                if (a == "top" || a == "bottom" || b == "left" || b == "right") {
+                    val x = b?.let(::xKw) ?: return null
+                    val y = a?.let(::yKw) ?: return null
+                    return PositionValue(x, y, false, false)
+                }
+                val x = if (a != null) xKw(a) ?: return null else Properties.length(words[0]) ?: return null
+                val y = if (b != null) yKw(b) ?: return null else Properties.length(words[1]) ?: return null
+                return PositionValue(x, y, false, false)
+            }
+            3, 4 -> {
+                var x: Length? = null; var y: Length? = null
+                var fromRight = false; var fromBottom = false
+                val centers = ArrayList<Unit>()
+                var i = 0
+                while (i < words.size) {
+                    val k = kw(words[i]) ?: return null
+                    i++
+                    val offset = if (i < words.size && kw(words[i]) == null) Properties.length(words[i++]) ?: return null else null
+                    when (k) {
+                        "left", "right" -> {
+                            if (x != null) return null
+                            x = offset ?: xKw(k); fromRight = k == "right" && offset != null
+                        }
+                        "top", "bottom" -> {
+                            if (y != null) return null
+                            y = offset ?: yKw(k); fromBottom = k == "bottom" && offset != null
+                        }
+                        else -> { if (offset != null) return null; centers += Unit }
+                    }
+                }
+                repeat(centers.size) { if (x == null) x = pct(50f) else if (y == null) y = pct(50f) else return null }
+                return PositionValue(x ?: pct(50f), y ?: pct(50f), fromRight, fromBottom)
+            }
+            else -> return null
+        }
+    }
+
+    /** One layer of `background-repeat`: `repeat-x`, `repeat-y`, or one or two of repeat / no-repeat / space / round. */
+    fun repeat(words: List<ComponentValue>): BgRepeatXY? {
+        if (words.size == 1 && Properties.isIdent(words[0], "repeat-x")) return BgRepeatXY(BgRepeat.REPEAT, BgRepeat.NO_REPEAT)
+        if (words.size == 1 && Properties.isIdent(words[0], "repeat-y")) return BgRepeatXY(BgRepeat.NO_REPEAT, BgRepeat.REPEAT)
+        val ks = words.map { Properties.keyword<BgRepeat>(it) ?: return null }
+        return when (ks.size) { 1 -> BgRepeatXY(ks[0], ks[0]); 2 -> BgRepeatXY(ks[0], ks[1]); else -> null }
+    }
+
+    fun isRepeatWord(v: ComponentValue) = Properties.keyword<BgRepeat>(v) != null ||
+        Properties.isIdent(v, "repeat-x") || Properties.isIdent(v, "repeat-y")
+
+    fun isPositionWord(v: ComponentValue) =
+        listOf("left", "right", "top", "bottom", "center").any { Properties.isIdent(v, it) } || Properties.length(v) != null
+
+    /** A comma list with one entry per layer, parsed by [one]; `null` if any entry is invalid. */
+    fun <T : Any> layerList(values: List<ComponentValue>, one: (List<ComponentValue>) -> T?): List<T>? =
+        splitCommas(values).map { part -> one(part.filter { !ws(it) }) ?: return null }
 
     private fun stops(
         parts: List<List<ComponentValue>>,

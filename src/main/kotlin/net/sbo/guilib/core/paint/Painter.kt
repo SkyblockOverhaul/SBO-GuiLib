@@ -1,6 +1,7 @@
 package net.sbo.guilib.core.paint
 
 import net.sbo.guilib.core.css.BackgroundLayer
+import net.sbo.guilib.core.css.BgBox
 import net.sbo.guilib.core.css.BorderStyle
 import net.sbo.guilib.core.css.BoxShadow
 import net.sbo.guilib.core.css.Colors
@@ -60,6 +61,12 @@ class Painter(private val measurer: TextMeasurer) {
 
     /** Transform of the commands emitted next (`null` = screen coordinates) and the one last sent to the backend. */
     private var pose: Transform2D? = null
+
+    /**
+     * Natural size of an image `src` (for `background-size: auto/cover/contain`, positions and tiling), or `null` if
+     * unknown. Set by the backend; without it, positioned/tiled `url()` layers are skipped.
+     */
+    var imageSize: (String) -> Pair<Float, Float>? = { null }
     private var emittedPose: Transform2D? = null
 
     private fun emit(cmd: PaintCommand) {
@@ -217,7 +224,8 @@ class Painter(private val measurer: TextMeasurer) {
         val borders = floatArrayOf(b.border.top * by, b.border.right * bx, b.border.bottom * by, b.border.left * bx)
         val radii = radii(s, layout, xf)
         followRoundClip(r, radii)
-        decorate(s, r, borders, radii, alpha, xf)
+        val pads = floatArrayOf(b.padding.top * by, b.padding.right * bx, b.padding.bottom * by, b.padding.left * bx)
+        decorate(s, r, borders, radii, alpha, xf, pads)
         if (el.replaced != null) {
             val c = xf.map(Rect(layout.x + b.contentX, layout.y + b.contentY, b.contentWidth, b.contentHeight))
             val src = el.getAttribute("src") as? String
@@ -227,7 +235,7 @@ class Painter(private val measurer: TextMeasurer) {
     }
 
     /** Shadows, background and border of the border box [r] (already mapped through [xf]). */
-    private fun decorate(s: ComputedStyle, r: Rect, borders: FloatArray, radii: FloatArray, alpha: Float, xf: Transform2D) {
+    private fun decorate(s: ComputedStyle, r: Rect, borders: FloatArray, radii: FloatArray, alpha: Float, xf: Transform2D, pads: FloatArray) {
         val bg = Colors.withOpacity(s.backgroundColor, alpha)
         val borderColors = intArrayOf(
             Colors.withOpacity(s.borderTopColor, alpha), Colors.withOpacity(s.borderRightColor, alpha),
@@ -243,17 +251,17 @@ class Painter(private val measurer: TextMeasurer) {
         // Outer shadows go under the box; the first shadow in the list is on top, so paint the list backwards.
         if (shadows.isNotEmpty()) for (sh in shadows.asReversed()) if (!sh.inset) emitShadow(sh, r, radii, alpha, xf)
         val layers = s.backgroundLayers
-        if (layers.isEmpty()) {
+        // The color is clipped like the bottom layer (background-clip); border-box is the common, single-command case.
+        val colorClip = pick(s.backgroundClips, maxOf(layers.size - 1, 0)) ?: BgBox.BORDER_BOX
+        if (layers.isEmpty() && colorClip == BgBox.BORDER_BOX) {
             if (Colors.alpha(bg) > 0 || hasBorder) emit(PaintCommand.Box(r.x, r.y, r.width, r.height, bg, radii, solid, borderColors))
         } else {
             // CSS order: background-color, then the image layers from last to first, then the border on top.
-            if (Colors.alpha(bg) > 0) emit(PaintCommand.Box(r.x, r.y, r.width, r.height, bg, radii, FloatArray(4), IntArray(4)))
-            for (layer in layers.asReversed()) when (layer) {
-                is BackgroundLayer.Url ->
-                    emit(PaintCommand.Image(r.x, r.y, r.width, r.height, layer.src, net.sbo.guilib.core.css.ObjectFit.FILL, alpha, radii, s.color))
-                is BackgroundLayer.Gradient ->
-                    emit(PaintCommand.Gradient(r.x, r.y, r.width, r.height, GradientMesh.cached(layer, r.width, r.height, alpha), radii))
+            if (Colors.alpha(bg) > 0) {
+                val (c, cr) = backgroundBox(colorClip, r, borders, pads, radii)
+                if (c.width > 0f && c.height > 0f) emit(PaintCommand.Box(c.x, c.y, c.width, c.height, bg, cr, FloatArray(4), IntArray(4)))
             }
+            for (i in layers.indices.reversed()) paintLayer(s, layers[i], i, r, borders, pads, radii, alpha)
             if (hasBorder) emit(PaintCommand.Box(r.x, r.y, r.width, r.height, Colors.TRANSPARENT, radii, solid, borderColors))
         }
         if (anyBroken) emitBrokenBorders(r, borders, borderColors, styles, broken, radii)
@@ -266,6 +274,60 @@ class Painter(private val measurer: TextMeasurer) {
             )
             if (pad.width > 0f && pad.height > 0f) for (sh in shadows.asReversed()) if (sh.inset) emitShadow(sh, pad, inner, alpha, xf)
         }
+    }
+
+    private fun <T> pick(list: List<T>, i: Int): T? = if (list.isEmpty()) null else list[i % list.size]
+
+    /** The border, padding or content box of the border box [r], with the matching inner corner radii. */
+    private fun backgroundBox(box: BgBox, r: Rect, borders: FloatArray, pads: FloatArray, radii: FloatArray): Pair<Rect, FloatArray> {
+        if (box == BgBox.BORDER_BOX) return r to radii
+        val e = if (box == BgBox.PADDING_BOX) borders else FloatArray(4) { borders[it] + pads[it] }
+        val rect = Rect(r.x + e[3], r.y + e[0], (r.width - e[1] - e[3]).coerceAtLeast(0f), (r.height - e[0] - e[2]).coerceAtLeast(0f))
+        val inner = floatArrayOf(
+            (radii[0] - maxOf(e[0], e[3])).coerceAtLeast(0f), (radii[1] - maxOf(e[0], e[1])).coerceAtLeast(0f),
+            (radii[2] - maxOf(e[2], e[1])).coerceAtLeast(0f), (radii[3] - maxOf(e[2], e[3])).coerceAtLeast(0f),
+        )
+        return rect to inner
+    }
+
+    /**
+     * One background image layer. Without size, position and repeat it is stretched over its clip box (GuiLib's
+     * default, rounded with the box); otherwise it is sized, placed and repeated like CSS and clipped to the clip box
+     * (a rectangle: rounded corners don't cut the copies).
+     */
+    private fun paintLayer(s: ComputedStyle, layer: BackgroundLayer, i: Int, r: Rect, borders: FloatArray, pads: FloatArray, radii: FloatArray, alpha: Float) {
+        val (clip, clipRadii) = backgroundBox(pick(s.backgroundClips, i) ?: BgBox.BORDER_BOX, r, borders, pads, radii)
+        if (clip.width <= 0f || clip.height <= 0f) return
+        val size = pick(s.backgroundSizes, i)
+        val position = pick(s.backgroundPositions, i)
+        val repeat = pick(s.backgroundRepeats, i)
+        if (size == null && position == null && repeat == null) {
+            when (layer) {
+                is BackgroundLayer.Url ->
+                    emit(PaintCommand.Image(clip.x, clip.y, clip.width, clip.height, layer.src, net.sbo.guilib.core.css.ObjectFit.FILL, alpha, clipRadii, s.color))
+                is BackgroundLayer.Gradient ->
+                    emit(PaintCommand.Gradient(clip.x, clip.y, clip.width, clip.height, GradientMesh.cached(layer, clip.width, clip.height, alpha), clipRadii))
+            }
+            return
+        }
+        val area = backgroundBox(pick(s.backgroundOrigins, i) ?: BgBox.PADDING_BOX, r, borders, pads, radii).first
+        val natural = when (layer) {
+            is BackgroundLayer.Url -> imageSize(layer.src) ?: return
+            is BackgroundLayer.Gradient -> null
+        }
+        val tiles = BackgroundTiles.tiles(area, clip, natural, size, position, repeat)
+        if (tiles.isEmpty()) return
+        val eps = 0.01f
+        val needsClip = tiles.any { it.x < clip.x - eps || it.y < clip.y - eps || it.right > clip.right + eps || it.bottom > clip.bottom + eps }
+        if (needsClip) emit(PaintCommand.PushClip(pose?.map(clip) ?: clip))
+        val none = FloatArray(4)
+        for (t in tiles) when (layer) {
+            is BackgroundLayer.Url ->
+                emit(PaintCommand.Image(t.x, t.y, t.width, t.height, layer.src, net.sbo.guilib.core.css.ObjectFit.FILL, alpha, none, s.color))
+            is BackgroundLayer.Gradient ->
+                emit(PaintCommand.Gradient(t.x, t.y, t.width, t.height, GradientMesh.cached(layer, t.width, t.height, alpha), none))
+        }
+        if (needsClip) emit(PaintCommand.PopClip)
     }
 
     /**
@@ -467,7 +529,8 @@ class Painter(private val measurer: TextMeasurer) {
                 if (!ends) { radii[1] = 0f; radii[2] = 0f }
                 val sx = kotlin.math.abs(xf.sx)
                 val sy = kotlin.math.abs(xf.sy)
-                decorate(st, xf.map(layout), floatArrayOf(bt * sy, br * sx, bb * sy, bl * sx), radii, alpha * st.opacity, xf)
+                val pads = floatArrayOf(px(st.paddingTop) * sy, (if (ends) px(st.paddingRight) else 0f) * sx, px(st.paddingBottom) * sy, (if (starts) px(st.paddingLeft) else 0f) * sx)
+                decorate(st, xf.map(layout), floatArrayOf(bt * sy, br * sx, bb * sy, bl * sx), radii, alpha * st.opacity, xf, pads)
             }
         }
     }

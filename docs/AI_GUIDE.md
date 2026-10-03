@@ -204,9 +204,16 @@ custom properties `--name` with `var(--name, fallback)`; math functions `calc()`
   (text is rasterized at 2× and filtered, so rotated text stays smooth). Transforms interpolate when both lists have the same functions in the same order
   (`none` counts as matching anything), e.g. `@keyframes spin { to { transform: rotate(360deg) } }`.
 - Text: `color font-family font-size font-weight font-style line-height text-align white-space text-overflow text-decoration text-shadow letter-spacing` (`letter-spacing`: `normal` or a length, also negative; added after every character, animatable)
-- Visual: `background background-color background-image opacity visibility object-fit`. `background-image` takes a comma list of layers
-  (first = top): `url("modid:path.png")` (stretched to the box), `linear-gradient(…)` (angles, `to right`, `to top left`, stops with
+- Visual: `background background-color background-image background-size background-position background-repeat background-origin background-clip opacity visibility object-fit`. `background-image` takes a comma list of layers
+  (first = top): `url("modid:path.png")`, `linear-gradient(…)` (angles, `to right`, `to top left`, stops with
   positions, hard stops) and `radial-gradient(…)` (`circle`/`ellipse`, size keywords, `at <position>`), `conic-gradient(…)` (`from <angle>`, `at <position>`, stops in angles or %; `from` is animatable) and the `repeating-linear/radial/conic-gradient(…)` forms. Gradients respect `border-radius`.
+  Per layer (comma lists, cycled like CSS): `background-size` (`auto`, `cover`, `contain`, one or two lengths/% with `auto` keeping the
+  ratio), `background-position` (`center`, `right top`, `25% 75%`, `right 10px bottom 5px` …), `background-repeat` (`repeat no-repeat
+  repeat-x repeat-y space round`, two values for x/y), `background-origin` (`padding-box` default, `border-box`, `content-box`),
+  `background-clip` (`border-box` default, `padding-box`, `content-box`; the color follows the bottom layer's clip). The shorthand takes
+  all of it: `background: #111 url("mymod:bg.png") center / cover no-repeat`. **GuiLib default:** a layer with none of size, position
+  and repeat set is stretched over its clip box (the border box), not drawn at natural size and tiled like in browsers – set any of the
+  three to get web behavior. Positioned/tiled layers are clipped to a rectangle (rounded corners don't cut them).
   `box-shadow`: `none` or a comma list of `[inset] <x> <y> [<blur> [<spread>]] [<color>]` (first = top; color defaults to `currentColor`).
   Real Gaussian blur, follows `border-radius`; outer shadows are never drawn under the box (fine with translucent backgrounds),
   inset shadows sit inside the padding box. Transitions between shadow lists work (`inset` must match per position).
@@ -247,6 +254,7 @@ in one stylesheet works in every screen. Weights map to the nearest face (400/50
 13. Every positioned element (`relative/absolute/fixed`) is its own paint layer; `z-index` orders layers among siblings in the same layer. Use `portal { }` for things that must be on top of everything. `position: fixed` elements ignore their ancestors' `transform`.
 14. Not supported (yet): 3D transforms (a `transform` containing them is ignored),
     pseudo-elements other than `::before`/`::after`, float, subgrid, named grid lines (`[name]` is ignored).
+    Backgrounds: without `background-size`/`-position`/`-repeat` a `url()` or gradient layer is stretched over the box (browsers: natural size, tiled); copies of a positioned or tiled layer ignore `border-radius` (square corners).
     Tables: a `rowspan` cell is painted before later rows, so a background on those rows covers its lower part (give such rows no background, or the cell one); `col` backgrounds, `visibility: collapse` and `empty-cells` are not supported; table parts (`tr`, `td` …) only act as tables inside a `table` (elsewhere they are blocks).
     Grid: items can't be placed before line 1.
 15. Images: `src` is a resource location (`"modid:textures/x.png"`), PNG, SVG or GIF only; no URLs yet. Animated GIFs loop like in a browser (all images with the same `src` play in sync); they are decoded in the background, so a big GIF stays empty for a moment instead of freezing the game (its size is known right away, layout doesn't jump); very long GIFs are cut off after ~32M pixels of frames. SVGs are rasterized at their exact on-screen pixel size (a few ms each, cached per size; JSVG is warmed up in the background at startup). Unlike a browser `<img>`, `currentColor` inside an SVG image (also `background-image`) is the element's CSS `color`, like inline SVG: write icons with `fill="currentColor"` / `stroke="currentColor"` and tint them with `color` (follows `:hover`, themes; a `color` attribute on the root `<svg>` wins). Each color is rasterized once and cached, so avoid animating `color` on big SVGs.

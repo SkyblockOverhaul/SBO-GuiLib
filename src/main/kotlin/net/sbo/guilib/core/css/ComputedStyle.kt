@@ -69,6 +69,17 @@ class ComputedStyle internal constructor(
     /** `background-image` layers, first = top-most. Gradient colors are resolved ARGB ints. */
     @Suppress("UNCHECKED_CAST")
     val backgroundLayers: List<BackgroundLayer> get() = values[Prop.BACKGROUND_IMAGE.ordinal] as List<BackgroundLayer>? ?: emptyList()
+    /** Per layer (cycled like CSS when shorter than the layer list); empty / `null` entries = unset. */
+    @Suppress("UNCHECKED_CAST")
+    val backgroundSizes get() = values[Prop.BACKGROUND_SIZE.ordinal] as List<BgSize?>
+    @Suppress("UNCHECKED_CAST")
+    val backgroundPositions get() = values[Prop.BACKGROUND_POSITION.ordinal] as List<BgPosition?>
+    @Suppress("UNCHECKED_CAST")
+    val backgroundRepeats get() = values[Prop.BACKGROUND_REPEAT.ordinal] as List<BgRepeatXY?>
+    @Suppress("UNCHECKED_CAST")
+    val backgroundOrigins get() = values[Prop.BACKGROUND_ORIGIN.ordinal] as List<BgBox>
+    @Suppress("UNCHECKED_CAST")
+    val backgroundClips get() = values[Prop.BACKGROUND_CLIP.ordinal] as List<BgBox>
     val color get() = values[Prop.COLOR.ordinal] as Int
     val opacity get() = values[Prop.OPACITY.ordinal] as Float
     val visibility get() = values[Prop.VISIBILITY.ordinal] as Visibility
@@ -204,7 +215,8 @@ class ComputedStyle internal constructor(
     companion object {
         /** Properties whose change requires a new layout (all others only need a repaint). */
         private val PAINT_ONLY = setOf(
-            Prop.BACKGROUND_COLOR, Prop.BACKGROUND_IMAGE, Prop.COLOR, Prop.OPACITY, Prop.VISIBILITY, Prop.CURSOR,
+            Prop.BACKGROUND_COLOR, Prop.BACKGROUND_IMAGE, Prop.BACKGROUND_SIZE, Prop.BACKGROUND_POSITION, Prop.BACKGROUND_REPEAT,
+            Prop.BACKGROUND_ORIGIN, Prop.BACKGROUND_CLIP, Prop.COLOR, Prop.OPACITY, Prop.VISIBILITY, Prop.CURSOR,
             Prop.POINTER_EVENTS, Prop.USER_SELECT, Prop.OBJECT_FIT, Prop.TEXT_DECORATION, Prop.TEXT_SHADOW, Prop.BOX_SHADOW, Prop.Z_INDEX,
             Prop.BORDER_TOP_COLOR, Prop.BORDER_RIGHT_COLOR, Prop.BORDER_BOTTOM_COLOR, Prop.BORDER_LEFT_COLOR,
             Prop.BORDER_TOP_LEFT_RADIUS, Prop.BORDER_TOP_RIGHT_RADIUS, Prop.BORDER_BOTTOM_RIGHT_RADIUS, Prop.BORDER_BOTTOM_LEFT_RADIUS,

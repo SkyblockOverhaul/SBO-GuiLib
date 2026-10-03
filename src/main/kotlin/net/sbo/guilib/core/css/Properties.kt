@@ -55,6 +55,12 @@ enum class Prop(val css: String, val inherited: Boolean, val initial: Any?) {
 
     BACKGROUND_COLOR("background-color", false, Colors.TRANSPARENT),
     BACKGROUND_IMAGE("background-image", false, null),
+    /** Per-layer lists; an empty list (the initial value) or a `null` entry = unset for that layer. */
+    BACKGROUND_SIZE("background-size", false, emptyList<Any?>()),
+    BACKGROUND_POSITION("background-position", false, emptyList<Any?>()),
+    BACKGROUND_REPEAT("background-repeat", false, emptyList<Any?>()),
+    BACKGROUND_ORIGIN("background-origin", false, listOf(BgBox.PADDING_BOX)),
+    BACKGROUND_CLIP("background-clip", false, listOf(BgBox.BORDER_BOX)),
     COLOR("color", true, Colors.WHITE),
     OPACITY("opacity", false, 1f),
     VISIBILITY("visibility", true, Visibility.VISIBLE),
@@ -162,6 +168,10 @@ object Properties {
             single(it)?.let(::nonNegativeLength)
         }
         enumParser(Prop.BACKGROUND_IMAGE) { backgroundLayers(it) }
+        enumParser(Prop.BACKGROUND_SIZE) { BackgroundParser.layerList(it, BackgroundParser::size) }
+        enumParser(Prop.BACKGROUND_POSITION) { BackgroundParser.layerList(it, BackgroundParser::bgPosition) }
+        enumParser(Prop.BACKGROUND_REPEAT) { BackgroundParser.layerList(it, BackgroundParser::repeat) }
+        enumParser(Prop.BACKGROUND_ORIGIN, Prop.BACKGROUND_CLIP) { BackgroundParser.layerList(it) { w -> w.singleOrNull()?.let { v -> keyword<BgBox>(v) } } }
         enumParser(Prop.OPACITY) { single(it)?.let(::numberOrPercent)?.coerceIn(0f, 1f) }
         enumParser(Prop.VISIBILITY) { single(it)?.let { v -> if (isIdent(v, "collapse")) Visibility.HIDDEN else keyword<Visibility>(v) } }
         enumParser(Prop.OVERFLOW_X, Prop.OVERFLOW_Y) { single(it)?.let { v -> if (isIdent(v, "clip")) Overflow.HIDDEN else keyword<Overflow>(v) } }
@@ -288,22 +298,48 @@ object Properties {
             listOfNotNull(dir?.let { Prop.FLEX_DIRECTION to it }, wrap?.let { Prop.FLEX_WRAP to it }).ifEmpty { null }
         }
         put("background") { v ->
-            // Comma-separated layers; only the last layer may contain the background color (like CSS).
+            // Comma-separated layers: <image> <position> [/ <size>] <repeat> <origin> [<clip>]; only the last layer
+            // may contain the background color (like CSS). Omitted parts are reset to their initial values.
             var col: Any? = null
             val layers = ArrayList<BackgroundLayer>()
+            val sizes = ArrayList<Any?>(); val positions = ArrayList<Any?>(); val repeats = ArrayList<Any?>()
+            val origins = ArrayList<BgBox>(); val clips = ArrayList<BgBox>()
             val parts = BackgroundParser.splitCommas(v)
             for ((i, part) in parts.withIndex()) {
+                var image: BackgroundLayer? = null
+                val pos = ArrayList<ComponentValue>(); var size: ArrayList<ComponentValue>? = null
+                val rep = ArrayList<ComponentValue>(); val boxes = ArrayList<BgBox>()
                 for (w in words(part)) {
-                    if (isIdent(w, "none")) continue
                     val layer = BackgroundParser.layer(w, ::url)
                     when {
-                        layer != null -> layers += layer
+                        isIdent(w, "none") -> {}
+                        layer != null -> if (image == null) image = layer else return@put null
+                        tok(w)?.isDelim('/') == true -> if (pos.isNotEmpty() && size == null) size = ArrayList() else return@put null
+                        size != null && size.size < 2 &&
+                            (length(w) != null || isIdent(w, "auto") || isIdent(w, "cover") || isIdent(w, "contain")) -> size += w
+                        BackgroundParser.isRepeatWord(w) -> rep += w
+                        keyword<BgBox>(w) != null -> boxes += keyword<BgBox>(w)!!
+                        size == null && BackgroundParser.isPositionWord(w) -> pos += w
                         i == parts.lastIndex && col == null && color(w) != null -> col = color(w)
                         else -> return@put null
                     }
                 }
+                if (size != null && size.isEmpty()) return@put null
+                val layer = image ?: continue
+                layers += layer
+                sizes += size?.let { BackgroundParser.size(it) ?: return@put null }
+                positions += pos.takeIf { it.isNotEmpty() }?.let { BackgroundParser.bgPosition(it) ?: return@put null }
+                repeats += rep.takeIf { it.isNotEmpty() }?.let { BackgroundParser.repeat(it) ?: return@put null }
+                if (boxes.size > 2) return@put null
+                origins += boxes.getOrNull(0) ?: BgBox.PADDING_BOX
+                clips += boxes.getOrNull(1) ?: boxes.getOrNull(0) ?: BgBox.BORDER_BOX
             }
-            listOf(Prop.BACKGROUND_COLOR to (col ?: Colors.TRANSPARENT), Prop.BACKGROUND_IMAGE to (if (layers.isEmpty()) NoImage else layers))
+            fun <T> orInitial(list: List<T?>): List<T?> = if (list.all { it == null }) emptyList() else list
+            listOf(
+                Prop.BACKGROUND_COLOR to (col ?: Colors.TRANSPARENT), Prop.BACKGROUND_IMAGE to (if (layers.isEmpty()) NoImage else layers),
+                Prop.BACKGROUND_SIZE to orInitial(sizes), Prop.BACKGROUND_POSITION to orInitial(positions), Prop.BACKGROUND_REPEAT to orInitial(repeats),
+                Prop.BACKGROUND_ORIGIN to origins.ifEmpty { listOf(BgBox.PADDING_BOX) }, Prop.BACKGROUND_CLIP to clips.ifEmpty { listOf(BgBox.BORDER_BOX) },
+            )
         }
         put("place-items") { v ->
             // place-items: <align-items> [<justify-items>]
@@ -345,7 +381,8 @@ object Properties {
         put("overflow", listOf(Prop.OVERFLOW_X, Prop.OVERFLOW_Y)); put("gap", listOf(Prop.ROW_GAP, Prop.COLUMN_GAP))
         put("border-spacing", listOf(Prop.BORDER_SPACING_X, Prop.BORDER_SPACING_Y))
         put("flex", listOf(Prop.FLEX_GROW, Prop.FLEX_SHRINK, Prop.FLEX_BASIS)); put("flex-flow", listOf(Prop.FLEX_DIRECTION, Prop.FLEX_WRAP))
-        put("background", listOf(Prop.BACKGROUND_COLOR, Prop.BACKGROUND_IMAGE)); put("place-items", listOf(Prop.ALIGN_ITEMS, Prop.JUSTIFY_ITEMS))
+        put("background", listOf(Prop.BACKGROUND_COLOR, Prop.BACKGROUND_IMAGE, Prop.BACKGROUND_SIZE, Prop.BACKGROUND_POSITION,
+            Prop.BACKGROUND_REPEAT, Prop.BACKGROUND_ORIGIN, Prop.BACKGROUND_CLIP)); put("place-items", listOf(Prop.ALIGN_ITEMS, Prop.JUSTIFY_ITEMS))
         put("place-content", listOf(Prop.ALIGN_CONTENT, Prop.JUSTIFY_CONTENT))
         put("grid-row", listOf(Prop.GRID_ROW_START, Prop.GRID_ROW_END)); put("grid-column", listOf(Prop.GRID_COLUMN_START, Prop.GRID_COLUMN_END))
         put("grid-area", listOf(Prop.GRID_ROW_START, Prop.GRID_COLUMN_START, Prop.GRID_ROW_END, Prop.GRID_COLUMN_END))

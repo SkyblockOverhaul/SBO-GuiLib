@@ -517,6 +517,14 @@ object Showcase {
         }
         p(className = "muted") { +"background-image: url(...)" }
         div(className = "bg-demo") { +"Text over a background image" }
+        h3 { +"background-size, -position, -repeat" }
+        div(className = "bg-grid") {
+            for ((cls, label) in listOf(
+                "bg-tiled" to "16px tiles", "bg-cover" to "cover", "bg-contain" to "center / contain",
+                "bg-badge" to "right 3px top 3px", "bg-strip" to "repeat-x bottom", "bg-space" to "space",
+                "bg-round" to "round", "bg-dots" to "gradient 6px tiles",
+            )) div(key = cls, className = "bg-cell $cls") { span(className = "bg-label") { +label } }
+        }
         h3 { +"Tinting SVGs with currentColor" }
         p(className = "muted") { +"currentColor in an SVG is the element's CSS color, so one icon file fits every theme." }
         div(className = "row") {

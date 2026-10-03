@@ -298,7 +298,18 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
             }
             is Properties.TextShadowValue -> TextShadow(toPx(v.x, fontSize, ctx), toPx(v.y, fontSize, ctx), if (v.color == CurrentColor) color else v.color)
             is TrackList -> v.map { resolveTrack(it, fontSize, ctx) }
-            is List<*> -> if (p == Prop.BACKGROUND_IMAGE) v.map { resolveLayer(it as BackgroundLayer, fontSize, color, ctx) } else v
+            is List<*> -> when (p) {
+                Prop.BACKGROUND_IMAGE -> v.map { resolveLayer(it as BackgroundLayer, fontSize, color, ctx) }
+                Prop.BACKGROUND_SIZE -> v.map {
+                    if (it is BackgroundParser.SizeValue) {
+                        BgSize.Explicit(it.width?.let { l -> resolveDim(l, fontSize, ctx) } ?: Dim.Auto, it.height?.let { l -> resolveDim(l, fontSize, ctx) } ?: Dim.Auto)
+                    } else it
+                }
+                Prop.BACKGROUND_POSITION -> v.map {
+                    (it as BackgroundParser.PositionValue?)?.let { pv -> BgPosition(resolveDim(pv.x, fontSize, ctx), resolveDim(pv.y, fontSize, ctx), pv.fromRight, pv.fromBottom) }
+                }
+                else -> v
+            }
             is Properties.ScrollbarColor -> Pair(if (v.thumb == CurrentColor) color else v.thumb as Int, if (v.track == CurrentColor) color else v.track as Int)
             is TransformParser.TransformValue -> v.fns.map { f ->
                 if (f is TransformParser.TranslateValue) TransformFn.Translate(resolveDim(f.x, fontSize, ctx), resolveDim(f.y, fontSize, ctx)) else f as TransformFn

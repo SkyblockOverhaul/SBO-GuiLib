@@ -512,3 +512,16 @@ body.showcase-mc-font { font-family: minecraft; }
 .grid-table th, .grid-table td { border: 1px solid var(--border); padding: 2px 6px; text-align: center; }
 .grid-table th { background-color: #ffffff0d; }
 .grid-table .middle { font-weight: bold; color: var(--accent); }
+
+/* background-size / -position / -repeat */
+.bg-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.bg-cell { height: 44px; border: 1px solid var(--border); border-radius: 3px; background-color: #0004; display: flex; align-items: flex-end; }
+.bg-label { font-size: 6px; background-color: #000a; padding: 1px 3px; border-radius: 2px; margin: 2px; }
+.bg-tiled { background: url("minecraft:textures/block/oak_planks.png") 0 0 / 16px; }
+.bg-cover { background: url("guilib:showcase/logo.svg") center / cover no-repeat; }
+.bg-contain { background: #5b8def22 url("guilib:showcase/logo.svg") center / contain no-repeat; }
+.bg-badge { background: #0004 url("minecraft:textures/item/diamond.png") right 3px top 3px / 12px no-repeat; }
+.bg-strip { background: url("minecraft:textures/block/grass_block_side.png") bottom / 12px repeat-x; }
+.bg-space { background: url("minecraft:textures/item/emerald.png") center / 14px space no-repeat; }
+.bg-round { background: url("minecraft:textures/block/stone_bricks.png") 0 0 / 15px round; }
+.bg-dots { background: radial-gradient(circle, #ffffff40 1px, transparent 1.5px) 0 0 / 6px 6px, linear-gradient(135deg, #5b8def55, #ed424555); }

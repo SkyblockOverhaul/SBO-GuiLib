@@ -131,6 +131,7 @@ object GuiLib {
     /** Wires backend services into a new UI (clipboard, replaced content for `<item>`/`<entity>`/`<player-head>`/`<img>`). */
     internal fun initDocument(root: UiRoot) {
         root.document.clipboard = SystemClipboard
+        root.painter.imageSize = { src -> Images.entry(src)?.let { it.width to it.height } }
         root.document.elementInitializer = { el ->
             when (el.tagName) {
                 "item" -> if (el.replaced == null) el.replaced = ItemContent
