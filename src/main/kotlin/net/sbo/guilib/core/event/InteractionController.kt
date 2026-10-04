@@ -4,6 +4,7 @@ import net.sbo.guilib.core.css.Cursor
 import net.sbo.guilib.core.css.PseudoState
 import net.sbo.guilib.core.dom.Document
 import net.sbo.guilib.core.dom.Element
+import net.sbo.guilib.core.paint.Scrollbars
 
 /**
  * Turns raw input (mouse position, buttons, wheel, keys) into DOM-style events and interaction state
@@ -19,6 +20,10 @@ class InteractionController(private val doc: Document, private val hitTest: (Flo
     private var hoverChain: List<Element> = emptyList()
     private var activeChain: List<Element> = emptyList()
     private var pressTarget: Element? = null
+
+    /** A scrollbar being dragged: the container, which bar, and where on the thumb it was grabbed (along the bar). */
+    private class ScrollbarDrag(val el: Element, val vertical: Boolean, val grab: Float)
+    private var scrollbarDrag: ScrollbarDrag? = null
     private var pressButton = -1
     private var lastClickTarget: Element? = null
     private var lastClickTime = 0L
@@ -102,6 +107,53 @@ class InteractionController(private val doc: Document, private val hitTest: (Flo
         }
     }
 
+    /** [x], [y] relative to [el]'s border box (from its screen rectangle, so translate and scale are respected). */
+    private fun local(el: Element, x: Float, y: Float): Pair<Float, Float> {
+        val r = el.getBoundingClientRect()
+        val sx = if (r.width > 0f) el.box.width / r.width else 1f
+        val sy = if (r.height > 0f) el.box.height / r.height else 1f
+        return (x - r.x) * sx to (y - r.y) * sy
+    }
+
+    /**
+     * A press on a scrollbar of [target] or one of its scroll containers starts dragging it, like browsers: on the thumb
+     * it keeps the grabbed spot under the mouse, on the track the thumb's middle jumps to the mouse first.
+     */
+    private fun startScrollbarDrag(target: Element, x: Float, y: Float): Boolean {
+        var el: Element? = target
+        while (el != null) {
+            val (lx, ly) = local(el, x, y)
+            for (vertical in listOf(true, false)) {
+                val bar = (if (vertical) Scrollbars.vertical(el) else Scrollbars.horizontal(el)) ?: continue
+                val along = if (vertical) ly else lx
+                val across = if (vertical) lx else ly
+                // A little wider than the drawn bar, it is only 2-3px thin
+                val grabZone = maxOf(bar.thickness, SCROLLBAR_GRAB)
+                if (across < bar.cross + bar.thickness - grabZone || across > bar.cross + bar.thickness) continue
+                if (along < bar.trackStart || along > bar.trackStart + bar.trackLength) continue
+                val onThumb = along >= bar.thumbStart && along <= bar.thumbStart + bar.thumbLength
+                val drag = ScrollbarDrag(el, vertical, if (onThumb) along - bar.thumbStart else bar.thumbLength / 2f)
+                scrollbarDrag = drag
+                if (!onThumb) dragScrollbar(drag, x, y)
+                return true
+            }
+            el = el.parent
+        }
+        return false
+    }
+
+    private fun dragScrollbar(drag: ScrollbarDrag, x: Float, y: Float) {
+        val el = drag.el
+        val bar = (if (drag.vertical) Scrollbars.vertical(el) else Scrollbars.horizontal(el)) ?: return
+        val (lx, ly) = local(el, x, y)
+        val room = bar.trackLength - bar.thumbLength
+        if (room <= 0f) return
+        val fraction = (((if (drag.vertical) ly else lx) - drag.grab - bar.trackStart) / room).coerceIn(0f, 1f)
+        val before = el.scrollTop to el.scrollLeft
+        if (drag.vertical) el.scrollTop = fraction * el.maxScrollTop else el.scrollLeft = fraction * el.maxScrollLeft
+        if ((el.scrollTop to el.scrollLeft) != before) EventDispatcher.dispatch(ScrollEvent(el.scrollLeft, el.scrollTop), el)
+    }
+
     /** Re-evaluates hover after the page changed under a still mouse (scrolling, re-layout). */
     fun refreshHover() {
         if (mouseX >= 0f) updateHover(mouseX, mouseY, Modifiers.NONE)
@@ -110,6 +162,11 @@ class InteractionController(private val doc: Document, private val hitTest: (Flo
 
     fun mouseMove(x: Float, y: Float, modifiers: Modifiers = Modifiers.NONE) {
         mouseX = x; mouseY = y
+        scrollbarDrag?.let { drag ->
+            dragScrollbar(drag, x, y)
+            doc.flush()
+            return
+        }
         updateHover(x, y, modifiers)
         dispatchMouse(MouseEvent(EventType.MOUSEMOVE, x, y, modifiers = modifiers), hovered)
         // Dragging (e.g. selecting text) keeps going to the pressed element even outside of it.
@@ -140,6 +197,10 @@ class InteractionController(private val doc: Document, private val hitTest: (Flo
         doc.keyboardModality = false
         mouseMove(x, y, modifiers)
         val target = hovered ?: return false
+        if (button == 0 && startScrollbarDrag(target, x, y)) {
+            doc.flush()
+            return true
+        }
         pressTarget = target
         pressButton = button
         if (disabledAncestor(target) != null) return true
@@ -158,6 +219,11 @@ class InteractionController(private val doc: Document, private val hitTest: (Flo
     }
 
     fun mouseUp(x: Float, y: Float, button: Int, modifiers: Modifiers = Modifiers.NONE): Boolean {
+        if (scrollbarDrag != null && button == 0) {
+            scrollbarDrag = null
+            mouseMove(x, y, modifiers)
+            return true
+        }
         mouseMove(x, y, modifiers)
         activeChain.forEach { it.setState(PseudoState.ACTIVE, false) }
         activeChain = emptyList()
@@ -341,6 +407,8 @@ class InteractionController(private val doc: Document, private val hitTest: (Flo
 
     private companion object {
         val MODIFIER_KEYS = setOf("Shift", "Control", "Alt", "Meta", "CapsLock")
+        /** How far from the edge a press grabs a scrollbar, in px (the bar itself is only 2-3px). */
+        const val SCROLLBAR_GRAB = 5f
         val DRAG_CURSORS = setOf(
             Cursor.GRAB, Cursor.GRABBING, Cursor.MOVE, Cursor.NS_RESIZE, Cursor.EW_RESIZE, Cursor.ROW_RESIZE, Cursor.COL_RESIZE,
         )

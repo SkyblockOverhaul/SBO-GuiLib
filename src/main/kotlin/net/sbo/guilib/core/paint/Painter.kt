@@ -599,27 +599,16 @@ class Painter(private val measurer: TextMeasurer) {
     }
 
     private fun paintScrollbars(el: Element, s: ComputedStyle, r: Rect, alpha: Float, xf: Transform2D) {
-        if (s.scrollbarWidth == "none") return
-        val b = el.box
-        val thickness = if (s.scrollbarWidth == "thin") 2f else 3f
         val (thumbColor, trackColor) = s.scrollbarColor ?: (0x80FFFFFF.toInt() to 0x20000000)
-        if (s.overflowY.scrolls && b.scrollHeight > b.paddingBoxHeight + 0.5f) {
-            val trackX = r.x + b.width - b.border.right - thickness
-            val trackY = r.y + b.border.top
-            val trackH = b.paddingBoxHeight
-            val thumbH = maxOf(8f, trackH * trackH / b.scrollHeight)
-            val thumbY = trackY + (trackH - thumbH) * (el.scrollTop / el.maxScrollTop.coerceAtLeast(0.0001f))
-            emit(solid(xf.map(Rect(trackX, trackY, thickness, trackH)), Colors.withOpacity(trackColor, alpha)))
-            emit(rounded(xf.map(Rect(trackX, thumbY, thickness, thumbH)), Colors.withOpacity(thumbColor, alpha), thickness / 2f * xf.scale))
+        Scrollbars.vertical(el)?.let { bar ->
+            val x = r.x + bar.cross
+            emit(solid(xf.map(Rect(x, r.y + bar.trackStart, bar.thickness, bar.trackLength)), Colors.withOpacity(trackColor, alpha)))
+            emit(rounded(xf.map(Rect(x, r.y + bar.thumbStart, bar.thickness, bar.thumbLength)), Colors.withOpacity(thumbColor, alpha), bar.thickness / 2f * xf.scale))
         }
-        if (s.overflowX.scrolls && b.scrollWidth > b.paddingBoxWidth + 0.5f) {
-            val trackX = r.x + b.border.left
-            val trackY = r.y + b.height - b.border.bottom - thickness
-            val trackW = b.paddingBoxWidth
-            val thumbW = maxOf(8f, trackW * trackW / b.scrollWidth)
-            val thumbX = trackX + (trackW - thumbW) * (el.scrollLeft / el.maxScrollLeft.coerceAtLeast(0.0001f))
-            emit(solid(xf.map(Rect(trackX, trackY, trackW, thickness)), Colors.withOpacity(trackColor, alpha)))
-            emit(rounded(xf.map(Rect(thumbX, trackY, thumbW, thickness)), Colors.withOpacity(thumbColor, alpha), thickness / 2f * xf.scale))
+        Scrollbars.horizontal(el)?.let { bar ->
+            val y = r.y + bar.cross
+            emit(solid(xf.map(Rect(r.x + bar.trackStart, y, bar.trackLength, bar.thickness)), Colors.withOpacity(trackColor, alpha)))
+            emit(rounded(xf.map(Rect(r.x + bar.thumbStart, y, bar.thumbLength, bar.thickness)), Colors.withOpacity(thumbColor, alpha), bar.thickness / 2f * xf.scale))
         }
     }
 
