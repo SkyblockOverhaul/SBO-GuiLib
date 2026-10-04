@@ -3,6 +3,7 @@ package net.sbo.guilib.fabric.resources
 import net.minecraft.client.Minecraft
 import net.minecraft.resources.Identifier
 import net.sbo.guilib.core.Log
+import net.sbo.guilib.core.Warmup
 import net.sbo.guilib.core.css.Origin
 import net.sbo.guilib.core.css.Stylesheet
 import net.sbo.guilib.fabric.GuiLibScreen
@@ -31,6 +32,7 @@ object Stylesheets {
     }
 
     fun load(location: String, origin: Origin = Origin.AUTHOR): Stylesheet? {
+        Warmup.await() // the parser must not run on two threads at once
         val text = readText(location) ?: return null
         val key = CacheKey(location, origin, text)
         synchronized(cache) { cache[key] }?.let { return it }

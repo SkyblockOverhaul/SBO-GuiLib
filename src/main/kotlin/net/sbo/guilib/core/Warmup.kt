@@ -30,8 +30,8 @@ import net.sbo.guilib.core.layout.TextStyle
  * open take a noticeable moment, later opens didn't). Uses its own document and a fake text measurer, nothing of
  * Minecraft.
  *
- * Every [UiRoot] waits for a running warm-up before it starts ([await]), so the library is never used from two
- * threads at once.
+ * Every [UiRoot] and stylesheet load waits for a running warm-up before it starts ([await]), so the library is never
+ * used from two threads at once.
  */
 object Warmup {
     @Volatile
@@ -48,7 +48,7 @@ object Warmup {
         thread = Thread({
             val t = System.nanoTime()
             try {
-                run(uaCss)
+                FrameStats.uncounted { run(uaCss) } // not part of the metrics overlay's numbers
                 done()
                 Log.info("GuiLib: warm-up took ${(System.nanoTime() - t) / 1_000_000} ms")
             } catch (e: Throwable) {
