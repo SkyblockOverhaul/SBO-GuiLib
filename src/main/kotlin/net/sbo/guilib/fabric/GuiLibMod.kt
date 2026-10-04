@@ -5,6 +5,7 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallba
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands
 import net.minecraft.client.Minecraft
 import net.sbo.guilib.core.Log
+import net.sbo.guilib.core.Warmup
 import net.sbo.guilib.fabric.image.Images
 import net.sbo.guilib.fabric.render.GuiPipelines
 import net.sbo.guilib.fabric.resources.HotReload
@@ -44,6 +45,13 @@ object GuiLibMod : ClientModInitializer {
         GuiPipelines.init()
         HotReload.init()
         Images.warmUp()
+        startWarmup()
         logger.info("GuiLib initialized")
+    }
+
+    /** Warms up the core in the background (see [Warmup]) with the bundled ua.css; a resource pack's copy is parsed when used. */
+    private fun startWarmup() {
+        val ua = GuiLibMod::class.java.getResourceAsStream("/assets/guilib/css/ua.css")?.use { it.readBytes().toString(Charsets.UTF_8) } ?: return
+        Warmup.start(ua) { Warmup.userAgent?.let { Stylesheets.primeUserAgent(ua, it) } }
     }
 }

@@ -30,8 +30,29 @@ object Stylesheets {
         return resource.get().open().use { it.readBytes().toString(Charsets.UTF_8) }
     }
 
-    fun load(location: String, origin: Origin = Origin.AUTHOR): Stylesheet? =
-        readText(location)?.let { Stylesheet.parse(it, location, origin) }
+    fun load(location: String, origin: Origin = Origin.AUTHOR): Stylesheet? {
+        val text = readText(location) ?: return null
+        val key = CacheKey(location, origin, text)
+        synchronized(cache) { cache[key] }?.let { return it }
+        val sheet = Stylesheet.parse(text, location, origin)
+        synchronized(cache) { cache[key] = sheet }
+        return sheet
+    }
+
+    private data class CacheKey(val location: String, val origin: Origin, val text: String)
+
+    /**
+     * Parsed stylesheets by their text (parsed sheets are immutable and shared by every screen), so opening a screen
+     * doesn't parse ua.css and the mod's CSS again; a changed file (hot reload, resource pack) has a new key.
+     */
+    private val cache = object : LinkedHashMap<CacheKey, Stylesheet>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<CacheKey, Stylesheet>?) = size > 64
+    }
+
+    /** Adds the user-agent stylesheet parsed by [net.sbo.guilib.core.Warmup] from the bundled ua.css. */
+    internal fun primeUserAgent(text: String, sheet: Stylesheet) {
+        synchronized(cache) { cache[CacheKey(UA_LOCATION, Origin.USER_AGENT, text)] = sheet }
+    }
 
     /** The user-agent stylesheet followed by the given author stylesheets. */
     fun loadAll(locations: List<String>): List<Stylesheet> = buildList {

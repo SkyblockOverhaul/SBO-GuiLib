@@ -15,6 +15,10 @@ import net.sbo.guilib.core.paint.Painter
  * Call [frame] once per frame and draw the returned commands.
  */
 class UiRoot(measurer: TextMeasurer, stylesheets: List<Stylesheet> = emptyList(), clock: () -> Long = System::currentTimeMillis) {
+    init {
+        Warmup.await()
+    }
+
     private val measurer = LetterSpacing.wrap(measurer)
     val document = Document(this.measurer, stylesheets, clock)
     val painter = Painter(this.measurer)
