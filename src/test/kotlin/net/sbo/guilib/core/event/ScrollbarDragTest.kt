@@ -73,4 +73,30 @@ class ScrollbarDragTest {
         assertEquals(0f, box.scrollTop, 0.01f)
         assertEquals(1, clicks)
     }
+
+    @Test
+    fun pageKeysScrollTheContainerUnderTheMouse() {
+        val (root, box) = ui()
+        root.input.mouseMove(20f, 20f)
+        assertTrue(root.input.keyDown("PageDown", 0))
+        assertEquals(43.75f, box.scrollTop, 0.01f) // 87.5 % of the 50px box
+        root.input.keyDown("PageDown", 0)
+        assertEquals(87.5f, box.scrollTop, 0.01f)
+        root.input.keyDown("PageUp", 0)
+        assertEquals(43.75f, box.scrollTop, 0.01f)
+        root.input.keyDown("End", 0)
+        assertEquals(150f, box.scrollTop, 0.01f)
+        // Nothing left to scroll: the key is left to the screen
+        assertTrue(!root.input.keyDown("PageDown", 0))
+        root.input.keyDown("Home", 0)
+        assertEquals(0f, box.scrollTop, 0.01f)
+    }
+
+    @Test
+    fun pageKeysFallBackToTheBiggestScrollContainer() {
+        val (root, box) = ui()
+        root.input.mouseMove(250f, 150f)
+        root.input.keyDown("PageDown", 0)
+        assertEquals(43.75f, box.scrollTop, 0.01f)
+    }
 }

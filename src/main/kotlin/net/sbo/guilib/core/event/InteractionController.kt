@@ -350,6 +350,7 @@ class InteractionController(private val doc: Document, private val hitTest: (Flo
                         click(f, mouseX, mouseY, modifiers); handled = true
                     }
                 }
+                "PageUp", "PageDown", "Home", "End" -> if (!modifiers.ctrl && !modifiers.alt) handled = keyScroll(key)
                 "Escape" -> {
                     // First Escape only blurs an input; the next goes back (useEscapeBack) or closes the screen.
                     if (doc.focusedElement?.tagName == "input" || doc.focusedElement?.tagName == "textarea") {
@@ -362,6 +363,32 @@ class InteractionController(private val doc: Document, private val hitTest: (Flo
         }
         doc.flush()
         return handled
+    }
+
+    /**
+     * PageUp/PageDown scroll by most of a page, Home/End to the top/bottom, like browsers. Scrolls the nearest container
+     * around the focused element that can still move, else the one under the mouse, else the biggest one on screen.
+     */
+    private fun keyScroll(key: String): Boolean {
+        fun amount(el: Element) = when (key) {
+            "PageUp" -> -el.box.paddingBoxHeight * PAGE_FRACTION
+            "PageDown" -> el.box.paddingBoxHeight * PAGE_FRACTION
+            "Home" -> -el.scrollTop
+            else -> el.maxScrollTop - el.scrollTop
+        }
+        fun along(start: Element?): Boolean {
+            var e = start
+            while (e != null) {
+                if (scrollBy(e, 0f, amount(e))) return true
+                e = e.parent
+            }
+            return false
+        }
+        if (along(doc.focusedElement) || along(hovered)) return true
+        val biggest = doc.body.descendants()
+            .filter { it.box.visible && it.style.overflowY.scrolls && it.maxScrollTop > 0f }
+            .maxByOrNull { it.box.paddingBoxWidth * it.box.paddingBoxHeight } ?: return false
+        return scrollBy(biggest, 0f, amount(biggest))
     }
 
     fun keyUp(key: String, keyCode: Int, modifiers: Modifiers = Modifiers.NONE): Boolean {
@@ -409,6 +436,8 @@ class InteractionController(private val doc: Document, private val hitTest: (Flo
         val MODIFIER_KEYS = setOf("Shift", "Control", "Alt", "Meta", "CapsLock")
         /** How far from the edge a press grabs a scrollbar, in px (the bar itself is only 2-3px). */
         const val SCROLLBAR_GRAB = 5f
+        /** Share of the visible height that PageUp/PageDown scroll; the rest stays visible for orientation (like Chrome). */
+        const val PAGE_FRACTION = 0.875f
         val DRAG_CURSORS = setOf(
             Cursor.GRAB, Cursor.GRABBING, Cursor.MOVE, Cursor.NS_RESIZE, Cursor.EW_RESIZE, Cursor.ROW_RESIZE, Cursor.COL_RESIZE,
         )
