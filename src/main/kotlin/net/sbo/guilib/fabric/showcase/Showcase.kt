@@ -1044,7 +1044,7 @@ object Showcase {
         div(className = "row") {
             span(className = classNames("async-result", "loading" to commit.loading, "failed" to (commit.error != null))) {
                 +when {
-                    commit.error != null -> "Error: ${commit.error!!.message}"
+                    commit.error != null -> "Error: ${commit.error.message}"
                     commit.loading && commit.value != null -> "${commit.value} (refreshing…)"
                     commit.loading -> "Loading latest commit…"
                     else -> "Latest commit: ${commit.value}"

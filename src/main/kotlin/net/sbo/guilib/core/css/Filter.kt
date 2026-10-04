@@ -182,7 +182,7 @@ internal object FilterParser {
         if (t.type == TokenType.NUMBER && t.number == 0.0) return 0f
         if (t.type != TokenType.DIMENSION) return null
         val n = t.number.toFloat()
-        return when (t.unit?.lowercase()) {
+        return when (t.unit.lowercase()) {
             "deg" -> n
             "rad" -> n * 180f / kotlin.math.PI.toFloat()
             "grad" -> n * 0.9f

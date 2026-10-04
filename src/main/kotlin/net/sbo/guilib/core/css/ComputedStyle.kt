@@ -148,6 +148,7 @@ class ComputedStyle internal constructor(
     /** Empty for `transform: none`. */
     @Suppress("UNCHECKED_CAST")
     val transform get() = values[Prop.TRANSFORM.ordinal] as List<TransformFn>
+    @Suppress("UNCHECKED_CAST")
     val filter get() = values[Prop.FILTER.ordinal] as List<FilterFn>
     val transformOrigin get() = values[Prop.TRANSFORM_ORIGIN.ordinal] as TransformOrigin
 
