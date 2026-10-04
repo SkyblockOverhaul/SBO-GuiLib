@@ -285,11 +285,11 @@ class InteractionController(private val doc: Document, private val hitTest: (Flo
                     }
                 }
                 "Escape" -> {
-                    if (doc.focusedElement != null) {
-                        // First Escape only blurs an input; the second one closes the screen.
-                        if (doc.focusedElement?.tagName == "input" || doc.focusedElement?.tagName == "textarea") {
-                            doc.focus(null); handled = true
-                        }
+                    // First Escape only blurs an input; the next goes back (useEscapeBack) or closes the screen.
+                    if (doc.focusedElement?.tagName == "input" || doc.focusedElement?.tagName == "textarea") {
+                        doc.focus(null); handled = true
+                    } else if (doc.escapeBackHandlers.asReversed().any { it() }) {
+                        handled = true
                     }
                 }
             }

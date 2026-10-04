@@ -18,11 +18,14 @@ import net.sbo.guilib.core.dsl.multiSelect
 import net.sbo.guilib.core.dsl.select
 import net.sbo.guilib.core.dsl.tabs
 import net.sbo.guilib.core.dsl.useToast
+import net.sbo.guilib.core.dsl.useEscapeBack
+import net.sbo.guilib.core.dsl.modal
 import net.sbo.guilib.core.controls.ToastAction
 import net.sbo.guilib.core.event.EventType
 import net.sbo.guilib.core.event.MouseEvent
 import net.sbo.guilib.core.layout.FakeMeasurer
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -248,6 +251,40 @@ class WidgetsTest {
         assertTrue(root.overlay(".guilib-toast")[0].classList.contains("leaving"))
         now += 300; root.frame(300f, 200f)
         assertEquals(0, root.overlay(".guilib-toast").size)
+    }
+
+    @Test
+    fun escapeGoesBackFromASubPageBeforeClosingTheScreen() {
+        var page: String? = "details"
+        val root = ui {
+            var p by useState(page)
+            page = p
+            useEscapeBack(p != null) { p = null }
+            div { +(p ?: "list") }
+        }
+        assertTrue(root.input.keyDown("Escape", 0))
+        root.frame(300f, 200f)
+        assertNull(page)
+        // On the main page Escape is not handled, so the screen closes
+        assertFalse(root.input.keyDown("Escape", 0))
+    }
+
+    @Test
+    fun escapeClosesAnOpenModalBeforeGoingBack() {
+        var back = 0
+        var modalOpen = true
+        val root = ui {
+            var open by useState(true)
+            modalOpen = open
+            useEscapeBack { back++ }
+            modal(open = open, onClose = { open = false }) { div { +"Sure?" } }
+        }
+        assertTrue(root.input.keyDown("Escape", 0))
+        root.frame(300f, 200f)
+        assertFalse(modalOpen)
+        assertEquals(0, back)
+        assertTrue(root.input.keyDown("Escape", 0))
+        assertEquals(1, back)
     }
 
     @Test

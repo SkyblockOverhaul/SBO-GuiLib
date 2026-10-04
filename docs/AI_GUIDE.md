@@ -65,6 +65,7 @@ body { display: flex; align-items: center; justify-content: center; }  /* body =
 | `createContext(default)`, `Ctx.Provider(value) { … }`, `useContext(Ctx)` | Like React context. |
 | `useDocument()` | The `Document` (viewport size, `focusedElement`, `addEventListener`). |
 | `useDocumentEvent("keydown") { e -> … }` | Global listener while mounted (runs before element handlers). |
+| `useEscapeBack(enabled) { … }` | Escape as a back key for sub-pages: while `enabled`, an Escape nothing else uses (open menus/selects/modals close first, a focused input is left first) runs the lambda instead of closing the screen, e.g. `useEscapeBack(page != "list") { page = "list" }`. |
 | `useScreenScale(2.5f)` | The screen's own GUI scale while mounted, independent of Minecraft's (`null` = Minecraft's; fractions work). Everything incl. portals is laid out and drawn with it: viewport = window / scale, `vw`/`vh` and `@media (resolution)` follow, text and SVGs are re-rasterized sharp. Changes apply live. Also `GuiLib.open(App, scale = 2.5f)`, or `document.scale` from outside. |
 | Ctrl + F12 / `GuiLib.open(App, metrics = true)` | Metrics overlay in any GuiLib screen: FPS, GuiLib ms per frame (update/draw, styles/layout/paint, worst), passes and nodes per second, DOM size, CPU, heap, allocation rate, GC, leak check (old gen after GC, baseline = first "GC now"), caches; 30 s graphs; drag it by its title bar. Own document, not counted in its numbers. `screen.showMetrics`, `GuiLibScreen.METRICS_SHORTCUT = false` turns the key off. |
 | `useBackgroundBlur(false)` | Turns Minecraft's blur behind the screen off while mounted (the dark overlay stays), e.g. bound to a settings switch; changes apply live, restored on unmount. Also `GuiLib.open(App, blurBackground = false)` / `GuiLib.screen(…)`, or `document.backgroundBlur`. `vanillaBackground = false` drops blur and overlay. |
@@ -156,7 +157,7 @@ deepest element to `body`. `mouseenter/mouseleave`, `focus/blur`, `scroll` don't
 - `KeyboardEvent`: `key` uses DOM names (`"a"`, `"Enter"`, `"Escape"`, `"ArrowUp"`, `"Tab"`, `"Backspace"`, `" "`), `keyCode` = Minecraft's raw key code (GLFW key code up to 26.2, SDL scancode from 26.3 on) - prefer `key`.
 - `preventDefault()` on `mousedown` stops focusing, on `wheel` stops scrolling, on `keydown` `Escape` keeps the screen open.
 - Focus: inputs/buttons/selects and elements with `tabIndex` are focusable; Tab / Shift+Tab move focus.
-- The first Escape blurs a focused input, the next closes the screen (unless something called `preventDefault()`).
+- The first Escape blurs a focused input, the next goes back with `useEscapeBack` or closes the screen (unless something called `preventDefault()`).
 
 Element API (via `ref.current`): `tagName`, `id`, `classList`, `children`, `parent`, `getBoundingClientRect()`,
 `querySelector(css)`, `querySelectorAll(css)`, `contains(node)`, `focus()`, `blur()`, `isFocused`,

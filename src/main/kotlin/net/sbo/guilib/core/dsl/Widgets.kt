@@ -159,6 +159,24 @@ fun ComponentScope.useToast(): Toaster = Toaster.of(useDocument())
  */
 fun ComponentScope.useClipboard(): Clipboard = useDocument().clipboard
 
+/**
+ * Escape as a back key: while [enabled], an Escape that nothing else uses (open menus, selects and modals close first,
+ * a focused input is left first) calls [onBack] instead of closing the screen. For windows with sub-pages:
+ * `useEscapeBack(page != "list") { page = "list" }`. With several, the component mounted last wins.
+ */
+fun ComponentScope.useEscapeBack(enabled: Boolean = true, onBack: () -> Unit) {
+    val doc = useDocument()
+    val latest = useRef(onBack)
+    latest.current = onBack
+    val active = useRef(enabled)
+    active.current = enabled
+    useEffect {
+        val handler = { if (active.current) { latest.current(); true } else false }
+        doc.escapeBackHandlers += handler
+        onCleanup { doc.escapeBackHandlers -= handler }
+    }
+}
+
 /** Collects the entries of a menu ([contextMenu]). */
 @GuiDsl
 class MenuBuilder {

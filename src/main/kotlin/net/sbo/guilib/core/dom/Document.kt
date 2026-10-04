@@ -44,6 +44,12 @@ class Document(
     private val layoutEngine = LayoutEngine(measurer).also { it.incremental = true }
     private val reconciler = Reconciler(this)
 
+    /**
+     * Escape handlers of [net.sbo.guilib.core.dsl.useEscapeBack], newest last. The newest one that returns true handles
+     * an Escape nothing else used (no open menu or modal, no focused input) instead of the screen closing.
+     */
+    internal val escapeBackHandlers = ArrayList<() -> Boolean>()
+
     /** The root element (`<body>`; also matches `:root`). Always as large as the viewport. */
     val body: Element = Element("body")
     private val rootInstance = HostInstance(body, null)
