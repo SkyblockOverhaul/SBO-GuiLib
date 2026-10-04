@@ -1,5 +1,6 @@
 package net.sbo.guilib.fabric.showcase
 
+import net.sbo.guilib.core.controls.ToastAction
 import net.minecraft.ChatFormatting
 import net.minecraft.network.chat.ClickEvent
 import net.minecraft.network.chat.Component
@@ -393,6 +394,9 @@ object Showcase {
             button(className = "primary", onClick = { toast.success("Party created") }) { +"Create party" }
             button(onClick = { toast.warning("Join request declined", title = "Party finder") }) { +"Warning" }
             button(onClick = { toast.error("Server not reachable") }) { +"Error" }
+            button(onClick = {
+                toast.info("Party deleted", action = ToastAction("Undo") { toast.success("Party restored") })
+            }) { +"With undo" }
         }
     }
 

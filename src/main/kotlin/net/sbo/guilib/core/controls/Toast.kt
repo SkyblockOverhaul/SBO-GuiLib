@@ -6,6 +6,9 @@ import net.sbo.guilib.core.dom.Element
 import net.sbo.guilib.core.dom.TextNode
 import net.sbo.guilib.core.event.EventType
 
+/** A button in a toast, e.g. `ToastAction("Undo") { restore() }`. Clicking it runs [onClick] and closes the toast. */
+class ToastAction(val label: String, val onClick: () -> Unit)
+
 /** A shown toast; [dismiss] removes it early. */
 class Toast internal constructor(private val toaster: Toaster, internal val element: Element) {
     internal var timer: Cancelable? = null
@@ -23,7 +26,8 @@ class Toast internal constructor(private val toaster: Toaster, internal val elem
  * button(onClick = { toast.success("Party created") }) { … }
  * ```
  * Styled with `.guilib-toasts` (the stack, bottom right), `.guilib-toast` (`.info`, `.success`, `.warning`, `.error`,
- * `.leaving`), `.guilib-toast-accent` (the colored bar), `.guilib-toast-title`, `.guilib-toast-message`, `.guilib-toast-close`.
+ * `.leaving`), `.guilib-toast-accent` (the colored bar), `.guilib-toast-title`, `.guilib-toast-message`, `.guilib-toast-action`,
+ * `.guilib-toast-close`.
  */
 class Toaster internal constructor(private val doc: Document) {
     private var stack: Element? = null
@@ -31,9 +35,16 @@ class Toaster internal constructor(private val doc: Document) {
 
     /**
      * Shows [message]. [kind] is a class on the toast (`info`, `success`, `warning`, `error` are styled).
-     * [durationMs] ≤ 0 keeps it until clicked. Returns the toast (call `dismiss()` to remove it early).
+     * [durationMs] ≤ 0 keeps it until clicked. [action] adds a button below the message (e.g. "Undo").
+     * Returns the toast (call `dismiss()` to remove it early).
      */
-    fun show(message: String, kind: String = "info", title: String? = null, durationMs: Long = DEFAULT_DURATION_MS): Toast {
+    fun show(
+        message: String,
+        kind: String = "info",
+        title: String? = null,
+        durationMs: Long = DEFAULT_DURATION_MS,
+        action: ToastAction? = null,
+    ): Toast {
         val el = Element("div")
         el.className = "guilib-toast $kind"
         val toast = Toast(this, el)
@@ -41,6 +52,15 @@ class Toaster internal constructor(private val doc: Document) {
         val parts = ArrayList<Element>()
         if (title != null) parts += Element("div").also { it.className = "guilib-toast-title"; it.setChildren(listOf(TextNode(title))) }
         parts += Element("div").also { it.className = "guilib-toast-message"; it.setChildren(listOf(TextNode(message))) }
+        if (action != null) parts += Element("button").also {
+            it.className = "guilib-toast-action"
+            it.setChildren(listOf(TextNode(action.label)))
+            it.handlers = mapOf(EventType.CLICK to { e ->
+                e.stopPropagation()
+                if (!toast.leaving) action.onClick()
+                toast.dismiss()
+            })
+        }
         body.setChildren(parts)
         val close = Element("span").also { it.className = "guilib-toast-close"; it.setChildren(listOf(TextNode("✕"))) }
         val accent = Element("div").also { it.className = "guilib-toast-accent" }
@@ -60,10 +80,14 @@ class Toaster internal constructor(private val doc: Document) {
         return toast
     }
 
-    fun info(message: String, title: String? = null, durationMs: Long = DEFAULT_DURATION_MS) = show(message, "info", title, durationMs)
-    fun success(message: String, title: String? = null, durationMs: Long = DEFAULT_DURATION_MS) = show(message, "success", title, durationMs)
-    fun warning(message: String, title: String? = null, durationMs: Long = DEFAULT_DURATION_MS) = show(message, "warning", title, durationMs)
-    fun error(message: String, title: String? = null, durationMs: Long = DEFAULT_DURATION_MS) = show(message, "error", title, durationMs)
+    fun info(message: String, title: String? = null, durationMs: Long = DEFAULT_DURATION_MS, action: ToastAction? = null) =
+        show(message, "info", title, durationMs, action)
+    fun success(message: String, title: String? = null, durationMs: Long = DEFAULT_DURATION_MS, action: ToastAction? = null) =
+        show(message, "success", title, durationMs, action)
+    fun warning(message: String, title: String? = null, durationMs: Long = DEFAULT_DURATION_MS, action: ToastAction? = null) =
+        show(message, "warning", title, durationMs, action)
+    fun error(message: String, title: String? = null, durationMs: Long = DEFAULT_DURATION_MS, action: ToastAction? = null) =
+        show(message, "error", title, durationMs, action)
 
     /** Removes all toasts. */
     fun clear() = onUiThread { shown.toList().forEach { dismiss(it) } }

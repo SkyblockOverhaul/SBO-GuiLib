@@ -603,6 +603,7 @@ select:disabled { opacity: 0.5; cursor: not-allowed; }
 .guilib-toast-body { flex-grow: 1; min-width: 0; }
 .guilib-toast-title { font-weight: bold; margin-bottom: 1px; }
 .guilib-toast-message { color: var(--guilib-text-secondary); }
+.guilib-toast-action { margin-top: 3px; padding: 1px 6px; font-size: 7px; }
 .guilib-toast-close { color: var(--guilib-text-subtle); }
 .guilib-toast:hover .guilib-toast-close { color: var(--guilib-text); }
 @keyframes guilib-toast-in { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: translateX(0); } }

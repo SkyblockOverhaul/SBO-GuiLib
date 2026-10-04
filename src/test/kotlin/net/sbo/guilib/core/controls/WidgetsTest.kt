@@ -18,6 +18,7 @@ import net.sbo.guilib.core.dsl.multiSelect
 import net.sbo.guilib.core.dsl.select
 import net.sbo.guilib.core.dsl.tabs
 import net.sbo.guilib.core.dsl.useToast
+import net.sbo.guilib.core.controls.ToastAction
 import net.sbo.guilib.core.event.EventType
 import net.sbo.guilib.core.event.MouseEvent
 import net.sbo.guilib.core.layout.FakeMeasurer
@@ -228,6 +229,23 @@ class WidgetsTest {
         assertEquals(1, left.size)
         assertTrue(left[0].classList.contains("error"))
         root.click(left[0])
+        now += 300; root.frame(300f, 200f)
+        assertEquals(0, root.overlay(".guilib-toast").size)
+    }
+
+    @Test
+    fun toastActionRunsOnceAndDismissesTheToast() {
+        var undone = 0
+        val root = ui {
+            val toast = useToast()
+            useEffect { toast.success("Event deleted", action = ToastAction("Undo") { undone++ }) }
+        }
+        root.frame(300f, 200f)
+        val action = root.overlay(".guilib-toast-action").single()
+        assertEquals("Undo", (action.children.single() as TextNode).data)
+        root.click(action)
+        assertEquals(1, undone)
+        assertTrue(root.overlay(".guilib-toast")[0].classList.contains("leaving"))
         now += 300; root.frame(300f, 200f)
         assertEquals(0, root.overlay(".guilib-toast").size)
     }
