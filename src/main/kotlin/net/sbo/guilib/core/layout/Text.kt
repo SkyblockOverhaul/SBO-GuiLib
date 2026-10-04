@@ -17,8 +17,26 @@ data class TextStyle(
     val letterSpacing: Float = 0f,
     /** `§k`: drawn as random characters that keep changing, like Minecraft; measured as the real text. */
     val obfuscated: Boolean = false,
+    /** RGB set by a `§0`–`§f` code (`null` = the CSS `color`); kept when the CSS color changes, see [repaintedWith]. */
+    val codeColor: Int? = null,
+    /** Decorations added by `§n` / `§m`, on top of the CSS `text-decoration`. */
+    val codeDecoration: TextDecoration = TextDecoration.NONE,
 ) {
     val bold get() = fontWeight >= 600
+
+    /**
+     * This style with the paint-only properties (color, decoration, shadow) taken from [live]: they change without a
+     * new layout (e.g. `button:disabled` → enabled), so text laid out earlier must not keep the old ones.
+     */
+    fun repaintedWith(live: ComputedStyle): TextStyle {
+        val c = codeColor?.let { (live.color and 0xFF000000.toInt()) or it } ?: live.color
+        val d = live.textDecoration.let {
+            if (codeDecoration == TextDecoration.NONE) it
+            else TextDecoration(it.underline || codeDecoration.underline, it.lineThrough || codeDecoration.lineThrough)
+        }
+        return if (c == color && d == decoration && live.textShadow == shadow) this
+        else copy(color = c, decoration = d, shadow = live.textShadow)
+    }
 
     companion object {
         fun of(style: ComputedStyle) = TextStyle(
@@ -116,11 +134,11 @@ object FormattingCodes {
             if (c == SECTION && i + 1 < text.length) {
                 val code = text[i + 1].lowercaseChar()
                 val next = when (code) {
-                    in '0'..'9', in 'a'..'f' -> base.copy(color = (base.color and 0xFF000000.toInt()) or COLORS[code.digitToInt(16)])
+                    in '0'..'9', in 'a'..'f' -> base.copy(color = (base.color and 0xFF000000.toInt()) or COLORS[code.digitToInt(16)], codeColor = COLORS[code.digitToInt(16)])
                     'l' -> style.copy(fontWeight = 700)
                     'o' -> style.copy(italic = true)
-                    'n' -> style.copy(decoration = style.decoration.copy(underline = true))
-                    'm' -> style.copy(decoration = style.decoration.copy(lineThrough = true))
+                    'n' -> style.copy(decoration = style.decoration.copy(underline = true), codeDecoration = style.codeDecoration.copy(underline = true))
+                    'm' -> style.copy(decoration = style.decoration.copy(lineThrough = true), codeDecoration = style.codeDecoration.copy(lineThrough = true))
                     'k' -> style.copy(obfuscated = true)
                     'r' -> base
                     else -> style // unknown codes are ignored

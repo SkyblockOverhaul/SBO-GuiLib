@@ -505,19 +505,20 @@ class Painter(private val measurer: TextMeasurer) {
                     if (f !is Fragment.Text) continue
                     val owner = f.owner as? TextNode
                     if (owner?.parent?.style?.visibility == Visibility.HIDDEN) continue
-                    val m = measurer.metrics(f.style)
+                    val fs = f.style.repaintedWith(f.owner.style)
+                    val m = measurer.metrics(fs)
                     val tx = x + p.x + f.x
                     val baseline = y + p.y + line.y + line.baseline - f.shift
-                    val color = Colors.withOpacity(f.style.color, alpha)
+                    val color = Colors.withOpacity(fs.color, alpha)
                     // Scaled text is drawn at the scaled font size, so it stays sharp (re-rasterized, not stretched).
-                    val style = if (fontScale == 1f) f.style else f.style.copy(fontSize = f.style.fontSize * fontScale, letterSpacing = f.style.letterSpacing * fontScale)
+                    val style = if (fontScale == 1f) fs else fs.copy(fontSize = fs.fontSize * fontScale, letterSpacing = fs.letterSpacing * fontScale)
                     if (style.fontSize < 0.5f) continue
                     emit(PaintCommand.Text(xf.x(tx), xf.y(baseline - m.ascent), f.text, style, color, alpha))
-                    val thickness = maxOf(1f, f.style.fontSize / 12f)
-                    if (f.style.decoration.underline) {
+                    val thickness = maxOf(1f, fs.fontSize / 12f)
+                    if (fs.decoration.underline) {
                         emit(solid(xf.map(Rect(tx, baseline + thickness, f.width, thickness)), color))
                     }
-                    if (f.style.decoration.lineThrough) {
+                    if (fs.decoration.lineThrough) {
                         emit(solid(xf.map(Rect(tx, baseline - m.ascent * 0.35f - thickness / 2f, f.width, thickness)), color))
                     }
                 }

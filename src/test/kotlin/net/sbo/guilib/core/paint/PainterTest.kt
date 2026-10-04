@@ -63,6 +63,25 @@ class PainterTest {
     }
 
     @Test
+    fun textFollowsAColorChangeWithoutRelayout() {
+        // Regression (Felix): a button going from disabled to enabled kept the :disabled text color, because text
+        // fragments carried the color of the last layout and a color change only repaints.
+        lateinit var setPicked: (Boolean) -> Unit
+        val root = ui("button.primary { color: #ffffff } button.primary:disabled { color: #808080; text-decoration: underline }") {
+            val (picked, s) = useState(false)
+            setPicked = s
+            button(className = "primary", disabled = !picked) { +"Confirm" }
+        }
+        fun label() = root.painter.commands.filterIsInstance<PaintCommand.Text>().single { it.text == "Confirm" }
+        assertEquals(0xFF808080.toInt(), label().color)
+        assertTrue(label().style.decoration.underline)
+        setPicked(true)
+        root.frame(200f, 100f)
+        assertEquals(0xFFFFFFFF.toInt(), label().color)
+        assertTrue(!label().style.decoration.underline)
+    }
+
+    @Test
     fun paintsTextOfFlexItemsAndParagraphs() {
         val root = ui("") {
             div { +"para" }
