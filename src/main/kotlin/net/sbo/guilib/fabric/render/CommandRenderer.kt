@@ -159,16 +159,15 @@ object CommandRenderer {
 
     private fun drawBox(ctx: GuiGraphicsExtractor, b: PaintCommand.Box) {
         if (b.width <= 0f || b.height <= 0f) return
+        // Plain and rounded boxes share the same whole-pixel edges, so they line up with each other
+        val (x0, x1) = PixelSnap.span(b.x, b.width)
+        val (y0, y1) = PixelSnap.span(b.y, b.height)
         if (b.hasRadius) {
             beforeQuad(ctx, "rounded", b.x, b.y, b.x + b.width, b.y + b.height)
-            drawRoundedBox(ctx, b)
+            if (x1 > x0 && y1 > y0) drawRoundedBox(ctx, b, x0.toFloat(), y0.toFloat(), (x1 - x0).toFloat(), (y1 - y0).toFloat())
             return
         }
         beforeQuad(ctx, "fill", b.x, b.y, b.x + b.width, b.y + b.height)
-        val x0 = r(b.x)
-        val y0 = r(b.y)
-        val x1 = r(b.x + b.width)
-        val y1 = r(b.y + b.height)
         if (x1 <= x0 || y1 <= y0) return
         val bt = r(b.borders[0])
         val br = r(b.borders[1])
@@ -191,7 +190,7 @@ object CommandRenderer {
         if (br > 0) fill(x1 - br, y0 + bt, x1, y1 - bb, b.borderColors[1])
     }
 
-    private fun drawRoundedBox(ctx: GuiGraphicsExtractor, b: PaintCommand.Box) {
+    private fun drawRoundedBox(ctx: GuiGraphicsExtractor, b: PaintCommand.Box, x: Float, y: Float, w: Float, h: Float) {
         val pose = Matrix3x2f(ctx.pose())
         val scissor = ctx.scissorStack.peek()
         val bw = b.borders[0]
@@ -201,10 +200,10 @@ object CommandRenderer {
         if (uniform) {
             // One SDF pass for the background inside the border, one for the border ring.
             if (Colors.alpha(b.background) != 0) {
-                add(ctx, RoundedRectState(pose, b.x, b.y, b.width, b.height, b.background, b.radii, bw, scissor))
+                add(ctx, RoundedRectState(pose, x, y, w, h, b.background, b.radii, bw, scissor))
             }
             if (bw > 0f && Colors.alpha(bc) != 0) {
-                add(ctx, RoundedRectState(pose, b.x, b.y, b.width, b.height, bc, b.radii, -bw, scissor))
+                add(ctx, RoundedRectState(pose, x, y, w, h, bc, b.radii, -bw, scissor))
             }
             return
         }
@@ -212,22 +211,22 @@ object CommandRenderer {
         // Different widths/colors per side: rounded background under the border (like background-clip: border-box),
         // then one SDF quad per side that bends around the corners like in browsers (see SideBorders).
         if (Colors.alpha(b.background) != 0) {
-            add(ctx, RoundedRectState(pose, b.x, b.y, b.width, b.height, b.background, b.radii, 0f, scissor))
+            add(ctx, RoundedRectState(pose, x, y, w, h, b.background, b.radii, 0f, scissor))
         }
         if (SideBorders.fits(b.borders)) {
             for (side in 0 until 4) {
                 val c = b.borderColors[side]
                 if (b.borders[side] <= 0f || Colors.alpha(c) == 0) continue
-                add(ctx, RoundedRectState(pose, b.x, b.y, b.width, b.height, c, b.radii, SideBorders.pack(b.borders, side), scissor))
+                add(ctx, RoundedRectState(pose, x, y, w, h, c, b.radii, SideBorders.pack(b.borders, side), scissor))
             }
             return
         }
         // Wider borders: one straight strip per side that stops where a rounded corner begins.
         val (tl, tr, br, bl) = b.radii.toList()
-        val x0 = b.x
-        val y0 = b.y
-        val x1 = b.x + b.width
-        val y1 = b.y + b.height
+        val x0 = x
+        val y0 = y
+        val x1 = x + w
+        val y1 = y + h
         fun strip(side: Int, sx0: Float, sy0: Float, sx1: Float, sy1: Float) {
             val c = b.borderColors[side]
             if (b.borders[side] <= 0f || Colors.alpha(c) == 0 || sx1 <= sx0 || sy1 <= sy0) return
