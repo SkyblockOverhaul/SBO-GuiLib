@@ -395,6 +395,9 @@ object Showcase {
             button(onClick = { toast.warning("Join request declined", title = "Party finder") }) { +"Warning" }
             button(onClick = { toast.error("Server not reachable") }) { +"Error" }
             button(onClick = {
+                toast.error("Missing requirements: Catacombs 30, Magical Power 600, Hyperion. Hover to keep it open.", title = "Can't join")
+            }) { +"Long error" }
+            button(onClick = {
                 toast.info("Party deleted", action = ToastAction("Undo") { toast.success("Party restored") })
             }) { +"With undo" }
         }

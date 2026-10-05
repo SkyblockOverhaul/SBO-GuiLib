@@ -21,6 +21,7 @@ import net.sbo.guilib.core.dsl.useToast
 import net.sbo.guilib.core.dsl.useEscapeBack
 import net.sbo.guilib.core.dsl.modal
 import net.sbo.guilib.core.controls.ToastAction
+import net.sbo.guilib.core.controls.Toaster
 import net.sbo.guilib.core.event.EventType
 import net.sbo.guilib.core.event.MouseEvent
 import net.sbo.guilib.core.layout.FakeMeasurer
@@ -251,6 +252,85 @@ class WidgetsTest {
         assertTrue(root.overlay(".guilib-toast")[0].classList.contains("leaving"))
         now += 300; root.frame(300f, 200f)
         assertEquals(0, root.overlay(".guilib-toast").size)
+    }
+
+    private fun UiRoot.hover(el: Element?) {
+        if (el == null) input.mouseMove(1f, 1f) else el.getBoundingClientRect().let { input.mouseMove(it.x + 1f, it.y + 1f) }
+        frame(300f, 200f)
+    }
+
+    @Test
+    fun aHoveredToastWaitsAndContinuesWithTheTimeLeftAfterTheMouseLeaves() {
+        val root = ui {
+            val toast = useToast()
+            useEffect { toast.error("Missing: Catacombs 30, Magical Power 600", durationMs = 4000) }
+        }
+        root.frame(300f, 200f)
+        now += 1000; root.frame(300f, 200f)
+        root.hover(root.overlay(".guilib-toast").single())
+        now += 10_000; root.frame(300f, 200f)
+        assertFalse(root.overlay(".guilib-toast").single().classList.contains("leaving"))
+        root.hover(null)
+        now += 2900; root.frame(300f, 200f)
+        assertFalse(root.overlay(".guilib-toast").single().classList.contains("leaving"))
+        now += 200; root.frame(300f, 200f)
+        assertTrue(root.overlay(".guilib-toast").single().classList.contains("leaving"))
+    }
+
+    @Test
+    fun aToastHoveredUntilItsLastMomentGetsAtLeastOneAndAHalfSecondsAfterLeaving() {
+        val root = ui {
+            val toast = useToast()
+            useEffect { toast.info("Copied", durationMs = 1000) }
+        }
+        root.frame(300f, 200f)
+        now += 990; root.frame(300f, 200f)
+        root.hover(root.overlay(".guilib-toast").single())
+        now += 5000; root.frame(300f, 200f)
+        root.hover(null)
+        now += Toaster.MIN_RESUME_MS - 10; root.frame(300f, 200f)
+        assertFalse(root.overlay(".guilib-toast").single().classList.contains("leaving"))
+        now += 20; root.frame(300f, 200f)
+        assertTrue(root.overlay(".guilib-toast").single().classList.contains("leaving"))
+    }
+
+    @Test
+    fun pauseOnHoverFalseKeepsTheTimerRunningAndClickStillDismissesAHoveredToast() {
+        val root = ui {
+            val toast = useToast()
+            useEffect {
+                toast.info("Plain", durationMs = 1000, pauseOnHover = false)
+                toast.info("Paused", durationMs = 3000)
+            }
+        }
+        root.frame(300f, 200f)
+        val (plain, paused) = root.overlay(".guilib-toast")
+        root.hover(plain)
+        now += 1100; root.frame(300f, 200f)
+        assertTrue(plain.classList.contains("leaving"))
+        root.hover(paused)
+        now += 5000; root.frame(300f, 200f)
+        assertFalse(paused.classList.contains("leaving"))
+        root.click(paused)
+        assertTrue(paused.classList.contains("leaving"))
+    }
+
+    @Test
+    fun theHoveredToastIsNotEvictedWhenTooManyAreShown() {
+        lateinit var toaster: Toaster
+        val root = ui {
+            val toast = useToast()
+            toaster = toast
+            useEffect { toast.error("Read me", durationMs = 0) }
+        }
+        root.frame(300f, 200f)
+        val first = root.overlay(".guilib-toast").single()
+        root.hover(first)
+        repeat(Toaster.MAX_TOASTS) { toaster.info("Toast $it", durationMs = 0) }
+        root.frame(300f, 200f)
+        assertFalse(first.classList.contains("leaving"))
+        assertEquals(1, root.overlay(".guilib-toast.leaving").size)
+        assertEquals("Toast 0", ((root.overlay(".guilib-toast.leaving").single().querySelector(".guilib-toast-message")!!.children.single()) as TextNode).data)
     }
 
     @Test

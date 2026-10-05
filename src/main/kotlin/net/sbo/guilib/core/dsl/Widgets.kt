@@ -148,7 +148,7 @@ fun NodeBuilder.details(
 /**
  * The toaster of this screen: `val toast = useToast(); toast.success("Party created")`, `toast.error("Server not reachable")`,
  * `toast.show("Text", kind = "info", title = "Title", durationMs = 5000)`. Toasts stack in the bottom right corner,
- * disappear on their own and on click. Safe to call from any thread (e.g. a network callback).
+ * disappear on their own and on click; hovering a toast pauses its timer. Safe to call from any thread (e.g. a network callback).
  */
 fun ComponentScope.useToast(): Toaster = Toaster.of(useDocument())
 
