@@ -491,6 +491,7 @@ object CommandRenderer {
             pose.pushMatrix()
             pose.translate(cmd.x, cmd.y)
             pose.scale(cmd.width / 16f, cmd.height / 16f)
+            snapToPixels(pose)
             ctx.item(stack, 0, 0)
             if (el.getAttribute("decorations") == true) ctx.itemDecorations(Minecraft.getInstance().font, stack, 0, 0)
             pose.popMatrix()
@@ -499,6 +500,20 @@ object CommandRenderer {
         } else if (el.tagName == "player-head") {
             drawPlayerHead(ctx, cmd)
         }
+    }
+
+    /**
+     * Minecraft blits GUI items from one shared atlas with nearest sampling. Drawn at a fractional position or size, the
+     * edge pixels of the quad pick up the neighbouring slot (a thin line under or beside the item), so an unrotated
+     * item is moved and sized onto whole screen pixels.
+     */
+    private fun snapToPixels(pose: Matrix3x2f) {
+        if (pose.m01 != 0f || pose.m10 != 0f || pose.m00 <= 0f || pose.m11 <= 0f) return
+        val px = Minecraft.getInstance().window.guiScale.toFloat().coerceAtLeast(1f)
+        pose.m00 = (pose.m00 * px * 16f).roundToInt().coerceAtLeast(1) / (px * 16f)
+        pose.m11 = (pose.m11 * px * 16f).roundToInt().coerceAtLeast(1) / (px * 16f)
+        pose.m20 = (pose.m20 * px).roundToInt() / px
+        pose.m21 = (pose.m21 * px).roundToInt() / px
     }
 
     /** Profiles of `player-head` elements by their `player` value, so the skin cache sees the same profile every frame. */
