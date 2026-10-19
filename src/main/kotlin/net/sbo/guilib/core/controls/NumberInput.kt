@@ -19,6 +19,7 @@ internal data class NumberInputProps(
     val min: Double,
     val max: Double,
     val step: Double,
+    /** Decimals a value keeps. */
     val decimals: Int,
     val wheel: Boolean,
     val disabled: Boolean,
@@ -32,6 +33,8 @@ internal data class NumberInputProps(
     val className: String?,
     val id: String?,
     val style: String?,
+    /** Decimals the field always shows; the ones past this up to [decimals] only when the value has them. */
+    val minDecimals: Int = decimals,
 )
 
 /** Decimals a step needs (`0.25` → 2, `5` → 0). */
@@ -40,7 +43,12 @@ internal fun decimalsOf(step: Double): Int =
 
 internal fun roundTo(v: Double, decimals: Int): Double = BigDecimal(v).setScale(decimals, RoundingMode.HALF_UP).toDouble()
 
-internal fun formatNumber(v: Double, decimals: Int): String = BigDecimal(v).setScale(decimals, RoundingMode.HALF_UP).toPlainString()
+internal fun formatNumber(v: Double, decimals: Int, minDecimals: Int = decimals): String {
+    val rounded = BigDecimal(v).setScale(decimals, RoundingMode.HALF_UP)
+    if (minDecimals >= decimals) return rounded.toPlainString()
+    val trimmed = rounded.stripTrailingZeros()
+    return (if (trimmed.scale() < minDecimals) trimmed.setScale(minDecimals) else trimmed).toPlainString()
+}
 
 /** Parses what the user typed: `,` works as decimal point, empty/invalid → null. */
 internal fun parseNumber(text: String): Double? = text.trim().replace(',', '.').toDoubleOrNull()
@@ -169,7 +177,7 @@ internal val NumberInputComponent = component<NumberInputProps>("NumberInput") {
             className = "guilib-number-input",
             // A custom parser may need any characters; the default one only digits, signs, decimal marks and k/m/b.
             type = if (p.parse == ::parseNumberShorthand) "number" else "text",
-            value = draft ?: p.value?.let { formatNumber(it, p.decimals) } ?: "",
+            value = draft ?: p.value?.let { formatNumber(it, p.decimals, p.minDecimals) } ?: "",
             placeholder = p.placeholder,
             disabled = p.disabled,
             onChange = { e ->

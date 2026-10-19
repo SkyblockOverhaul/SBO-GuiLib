@@ -284,13 +284,17 @@ fun NodeBuilder.numberInput(
     key,
 )
 
-/** Decimal [numberInput]: shows as many decimals as [step] has (`step = 0.25` → `1.75`). */
+/**
+ * Decimal [numberInput]: shows as many decimals as [step] has (`step = 0.25` → `1.75`). [decimals] lets typed values keep
+ * more than that, shown only when the value has them: `step = 1.0, decimals = 1` steps by 1 and shows `48` or `48.5`.
+ */
 fun NodeBuilder.numberInput(
     value: Double,
     onChange: ((Double) -> Unit)? = null,
     min: Double = -Double.MAX_VALUE,
     max: Double = Double.MAX_VALUE,
     step: Double = 1.0,
+    decimals: Int = decimalsOf(step),
     wheel: Boolean = true,
     disabled: Boolean = false,
     placeholder: String? = null,
@@ -302,8 +306,8 @@ fun NodeBuilder.numberInput(
     key: Any? = null,
 ) = NumberInputComponent(
     NumberInputProps(
-        value, onChange?.let { f -> { v: Double? -> f(v!!) } }, min, max, step, decimalsOf(step), wheel, disabled, placeholder,
-        false, stepMultiplier, parse, className, id, style,
+        value, onChange?.let { f -> { v: Double? -> f(v!!) } }, min, max, step, maxOf(decimals, decimalsOf(step)), wheel, disabled,
+        placeholder, false, stepMultiplier, parse, className, id, style, minDecimals = decimalsOf(step),
     ),
     key,
 )
@@ -339,7 +343,7 @@ fun NodeBuilder.numberInput(
     key,
 )
 
-/** Decimal [numberInput] that may be empty (`null`), see the `Int?` overload. */
+/** Decimal [numberInput] that may be empty (`null`), see the `Int?` overload; [decimals] like the `Double` overload. */
 @JvmName("numberInputNullableDouble")
 fun NodeBuilder.numberInput(
     value: Double?,
@@ -348,6 +352,7 @@ fun NodeBuilder.numberInput(
     min: Double = -Double.MAX_VALUE,
     max: Double = Double.MAX_VALUE,
     step: Double = 1.0,
+    decimals: Int = decimalsOf(step),
     wheel: Boolean = true,
     disabled: Boolean = false,
     placeholder: String? = null,
@@ -358,7 +363,10 @@ fun NodeBuilder.numberInput(
     style: String? = null,
     key: Any? = null,
 ) = NumberInputComponent(
-    NumberInputProps(value, onChange, min, max, step, decimalsOf(step), wheel, disabled, placeholder, allowEmpty, stepMultiplier, parse, className, id, style),
+    NumberInputProps(
+        value, onChange, min, max, step, maxOf(decimals, decimalsOf(step)), wheel, disabled, placeholder, allowEmpty, stepMultiplier,
+        parse, className, id, style, minDecimals = decimalsOf(step),
+    ),
     key,
 )
 

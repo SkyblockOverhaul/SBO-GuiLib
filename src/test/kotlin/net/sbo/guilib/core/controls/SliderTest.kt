@@ -477,6 +477,30 @@ class SliderTest {
     }
 
     @Test
+    fun numberInputDecimalsKeepTypedDecimalsButStepByStep() {
+        var d: Double? = null
+        val root = ui {
+            var v by useState<Double?>(null)
+            d = v
+            numberInput(value = v, onChange = { v = it }, allowEmpty = true, min = 1.0, step = 1.0, decimals = 1)
+        }
+        val field = root.el(".guilib-number-input")
+        fun text() = (field.control as InputControl).text
+        root.click(field)
+        root.retype("48.56")
+        root.key("Enter")
+        assertEquals(48.6, d)
+        assertEquals("48.6", text())
+        root.key("ArrowUp")
+        assertEquals(49.6, d)
+        // Whole values show no decimals.
+        root.retype("50")
+        root.key("Enter")
+        assertEquals(50.0, d)
+        assertEquals("50", text())
+    }
+
+    @Test
     fun numberInputParseCanBeReplaced() {
         var value = 0
         val root = ui {
