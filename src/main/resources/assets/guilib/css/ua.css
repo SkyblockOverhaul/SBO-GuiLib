@@ -695,6 +695,9 @@ select.multiple .guilib-select-value { max-width: 140px; overflow: hidden; text-
 .guilib-option.selected .guilib-option-check { background-color: var(--guilib-accent); border-color: var(--guilib-accent); color: var(--guilib-on-accent); }
 .guilib-select-menu.multiple .guilib-option.selected { color: var(--guilib-text); font-weight: normal; }
 
+/* GuiLibHud: the box around its content, shrink-to-fit from the top left so the content has its own size. */
+.guilib-hud { position: absolute; left: 0; top: 0; }
+
 /* Metrics overlay (Ctrl + F12 in any GuiLib screen, GuiLib.open(metrics = true)); resets what it inherits. */
 .guilib-metrics {
     position: fixed; top: 6px; left: 6px; z-index: 1000; width: 150px; max-height: calc(100vh - 12px); overflow-y: auto;

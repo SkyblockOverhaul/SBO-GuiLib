@@ -316,6 +316,8 @@ in one stylesheet works in every screen. Weights map to the nearest face (400/50
 - **Sidebar + content:** `display: grid; grid-template-columns: 80px 1fr` (or `grid-template-areas`).
 - **Keyboard shortcut for the whole screen:** `useDocumentEvent("keydown") { e -> if ((e as KeyboardEvent).key == "r") refresh() }`.
 
+- **HUD overlay (since 0.12.7):** `val hud = GuiLibHud(listOf("mymod:ui/hud.css"))`, `hud.render { div(className = "tracker") { +"Kills: $kills" } }` whenever the data changes, `hud.draw(ctx, x, y, scale)` every frame from a HUD render callback. Content is laid out at its own size (shrink-to-fit `.guilib-hud` box), `hud.width`/`hud.height` = that size in GUI px at scale 1 (after the first draw). `item`/`img`/`player-head` work; no mouse/keyboard input (hit-test parts with `hud.bounds(".button")`); not counted in the metrics window. Create it after the game started, not during mod init.
+
 ## 8. Development
 
 - `/guilib showcase` opens a demo of every feature; `/guilib reload` reloads CSS.

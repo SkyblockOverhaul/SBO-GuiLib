@@ -57,6 +57,8 @@ UIs can be written quickly and correctly. Differences from the web are documente
   `title` tooltips, modal dialogs, drag-to-reorder lists (`sortableList`, also between lists, with exit animations), portals — all styleable with CSS.
 - **Minecraft integration:** `text(component)` renders chat components (RGB colors, formatting, hover tooltips incl.
   item tooltips, click events), `useTranslation()` translates keys from lang files and re-renders on language change, item icons (optionally with Minecraft's item tooltip), entity models, player heads.
+- **HUD overlays:** `GuiLibHud` draws a document on the HUD outside any screen (trackers, overlays): laid out at its own size,
+  paint commands reused every frame until the content changes, `bounds(selector)` for hit-testing parts of it.
 - **Dev workflow:** CSS hot reload from `src/main/resources`, `/guilib showcase`, `/guilib reload`.
 
 ## Using it in a mod
