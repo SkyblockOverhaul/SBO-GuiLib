@@ -8,9 +8,11 @@ import net.minecraft.client.gui.navigation.ScreenRectangle
 import net.minecraft.client.gui.screens.inventory.InventoryScreen
 import net.minecraft.client.player.AbstractClientPlayer
 import net.minecraft.client.gui.render.TextureSetup
+import net.minecraft.client.renderer.PlayerSkinRenderCache
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.client.renderer.state.gui.ColoredRectangleRenderState
 import net.minecraft.client.renderer.state.gui.GuiElementRenderState
+import net.minecraft.util.Util
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.component.ResolvableProfile
@@ -29,7 +31,9 @@ import net.sbo.guilib.fabric.font.VanillaFont
 import net.sbo.guilib.fabric.image.Images
 import org.joml.Matrix3x2f
 import org.joml.Vector2f
+import java.util.Optional
 import java.util.UUID
+import java.util.concurrent.CompletableFuture
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -521,6 +525,45 @@ object CommandRenderer {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Any, ResolvableProfile>) = size > 256
     }
 
+    private const val HEAD_RETRY_MS = 5_000L
+    private const val HEAD_RETRY_MAX_MS = 120_000L
+
+    /** When the next lookup of a head may run and how long the one after waits, by uuid. */
+    private class HeadRetry(var at: Long, var wait: Long, var running: Boolean = false)
+
+    private val headRetries = HashMap<UUID, HeadRetry>()
+
+    // Mojang always sends a textures property, even for players with the default skin, so without one the lookup failed
+    private fun lookupFailed(lookup: CompletableFuture<Optional<PlayerSkinRenderCache.RenderInfo>>): Boolean {
+        if (!lookup.isDone) return false
+        val info = runCatching { lookup.getNow(null) }.getOrNull()?.orElse(null) ?: return true
+        return info.gameProfile().properties().get("textures").isEmpty()
+    }
+
+    /**
+     * Mojang only answers so many skin lookups a minute and Minecraft keeps a failed one while it is drawn, so the head
+     * would keep the default skin. It asks Mojang again itself, waiting longer after each failure.
+     */
+    private fun retryHead(uuid: UUID) {
+        val now = System.currentTimeMillis()
+        val retry = headRetries.getOrPut(uuid) { HeadRetry(now, HEAD_RETRY_MS) }
+        if (retry.running || now < retry.at) return
+        retry.running = true
+        val mc = Minecraft.getInstance()
+        val fetch = { runCatching { mc.services().sessionService().fetchProfile(uuid, false)?.profile() }.getOrNull() }
+        CompletableFuture.supplyAsync(fetch, Util.nonCriticalIoPool())
+            .thenAcceptAsync({ profile ->
+                retry.running = false
+                if (profile != null && !profile.properties().get("textures").isEmpty()) {
+                    headProfiles[uuid] = ResolvableProfile.createResolved(profile)
+                    headRetries.remove(uuid)
+                } else {
+                    retry.at = System.currentTimeMillis() + retry.wait
+                    retry.wait = (retry.wait * 2).coerceAtMost(HEAD_RETRY_MAX_MS)
+                }
+            }, mc)
+    }
+
     /** Draws the face (and hat layer) of a skin, scaled to the element's box like the player list does. */
     private fun drawPlayerHead(ctx: GuiGraphicsExtractor, cmd: PaintCommand.Replaced) {
         val el = cmd.element
@@ -537,7 +580,9 @@ object CommandRenderer {
                         else -> ResolvableProfile.createUnresolved(player.toString())
                     }
                 }
-                Minecraft.getInstance().playerSkinRenderCache().getOrDefault(profile).playerSkin()
+                val cache = Minecraft.getInstance().playerSkinRenderCache()
+                if (player is UUID && lookupFailed(cache.lookup(profile))) retryHead(player)
+                cache.getOrDefault(profile).playerSkin()
             }
         }
         beforeQuad(ctx, skin.body().texturePath(), cmd.x, cmd.y, cmd.x + cmd.width, cmd.y + cmd.height)

@@ -2117,7 +2117,7 @@ fun NodeBuilder.entity(
     element("entity", key, id, className, style, ref, attrs, handlers, null)
 }
 
-/** Minecraft player face (16×16 by default), like in the tab list. `player` is a name (`String`), a `UUID`, a `GameProfile`, a `ResolvableProfile` or an `AbstractClientPlayer`; the skin loads in the background (default skin until then) and works without a world. `hat = false` hides the hat layer. (Not an HTML tag.) */
+/** Minecraft player face (16×16 by default), like in the tab list. `player` is a name (`String`), a `UUID`, a `GameProfile`, a `ResolvableProfile` or an `AbstractClientPlayer`; the skin loads in the background (default skin until then; with a `UUID` a lookup Mojang refused is retried) and works without a world. `hat = false` hides the hat layer. (Not an HTML tag.) */
 fun NodeBuilder.playerHead(
     player: Any,
     className: String? = null,
