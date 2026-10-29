@@ -202,9 +202,11 @@ object CommandRenderer {
         val uniform = (0 until 4).all { b.borders[it] == bw && (bw == 0f || b.borderColors[it] == bc) }
 
         if (uniform) {
-            // One SDF pass for the background inside the border, one for the border ring.
+            // One SDF pass for the background, one for the border ring. Under an opaque border the background reaches
+            // the outer edge (border-box), else the two anti-aliased edges meeting at the inner edge leave a dark seam.
             if (Colors.alpha(b.background) != 0) {
-                add(ctx, RoundedRectState(pose, x, y, w, h, b.background, b.radii, bw, scissor))
+                val inset = if (bw > 0f && Colors.alpha(bc) == 255) 0f else bw
+                add(ctx, RoundedRectState(pose, x, y, w, h, b.background, b.radii, inset, scissor))
             }
             if (bw > 0f && Colors.alpha(bc) != 0) {
                 add(ctx, RoundedRectState(pose, x, y, w, h, bc, b.radii, -bw, scissor))
