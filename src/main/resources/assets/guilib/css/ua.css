@@ -730,3 +730,23 @@ select.multiple .guilib-select-value { max-width: 140px; overflow: hidden; text-
 .guilib-metrics-graph.cpu .guilib-metrics-bar { background-color: var(--guilib-warning); }
 .guilib-metrics-graph.heap .guilib-metrics-bar { background-color: var(--guilib-success); }
 .guilib-metrics-graph.leak .guilib-metrics-bar { background-color: var(--guilib-danger); }
+
+/* CSS inspector (Ctrl + Shift + C in any GuiLib screen): frame around the element under the mouse and a box with its selectors. */
+.guilib-inspector-outline {
+    position: fixed; z-index: 1000; pointer-events: none;
+    border: 1px solid var(--guilib-accent); background-color: var(--guilib-accent-soft);
+}
+.guilib-inspector {
+    position: fixed; left: 6px; right: 6px; bottom: 6px; z-index: 1001; pointer-events: none; max-height: 45vh; overflow: hidden;
+    padding: 4px 6px; background-color: var(--guilib-surface-3); opacity: 0.95;
+    border: 1px solid var(--guilib-border-subtle); border-radius: 4px;
+    font-family: inter; font-size: 6px; font-weight: normal; font-style: normal; line-height: 1.35;
+    color: var(--guilib-text); text-align: left; letter-spacing: normal; text-transform: none; white-space: normal;
+}
+.guilib-inspector.top { top: 6px; bottom: auto; }
+.guilib-inspector-title { font-weight: bold; font-size: 7px; color: var(--guilib-accent); }
+.guilib-inspector-selector { font-weight: bold; color: var(--guilib-text); }
+.guilib-inspector-path { color: var(--guilib-text-muted); }
+.guilib-inspector-section { margin-top: 3px; font-weight: bold; color: var(--guilib-text-muted); }
+.guilib-inspector-rule { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.guilib-inspector-hint { margin-top: 2px; color: var(--guilib-text-subtle); font-size: 5px; }

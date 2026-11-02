@@ -18,6 +18,10 @@ import net.sbo.guilib.fabric.input.Cursors
 import net.sbo.guilib.fabric.input.Keys
 import net.sbo.guilib.fabric.render.CommandRenderer
 import net.sbo.guilib.core.dom.VComponent
+import net.sbo.guilib.core.debug.Inspector
+import net.sbo.guilib.core.dom.Element
+import net.sbo.guilib.core.dom.Rect
+import net.sbo.guilib.fabric.debug.InspectorOverlay
 import net.sbo.guilib.fabric.debug.MetricsOverlay
 import net.sbo.guilib.fabric.resources.Stylesheets
 
@@ -109,6 +113,64 @@ open class GuiLibScreen(
         return x >= box.x && y >= box.y && x < box.x + box.width && y < box.y + box.height
     }
 
+    // ---- CSS inspector ----------------------------------------------------------------------------------------
+
+    /**
+     * Whether the CSS inspector is on (Ctrl + Shift + C toggles it, unless [INSPECTOR_SHORTCUT] is off): the element
+     * under the mouse gets a frame and a box shows its selector, path and matching rules; a left click copies the
+     * selector, a right click the path. Clicks don't reach the UI while it is on, the wheel still scrolls.
+     */
+    var inspecting: Boolean = false
+        set(value) {
+            if (field == value) return
+            field = value
+            if (!value) {
+                inspectorRoot?.document?.unmount()
+                inspectorRoot = null
+                inspected = null
+                inspectedRules = emptyList()
+                inspectorCopied = null
+            }
+        }
+
+    /** Its own document like the metrics overlay, so the screen's CSS can't hide or restyle it. */
+    private var inspectorRoot: UiRoot? = null
+    private var inspected: Element? = null
+    private var inspectedRules: List<String> = emptyList()
+    private var inspectorCopied: String? = null
+
+    private fun drawInspector(ctx: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
+        if (!inspecting || !mounted) return
+        val target = root.painter.hitTest(docX(mouseX.toDouble()), docY(mouseY.toDouble()))
+        if (target !== inspected) {
+            inspected = target
+            inspectedRules = target?.let { Inspector.matchingRules(root.document, it) }.orEmpty()
+            inspectorCopied = null
+        }
+        val f = factor()
+        val box = target?.getBoundingClientRect()?.let { Rect(it.x * f, it.y * f, it.width * f, it.height * f) }
+        val props = InspectorOverlay.Props(
+            box, target?.let(Inspector::selectorOf), target?.let(Inspector::pathOf), inspectedRules, inspectorCopied, mouseY > height / 2
+        )
+        FrameStats.uncounted {
+            val r = inspectorRoot ?: UiRoot(FontManager, Stylesheets.loadAll(emptyList())).also {
+                GuiLib.initDocument(it)
+                inspectorRoot = it
+            }
+            r.render(VComponent(InspectorOverlay.Window, props, null))
+            r.document.resolution = mcScale
+            CommandRenderer.draw(ctx, r.frame(width.toFloat(), height.toFloat()), mouseX, mouseY)
+        }
+    }
+
+    /** A click while inspecting copies the selector (left) or the path (right) of the element under the mouse. */
+    private fun inspectorClick(button: Int) {
+        val el = inspected ?: return
+        val text = if (button == 1) Inspector.pathOf(el) else Inspector.selectorOf(el)
+        root.document.clipboard.set(text)
+        inspectorCopied = "Copied: $text"
+    }
+
     private fun renderContent() {
         val t = Translator.current()
         translator = t
@@ -184,6 +246,7 @@ open class GuiLibScreen(
                 CommandRenderer.draw(ctx, m.frame(width.toFloat(), height.toFloat()), mouseX, mouseY)
             }
         }
+        drawInspector(ctx, mouseX, mouseY)
         val cursorOwner = metricsRoot?.takeIf { metricsPressed || onMetrics(mouseX.toDouble(), mouseY.toDouble()) } ?: root
         Cursors.of(cursorOwner.input.cursor)?.let(ctx::requestCursor)
         hoverTooltip(ctx, mouseX, mouseY)
@@ -245,6 +308,10 @@ open class GuiLibScreen(
     }
 
     override fun mouseClicked(click: MouseButtonEvent, doubled: Boolean): Boolean {
+        if (inspecting) {
+            inspectorClick(click.button())
+            return true
+        }
         val m = metricsRoot
         if (m != null && onMetrics(click.x(), click.y())) {
             metricsPressed = true
@@ -256,6 +323,7 @@ open class GuiLibScreen(
     }
 
     override fun mouseReleased(click: MouseButtonEvent): Boolean {
+        if (inspecting) return true
         val m = metricsRoot
         if (m != null && metricsPressed) {
             metricsPressed = false
@@ -267,6 +335,7 @@ open class GuiLibScreen(
     }
 
     override fun mouseDragged(click: MouseButtonEvent, deltaX: Double, deltaY: Double): Boolean {
+        if (inspecting) return true
         val m = metricsRoot
         if (m != null && metricsPressed) {
             // A drag that started on the metrics overlay (moving its window) belongs to it alone.
@@ -303,6 +372,14 @@ open class GuiLibScreen(
             showMetrics = !showMetrics
             return true
         }
+        if (INSPECTOR_SHORTCUT && key.equals("C", ignoreCase = true) && mods.ctrl && mods.shift && !mods.alt) {
+            inspecting = !inspecting
+            return true
+        }
+        if (inspecting && key == "Escape") {
+            inspecting = false
+            return true
+        }
         if (scaled { root.input.keyDown(key, keyInput.key(), mods) }) return true
         return super.keyPressed(keyInput) // Escape closes the screen
     }
@@ -319,6 +396,7 @@ open class GuiLibScreen(
     override fun removed() {
         root.document.unmount()
         mounted = false
+        inspecting = false
         syncMetrics()
         syncTextInput()
         Stylesheets.unwatch(this)
@@ -328,6 +406,9 @@ open class GuiLibScreen(
     companion object {
         /** Ctrl + F12 toggles the metrics overlay in every GuiLib screen; set to `false` to turn the shortcut off. */
         @JvmStatic var METRICS_SHORTCUT = true
+
+        /** Ctrl + Shift + C toggles the CSS inspector in every GuiLib screen; set to `false` to turn the shortcut off. */
+        @JvmStatic var INSPECTOR_SHORTCUT = true
 
         /** Pixels scrolled per mouse wheel notch. */
         var SCROLL_STEP = 20.0

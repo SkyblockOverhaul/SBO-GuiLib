@@ -190,7 +190,32 @@ class Document(
         paintDirty = true
     }
 
+    private var baseSheets: List<Stylesheet> = stylesheets
+    private val addedSheets = ArrayList<Pair<Int, Stylesheet>>()
+
+    /** Replaces the screen's stylesheets (e.g. on a reload); sheets added with [addStylesheet] stay after them. */
     fun setStylesheets(sheets: List<Stylesheet>) {
+        baseSheets = sheets
+        applyStylesheets()
+    }
+
+    /**
+     * Adds [sheet] after all other stylesheets, so it wins over them in the cascade (like a `<link>` added to the
+     * page), until the returned function is called. Kept across [setStylesheets]. Added sheets are ordered by
+     * [order], then by when they were added, so a sheet with a higher order stays last even when a lower one is
+     * replaced later.
+     */
+    fun addStylesheet(sheet: Stylesheet, order: Int = 0): () -> Unit {
+        val entry = order to sheet
+        addedSheets += entry
+        applyStylesheets()
+        return {
+            if (addedSheets.remove(entry)) applyStylesheets()
+        }
+    }
+
+    private fun applyStylesheets() {
+        val sheets = baseSheets + addedSheets.sortedBy { it.first }.map { it.second }
         styleEngine.stylesheets = sheets
         measurer.fontFaces(sheets.flatMap { it.fontFaces })
         body.styleChanged(true)

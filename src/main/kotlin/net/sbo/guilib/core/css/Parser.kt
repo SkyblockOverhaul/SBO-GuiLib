@@ -64,6 +64,11 @@ class Stylesheet(
     val keyframes: Map<String, Keyframes> = emptyMap(),
     /** `@font-face` rules of this sheet, in order. */
     val fontFaces: List<FontFace> = emptyList(),
+    /**
+     * What was wrong while parsing, as `source:line:col: message` in the order found (the log shows each message only
+     * once, this list has all of them every time). Empty for a sheet without mistakes.
+     */
+    val problems: List<String> = emptyList(),
 ) {
     companion object {
         fun parse(text: String, source: String = "<inline>", origin: Origin = Origin.AUTHOR) = CssParser.parseStylesheet(text, source, origin)
@@ -76,13 +81,23 @@ class Stylesheet(
  */
 object CssParser {
 
+    /** Collects the warnings of the sheet being parsed on this thread for [Stylesheet.problems]. */
+    private val problems = ThreadLocal<MutableList<String>?>()
+
     fun parseStylesheet(text: String, source: String = "<inline>", origin: Origin = Origin.AUTHOR): Stylesheet {
-        val tokens = Tokenizer(text).tokenize()
-        val rules = ArrayList<StyleRule>()
-        val keyframes = LinkedHashMap<String, Keyframes>()
-        val fontFaces = ArrayList<FontFace>()
-        parseRules(tokens, source, rules, keyframes, fontFaces, emptyList())
-        return Stylesheet(source, rules, origin, keyframes, fontFaces)
+        val found = ArrayList<String>()
+        val outer = problems.get()
+        problems.set(found)
+        try {
+            val tokens = Tokenizer(text).tokenize()
+            val rules = ArrayList<StyleRule>()
+            val keyframes = LinkedHashMap<String, Keyframes>()
+            val fontFaces = ArrayList<FontFace>()
+            parseRules(tokens, source, rules, keyframes, fontFaces, emptyList())
+            return Stylesheet(source, rules, origin, keyframes, fontFaces, found)
+        } finally {
+            problems.set(outer)
+        }
     }
 
     /** Parses a list of rules ([tokens] = a whole sheet or the body of an `@media` block). */
@@ -372,5 +387,8 @@ object CssParser {
 
     private fun warn(source: String, t: Token, msg: String) = warnAt("$source:${t.line}:${t.col}", msg)
 
-    internal fun warnAt(location: String, msg: String) = Log.warnOnce("CSS $location: $msg")
+    internal fun warnAt(location: String, msg: String) {
+        problems.get()?.add("$location: $msg")
+        Log.warnOnce("CSS $location: $msg")
+    }
 }

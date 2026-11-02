@@ -1,6 +1,8 @@
 package net.sbo.guilib.core.dsl
 
 import net.sbo.guilib.core.Log
+import net.sbo.guilib.core.Warmup
+import net.sbo.guilib.core.css.Stylesheet
 import net.sbo.guilib.core.dom.ComponentInstance
 import net.sbo.guilib.core.dom.ComponentType
 import net.sbo.guilib.core.dom.Context
@@ -272,6 +274,28 @@ class ComponentScope internal constructor(
             document.body.setStyleProperty(property, value)
             onCleanup { document.body.removeStyleProperty(property) }
         }
+    }
+
+    /**
+     * Adds the stylesheet [css] after the screen's own ones while this component is mounted, e.g. CSS the player
+     * wrote: `useStylesheet(File(dir, "user.css").readText(), "user.css")`. `null` adds nothing. It wins over the
+     * screen's CSS at the same specificity, survives `/guilib reload`, and a changed text replaces it live.
+     * Mistakes are logged with [source] and the line, like in any stylesheet. `url()` only reaches resources.
+     * With several, a higher [order] comes later and wins; the same order keeps the order they were added in.
+     * Returns the parsed sheet (null for no [css]), its [Stylesheet.problems] list the mistakes, e.g. to show them.
+     */
+    fun useStylesheet(css: String?, source: String = "<useStylesheet>", order: Int = 0): Stylesheet? {
+        val sheet = useMemo(css, source) {
+            css?.let {
+                Warmup.await() // the parser must not run on two threads at once
+                Stylesheet.parse(it, source)
+            }
+        }
+        useEffect(sheet, order) {
+            if (sheet == null) return@useEffect
+            onCleanup(document.addStylesheet(sheet, order))
+        }
+        return sheet
     }
 
     /**
