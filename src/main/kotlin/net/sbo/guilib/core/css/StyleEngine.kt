@@ -338,7 +338,7 @@ class StyleEngine(sheets: List<Stylesheet> = emptyList()) {
                     s.spread?.let { toPx(it, fontSize, ctx) } ?: 0f, if (s.color == CurrentColor) color else s.color as Int, s.inset,
                 )
             }
-            is Properties.TextShadowValue -> TextShadow(toPx(v.x, fontSize, ctx), toPx(v.y, fontSize, ctx), if (v.color == CurrentColor) color else v.color)
+            is Properties.TextShadowList -> v.shadows.map { s -> TextShadow(toPx(s.x, fontSize, ctx), toPx(s.y, fontSize, ctx), if (s.color == CurrentColor) color else s.color) }
             is TrackList -> v.map { resolveTrack(it, fontSize, ctx) }
             is List<*> -> when (p) {
                 Prop.BACKGROUND_IMAGE -> v.map { resolveLayer(it as BackgroundLayer, fontSize, color, ctx) }

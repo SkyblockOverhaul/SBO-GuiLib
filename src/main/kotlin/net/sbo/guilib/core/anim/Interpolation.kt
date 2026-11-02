@@ -126,6 +126,16 @@ object Interpolation {
      * Shadow lists interpolate pairwise; the shorter list is padded with transparent zero shadows (like CSS).
      * Pairs where one is `inset` and the other isn't can't be interpolated.
      */
+    // Like box-shadow: pairwise, a missing one is a transparent copy of the other
+    private fun textShadows(a: List<*>, b: List<*>, t: Float): List<TextShadow> {
+        val n = maxOf(a.size, b.size)
+        return (0 until n).map { i ->
+            val sa = a.getOrNull(i) as TextShadow? ?: (b[i] as TextShadow).copy(color = Colors.TRANSPARENT)
+            val sb = b.getOrNull(i) as TextShadow? ?: sa.copy(color = Colors.TRANSPARENT)
+            TextShadow(lerp(sa.offsetX, sb.offsetX, t), lerp(sa.offsetY, sb.offsetY, t), color(sa.color as Int, sb.color as Int, t))
+        }
+    }
+
     private fun boxShadows(a: List<*>, b: List<*>, t: Float): List<BoxShadow>? {
         val n = maxOf(a.size, b.size)
         return (0 until n).map { i ->
@@ -176,11 +186,7 @@ object Interpolation {
             a is Dim && b is Dim -> dim(a, b, t)
             a is LineHeight.Px && b is LineHeight.Px -> LineHeight.Px(lerp(a.px, b.px, t))
             a is LineHeight.Multiplier && b is LineHeight.Multiplier -> LineHeight.Multiplier(lerp(a.factor, b.factor, t))
-            p == Prop.TEXT_SHADOW && (a is TextShadow || b is TextShadow) -> {
-                val sa = a as TextShadow? ?: (b as TextShadow).copy(color = Colors.TRANSPARENT)
-                val sb = b as TextShadow? ?: sa.copy(color = Colors.TRANSPARENT)
-                TextShadow(lerp(sa.offsetX, sb.offsetX, t), lerp(sa.offsetY, sb.offsetY, t), color(sa.color as Int, sb.color as Int, t))
-            }
+            p == Prop.TEXT_SHADOW && a is List<*> && b is List<*> -> textShadows(a, b, t)
             p == Prop.BOX_SHADOW && a is List<*> && b is List<*> -> boxShadows(a, b, t)
             p == Prop.FILTER && a is List<*> && b is List<*> -> filters(a, b, t)
             p == Prop.SCROLLBAR_COLOR && a is Pair<*, *> && b is Pair<*, *> ->

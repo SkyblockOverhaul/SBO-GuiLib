@@ -97,7 +97,7 @@ enum class Prop(val css: String, val inherited: Boolean, val initial: Any?) {
     TEXT_DECORATION("text-decoration", true, TextDecoration.NONE),
     LETTER_SPACING("letter-spacing", true, Dim.ZERO),
     VERTICAL_ALIGN("vertical-align", false, VerticalAlign.BASELINE),
-    TEXT_SHADOW("text-shadow", true, null),
+    TEXT_SHADOW("text-shadow", true, emptyList<TextShadow>()),
     TEXT_TRANSFORM("text-transform", true, TextTransform.NONE),
     WORD_BREAK("word-break", true, WordBreak.NORMAL),
     OVERFLOW_WRAP("overflow-wrap", true, OverflowWrap.NORMAL),
@@ -723,19 +723,25 @@ object Properties {
         return TextDecoration(underline, through)
     }
 
+    /** `text-shadow`: `none` or a comma-separated list of `<x> <y> [<blur>] [<color>]` (the blur is accepted but not drawn). */
     private fun textShadow(values: Values): Any? {
         val w = words(values)
-        if (w.size == 1 && isIdent(w[0], "none")) return NoImage
-        var col: Any = CurrentColor
-        val lengths = ArrayList<Length>()
-        for (v in w) {
-            length(v)?.let { lengths += it } ?: color(v)?.let { col = it } ?: return null
+        if (w.size == 1 && isIdent(w[0], "none")) return TextShadowList(emptyList())
+        val out = ArrayList<TextShadowValue>()
+        for (part in BackgroundParser.splitCommas(values)) {
+            var col: Any = CurrentColor
+            val lengths = ArrayList<Length>()
+            for (v in words(part)) {
+                length(v)?.let { lengths += it } ?: color(v)?.let { col = it } ?: return null
+            }
+            if (lengths.size !in 2..3) return null
+            out += TextShadowValue(lengths[0], lengths[1], col)
         }
-        if (lengths.size !in 2..3) return null
-        return TextShadowValue(lengths[0], lengths[1], col)
+        return TextShadowList(out)
     }
 
     data class TextShadowValue(val x: Length, val y: Length, val color: Any)
+    data class TextShadowList(val shadows: List<TextShadowValue>)
 
     /** `box-shadow`: `none` or a comma-separated list of `[inset] <x> <y> [<blur> [<spread>]] [<color>]`. */
     private fun boxShadow(values: Values): Any? {

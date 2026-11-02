@@ -12,7 +12,8 @@ data class TextStyle(
     val italic: Boolean,
     val color: Int,
     val decoration: TextDecoration = TextDecoration.NONE,
-    val shadow: TextShadow? = null,
+    /** `text-shadow`, the first one on top. */
+    val shadows: List<TextShadow> = emptyList(),
     /** `letter-spacing` in px, added after every character (grapheme). Measurers never see it: see [LetterSpacing]. */
     val letterSpacing: Float = 0f,
     /** `§k`: drawn as random characters that keep changing, like Minecraft; measured as the real text. */
@@ -24,6 +25,9 @@ data class TextStyle(
 ) {
     val bold get() = fontWeight >= 600
 
+    /** The first (top) of [shadows]. */
+    val shadow: TextShadow? get() = shadows.firstOrNull()
+
     /**
      * This style with the paint-only properties (color, decoration, shadow) taken from [live]: they change without a
      * new layout (e.g. `button:disabled` → enabled), so text laid out earlier must not keep the old ones.
@@ -34,13 +38,13 @@ data class TextStyle(
             if (codeDecoration == TextDecoration.NONE) it
             else TextDecoration(it.underline || codeDecoration.underline, it.lineThrough || codeDecoration.lineThrough)
         }
-        return if (c == color && d == decoration && live.textShadow == shadow) this
-        else copy(color = c, decoration = d, shadow = live.textShadow)
+        return if (c == color && d == decoration && live.textShadows == shadows) this
+        else copy(color = c, decoration = d, shadows = live.textShadows)
     }
 
     companion object {
         fun of(style: ComputedStyle) = TextStyle(
-            style.fontFamily, style.fontSize, style.fontWeight, style.isItalic, style.color, style.textDecoration, style.textShadow,
+            style.fontFamily, style.fontSize, style.fontWeight, style.isItalic, style.color, style.textDecoration, style.textShadows,
             style.letterSpacing,
         )
     }

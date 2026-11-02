@@ -63,8 +63,9 @@ internal object FilterPass {
         )
         is PaintCommand.Shadow -> withShadow(cmd, color = m.apply(cmd.color))
         is PaintCommand.Text -> {
-            val sh = cmd.style.shadow
-            val style = if (sh != null && sh.color is Int) cmd.style.copy(shadow = TextShadow(sh.offsetX, sh.offsetY, m.apply(sh.color))) else cmd.style
+            val shadows = cmd.style.shadows
+            val style = if (shadows.isEmpty()) cmd.style
+            else cmd.style.copy(shadows = shadows.map { sh -> if (sh.color is Int) TextShadow(sh.offsetX, sh.offsetY, m.apply(sh.color)) else sh })
             PaintCommand.Text(cmd.x, cmd.y, cmd.text, style, m.apply(cmd.color), cmd.alpha)
         }
         is PaintCommand.Image -> image(cmd, filters = cmd.filters + ImageOp.Matrix(m))
@@ -160,8 +161,9 @@ internal object FilterPass {
                 }
             }
             is PaintCommand.Text -> {
-                val sh = cmd.style.shadow
-                val style = if (sh != null) cmd.style.copy(shadow = TextShadow(sh.offsetX, sh.offsetY, tint((sh.color as? Int) ?: cmd.color))) else cmd.style
+                val shadows = cmd.style.shadows
+                val style = if (shadows.isEmpty()) cmd.style
+                else cmd.style.copy(shadows = shadows.map { sh -> TextShadow(sh.offsetX, sh.offsetY, tint((sh.color as? Int) ?: cmd.color)) })
                 out += PaintCommand.Text(cmd.x + dx, cmd.y + dy, cmd.text, style, tint(cmd.color), cmd.alpha)
             }
             is PaintCommand.Gradient -> {

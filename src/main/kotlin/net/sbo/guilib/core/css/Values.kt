@@ -131,7 +131,10 @@ data class TextDecoration(val underline: Boolean = false, val lineThrough: Boole
     }
 }
 
-/** `text-shadow`: MVP supports `none` or a single shadow; Minecraft-style 1px shadows are the common case. */
+/**
+ * One `text-shadow` layer in px, without blur. `text-shadow` takes a comma-separated list, the first one drawn on top;
+ * several 1px shadows around the text make an outline (`1px 0 #000, -1px 0 #000, 0 1px #000, 0 -1px #000`).
+ */
 data class TextShadow(val offsetX: Float, val offsetY: Float, val color: Any /* Int or CurrentColor */) {
     companion object {
         val NONE: TextShadow? = null

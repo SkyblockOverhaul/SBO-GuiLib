@@ -118,7 +118,10 @@ class ComputedStyle internal constructor(
     val whiteSpace get() = values[Prop.WHITE_SPACE.ordinal] as WhiteSpace
     val textOverflow get() = values[Prop.TEXT_OVERFLOW.ordinal] as TextOverflow
     val textDecoration get() = values[Prop.TEXT_DECORATION.ordinal] as TextDecoration
-    val textShadow get() = values[Prop.TEXT_SHADOW.ordinal] as TextShadow?
+    @Suppress("UNCHECKED_CAST")
+    val textShadows get() = values[Prop.TEXT_SHADOW.ordinal] as List<TextShadow>
+    /** The first (top) of [textShadows]. */
+    val textShadow: TextShadow? get() = textShadows.firstOrNull()
     /** A [VerticalAlign] keyword or a [Dim] (length / percentage of the line height). */
     val verticalAlign: Any get() = values[Prop.VERTICAL_ALIGN.ordinal]!!
     val letterSpacing get() = (values[Prop.LETTER_SPACING.ordinal] as? Dim.Px)?.px ?: 0f

@@ -185,4 +185,17 @@ class CascadeTest {
         assertEquals(false, a.layoutDiffers(b))
         assertEquals(true, a.layoutDiffers(c))
     }
+
+    @Test
+    fun textShadowList() {
+        val e = engine(".o { color: red; text-shadow: 1px 0 #000, -1px 0, 0 1px 2px blue } .n { text-shadow: none }")
+        val parent = e.style(FakeElement("div", classes = "o"))
+        assertEquals(
+            listOf(TextShadow(1f, 0f, 0xFF000000.toInt()), TextShadow(-1f, 0f, 0xFFFF0000.toInt()), TextShadow(0f, 1f, 0xFF0000FF.toInt())),
+            parent.textShadows
+        )
+        // Inherited, and none clears it
+        assertEquals(parent.textShadows, e.style(FakeElement("span"), parent).textShadows)
+        assertEquals(emptyList<TextShadow>(), e.style(FakeElement("span", classes = "n"), parent).textShadows)
+    }
 }

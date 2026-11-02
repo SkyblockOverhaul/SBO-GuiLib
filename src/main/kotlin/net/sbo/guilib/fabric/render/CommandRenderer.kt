@@ -264,14 +264,15 @@ object CommandRenderer {
             }
             return
         }
-        val shadow = t.style.shadow
+        // The first shadow is on top, so drawn last
+        val shadows = t.style.shadows.asReversed()
         var x = t.x
         for (seg in FontManager.segments(t.text, t.style)) {
             val font = seg.font
             if (font == null) {
                 x += drawVanillaText(ctx, seg.text, t, x)
             } else {
-                if (shadow != null) {
+                for (shadow in shadows) {
                     val sc = Colors.withOpacity(shadow.color as? Int ?: t.color, t.alpha)
                     drawTtf(ctx, seg.text, font, t, x + shadow.offsetX, t.y + shadow.offsetY, sc)
                 }
@@ -313,20 +314,34 @@ object CommandRenderer {
     private const val OBFUSCATED_MS = 50L
     private const val OBFUSCATED_CHARS = "ABCDEFGHJKLMNOPQRSTUVWXYZabcdeghknopqrsuvwxyz0123456789#$%&?"
 
-    /** Draws with the Minecraft font; returns the advance in GUI px. */
+    /**
+     * Draws with the Minecraft font; returns the advance in GUI px. A single shadow is Minecraft's own text shadow (as
+     * before), several are drawn as copies of the text in their color and offset, e.g. for an outline.
+     */
     private fun drawVanillaText(ctx: GuiGraphicsExtractor, text: String, t: PaintCommand.Text, x: Float): Float {
+        val shadows = t.style.shadows
+        if (shadows.size > 1) {
+            for (shadow in shadows.asReversed()) {
+                val sc = Colors.withOpacity(shadow.color as? Int ?: t.color, t.alpha)
+                drawVanillaRun(ctx, text, t, x + shadow.offsetX, t.y + shadow.offsetY, sc, false)
+            }
+        }
+        drawVanillaRun(ctx, text, t, x, t.y, t.color, shadows.size == 1)
+        vanillaDrew()
+        return VanillaFont.width(text, t.style)
+    }
+
+    private fun drawVanillaRun(ctx: GuiGraphicsExtractor, text: String, t: PaintCommand.Text, x: Float, y: Float, color: Int, shadow: Boolean) {
         val font = Minecraft.getInstance().font
         val scale = VanillaFont.scale(t.style)
         val pose = ctx.pose()
         pose.pushMatrix()
-        // t.y is the top of the style's ascent; the Minecraft font's baseline is 7px below its top at scale 1.
+        // y is the top of the style's ascent; the Minecraft font's baseline is 7px below its top at scale 1.
         val ascent = FontManager.metrics(t.style).ascent
-        pose.translate(x, t.y + ascent - 7f * scale)
+        pose.translate(x, y + ascent - 7f * scale)
         if (scale != 1f) pose.scale(scale, scale)
-        ctx.text(font, VanillaFont.sequence(text, t.style), 0, 0, t.color, t.style.shadow != null)
+        ctx.text(font, VanillaFont.sequence(text, t.style), 0, 0, color, shadow)
         pose.popMatrix()
-        vanillaDrew()
-        return VanillaFont.width(text, t.style)
     }
 
     /** Draws TTF glyphs snapped to physical pixels; returns the advance in GUI px. */
