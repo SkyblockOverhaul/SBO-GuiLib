@@ -29,6 +29,10 @@ val devSourceSet: SourceSet = sourceSets.create("dev") {
 }
 kotlin.sourceSets.named("dev") { kotlin.setSrcDirs(listOf(rootProject.file("src/dev/kotlin"))) }
 
+// Every -Pguilib.dev.<key>=<value> except shots reaches the dev client as -Dguilib.dev.<key>=<value>.
+val devSystemProperties: Provider<List<String>> = project.providers.gradlePropertiesPrefixedBy("guilib.dev.")
+    .map { props: Map<String, String> -> props.filterKeys { it != "guilib.dev.shots" }.map { (k, v) -> "-D$k=$v" } }
+
 loom {
     // A version that needs different entries (26.3: RenderPipeline moved to com.mojang.renderpearl) has its own copy in
     // versions/<mc>/src/main/resources, which also replaces the root copy in that version's jar.
@@ -50,9 +54,7 @@ loom {
     runs.named("client") {
         sourceSet.set(devSourceSet.name)
         project.findProperty("guilib.dev.shots")?.let { jvmArguments.add("-Dguilib.dev.shots=$it") }
-        jvmArguments.addAll(providers.gradlePropertiesPrefixed("guilib.dev.").map { props ->
-            props.filterKeys { it != "guilib.dev.shots" }.map { (k, v) -> "-D$k=$v" }
-        })
+        jvmArguments.addAll(devSystemProperties)
         // Profiling: -Pguilib.dev.jfr=<file.jfr> records a Java Flight Recording until the game exits.
         project.findProperty("guilib.dev.jfr")?.let { jvmArguments.add("-XX:StartFlightRecording=filename=$it,settings=profile,dumponexit=true") }
     }
