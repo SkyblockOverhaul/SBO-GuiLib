@@ -48,11 +48,13 @@ loom {
     // Visual checks: ./gradlew :26.2-fabric:runClient -Pguilib.dev.shots=all (see src/dev, DevAutomation).
     // The dev source set is only on runClient's classpath; it is never packaged or published.
     runs.named("client") {
-        source(devSourceSet)
-        project.findProperty("guilib.dev.shots")?.let { vmArg("-Dguilib.dev.shots=$it") }
-        project.properties.filterKeys { it.startsWith("guilib.dev.") && it != "guilib.dev.shots" }.forEach { (k, v) -> vmArg("-D$k=$v") }
+        sourceSet.set(devSourceSet.name)
+        project.findProperty("guilib.dev.shots")?.let { jvmArguments.add("-Dguilib.dev.shots=$it") }
+        jvmArguments.addAll(providers.gradlePropertiesPrefixed("guilib.dev.").map { props ->
+            props.filterKeys { it != "guilib.dev.shots" }.map { (k, v) -> "-D$k=$v" }
+        })
         // Profiling: -Pguilib.dev.jfr=<file.jfr> records a Java Flight Recording until the game exits.
-        project.findProperty("guilib.dev.jfr")?.let { vmArg("-XX:StartFlightRecording=filename=$it,settings=profile,dumponexit=true") }
+        project.findProperty("guilib.dev.jfr")?.let { jvmArguments.add("-XX:StartFlightRecording=filename=$it,settings=profile,dumponexit=true") }
     }
 }
 
