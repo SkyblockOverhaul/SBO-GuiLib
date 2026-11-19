@@ -19,7 +19,7 @@ Vom Nutzer getroffene Entscheidungen:
 
 ## Analyse-Ergebnisse (SBO-Kotlin)
 - MC **26.1.2 + 26.2**, **Fabric** (Loader 0.19.5, fabric-api, fabric-language-kotlin 1.14.1 / Kotlin 2.4.20), Java 25.
-- Gradle Kotlin DSL, Loom 1.18.2, **Deftu multiversion 2.80.0** (Preprocessor `//#if MC > 26.1`, `versions/<ver>-fabric`,
+- Gradle Kotlin DSL, Loom 1.18.2, **ReplayMod Preprocessor** (upstream, ohne Mappings; `//#if MC > 26.1`, `versions/<ver>-fabric`,
   `root.gradle.kts`, Node-Link 26.2 → 26.1.2), bloom-Replacements (`mc.screen` → `mc.gui.screen()` ab 26.2).
 - Tests: JUnit 6 bereits konfiguriert (`src/test/kotlin`, nur DummyTest/MixinTest).
 - Vanilla-GUI-API: `Screen.extractRenderState(GuiGraphicsExtractor, mouseX, mouseY, delta)`, `MouseButtonEvent`, `KeyEvent`.
@@ -39,7 +39,7 @@ Vom Nutzer getroffene Entscheidungen:
 
 ## Repo- und Modulstruktur
 Neues Repo **`SBO-GuiLib`** (git init, Branch `main`), Build-Setup 1:1 nach SBO-Vorbild
-(Deftu multiversion, gleiche Versionen/Properties), Artefakte `net.sbo:guilib-26.1.2-fabric` / `guilib-26.2-fabric`,
+(Preprocessor, gleiche Versionen/Properties), Artefakte `net.sbo:guilib-26.1.2-fabric` / `guilib-26.2-fabric`,
 Mod-ID `guilib`, eigenes `fabric.mod.json`. Abhängigkeiten nur fabric-api, fabric-language-kotlin, **JSVG** (`com.github.weisj:jsvg`, MIT, Jar-in-Jar).
 Kein Elementa/UC.
 

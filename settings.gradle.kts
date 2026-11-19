@@ -1,20 +1,48 @@
 pluginManagement {
+    val kotlinVersion = providers.gradleProperty("kotlin.version").get()
+    val preprocessorVersion = providers.gradleProperty("preprocessor.version").get()
+
+    plugins {
+        id("org.jetbrains.kotlin.jvm") version kotlinVersion
+        id("com.replaymod.preprocess-root") version preprocessorVersion
+    }
+
     repositories {
         gradlePluginPortal()
-        mavenCentral()
 
-        maven("https://maven.deftu.dev/releases")
-        maven("https://maven.deftu.dev/snapshots")
+        exclusiveContent {
+            forRepository {
+                maven("https://maven.fabricmc.net")
+            }
 
-        maven("https://maven.fabricmc.net")
-        maven("https://maven.architectury.dev/")
-        maven("https://maven.minecraftforge.net")
+            filter {
+                includeGroupByRegex("net\\.fabricmc(\\..*)?")
+            }
+        }
 
-        maven("https://repo.essential.gg/repository/maven-public")
+        exclusiveContent {
+            forRepository {
+                maven("https://jitpack.io")
+            }
+
+            filter {
+                includeGroupByRegex("com\\.github\\.replaymod(\\..*)?")
+            }
+        }
+    }
+
+    // Upstream preprocessor (no DGT): it is only published on JitPack, under a different module name.
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.id == "com.replaymod.preprocess-root") {
+                useModule("com.github.replaymod:preprocessor:$preprocessorVersion")
+            }
+        }
     }
 }
 
 rootProject.name = "guilib"
+rootProject.buildFileName = "root.gradle.kts"
 
 listOf(
     "26.1.2-fabric",
@@ -27,5 +55,3 @@ listOf(
         buildFileName = "../../build.gradle.kts"
     }
 }
-
-rootProject.buildFileName = "root.gradle.kts"

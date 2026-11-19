@@ -1,3 +1,4 @@
+import com.replaymod.gradle.preprocess.PreprocessTask
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
@@ -7,7 +8,26 @@ plugins {
     `maven-publish`
     kotlin("jvm")
     alias(libs.plugins.loom)
-    id("dev.deftu.gradle.multiversion")
+    id("com.replaymod.preprocess")
+}
+
+// Without mappings preprocessCode skips Kotlin analysis and finishes almost instantly (all targets are 26.1+, unobfuscated).
+afterEvaluate {
+    tasks.withType<PreprocessTask>().configureEach {
+        sourceMappings = null
+        destinationMappings = null
+    }
+}
+
+tasks.matching { it.name == "generateIdentityMappingsFromSourceMinecraftJars" || it.name == "generateIdentityMappingsFromDestinationMinecraftJars" }.configureEach {
+    outputs.cacheIf { true }
+}
+
+repositories {
+    exclusiveContent {
+        forRepository { maven("https://jitpack.io") }
+        filter { includeGroup("com.github.replaymod") }
+    }
 }
 
 version = project.property("mod.version").toString()
@@ -170,17 +190,4 @@ publishing {
             url = uri(project.findProperty("guilib.maven.dir")?.toString() ?: rootProject.layout.buildDirectory.dir("maven-repo").get().asFile.path)
         }
     }
-}
-
-// The preprocessor of a node reads the classpath of the node it is linked to (26.3 → 26.2 → 26.1.2);
-// order the tasks so parallel builds don't race (same as SBO).
-private val preprocessSource: String? = when (mcProject) {
-    "26.3-fabric" -> ":26.2-fabric"
-    "26.2-fabric" -> ":26.1.2-fabric"
-    else -> null
-}
-preprocessSource?.let { source ->
-    tasks.findByName("preprocessCode")?.dependsOn("$source:compileKotlin")
-    tasks.findByName("preprocessTestCode")?.dependsOn("$source:compileTestKotlin")
-    tasks.findByName("preprocessDevCode")?.dependsOn("$source:compileDevKotlin")
 }
