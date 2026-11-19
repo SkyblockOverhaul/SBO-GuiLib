@@ -545,10 +545,25 @@ object CommandRenderer {
     private const val HEAD_RETRY_MS = 5_000L
     private const val HEAD_RETRY_MAX_MS = 120_000L
 
-    /** When the next lookup of a head may run and how long the one after waits, by uuid. */
-    private class HeadRetry(var at: Long, var wait: Long, var running: Boolean = false)
+    /** Least time between two lookups of any heads, so a list of heads asks Mojang at most once a second. */
+    private const val HEAD_LOOKUP_GAP_MS = 1_000L
 
-    private val headRetries = HashMap<UUID, HeadRetry>()
+    /** When the next lookup of a head may run and how long the one after waits, by uuid. */
+    private class HeadRetry(var at: Long, var wait: Long)
+
+    // The heads drawn last, the ones that scrolled out of view or closed with their screen fall out
+    private val headRetries = object : LinkedHashMap<UUID, HeadRetry>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<UUID, HeadRetry>) = size > 256
+    }
+
+    /** True while a lookup runs; only one at a time, for every head together. */
+    private var headLookupRunning = false
+
+    /** When the next lookup of any head may run: after [HEAD_LOOKUP_GAP_MS], or later while Mojang refuses them. */
+    private var nextHeadLookupAt = 0L
+
+    /** How long every head waits after a refused lookup, doubles with each one in a row. */
+    private var headPauseMs = HEAD_RETRY_MS
 
     // Mojang always sends a textures property, even for players with the default skin, so without one the lookup failed
     private fun lookupFailed(lookup: CompletableFuture<Optional<PlayerSkinRenderCache.RenderInfo>>): Boolean {
@@ -559,24 +574,31 @@ object CommandRenderer {
 
     /**
      * Mojang only answers so many skin lookups a minute and Minecraft keeps a failed one while it is drawn, so the head
-     * would keep the default skin. It asks Mojang again itself, waiting longer after each failure.
+     * would keep the default skin. It asks Mojang again itself, waiting longer after each failure, but only while the
+     * head is drawn and with one lookup at a time for all heads. A refused lookup pauses every head, so the retries
+     * themselves don't keep Mojang's limit reached.
      */
     private fun retryHead(uuid: UUID) {
         val now = System.currentTimeMillis()
         val retry = headRetries.getOrPut(uuid) { HeadRetry(now, HEAD_RETRY_MS) }
-        if (retry.running || now < retry.at) return
-        retry.running = true
+        if (headLookupRunning || now < nextHeadLookupAt || now < retry.at) return
+        headLookupRunning = true
         val mc = Minecraft.getInstance()
         val fetch = { runCatching { mc.services().sessionService().fetchProfile(uuid, false)?.profile() }.getOrNull() }
         CompletableFuture.supplyAsync(fetch, Util.nonCriticalIoPool())
             .thenAcceptAsync({ profile ->
-                retry.running = false
+                headLookupRunning = false
+                val done = System.currentTimeMillis()
                 if (profile != null && !profile.properties().get("textures").isEmpty()) {
                     headProfiles[uuid] = ResolvableProfile.createResolved(profile)
                     headRetries.remove(uuid)
+                    headPauseMs = HEAD_RETRY_MS
+                    nextHeadLookupAt = done + HEAD_LOOKUP_GAP_MS
                 } else {
-                    retry.at = System.currentTimeMillis() + retry.wait
+                    retry.at = done + retry.wait
                     retry.wait = (retry.wait * 2).coerceAtMost(HEAD_RETRY_MAX_MS)
+                    nextHeadLookupAt = done + headPauseMs
+                    headPauseMs = (headPauseMs * 2).coerceAtMost(HEAD_RETRY_MAX_MS)
                 }
             }, mc)
     }
