@@ -37,6 +37,7 @@ object FontManager : TextMeasurer {
         if (faces[face] == location) return
         faces[face] = location
         widthCache.clear()
+        fontCache.clear()
     }
 
     /**
@@ -70,8 +71,19 @@ object FontManager : TextMeasurer {
         return "inter"
     }
 
+    private data class FontKey(val family: List<String>, val weight: Int, val italic: Boolean)
+
+    /** [fontFor] by family, weight and style: it runs for every text drawn, `null` (the Minecraft font) is cached too. */
+    private val fontCache = HashMap<FontKey, TrueTypeFont?>()
+
     /** The TTF for [style], or `null` for the Minecraft font. */
     fun fontFor(style: TextStyle): TrueTypeFont? {
+        val key = FontKey(style.fontFamily, style.fontWeight, style.italic)
+        if (fontCache.containsKey(key)) return fontCache[key]
+        return pickFont(style).also { fontCache[key] = it }
+    }
+
+    private fun pickFont(style: TextStyle): TrueTypeFont? {
         val family = families[familyName(style)] ?: return null
         // Closest weight within the same style (italic falls back to upright).
         val candidates = family.faces.entries.filter { it.key.italic == style.italic }.ifEmpty { family.faces.entries.toList() }
@@ -181,6 +193,7 @@ object FontManager : TextMeasurer {
     fun clearCaches() {
         widthCache.clear()
         segmentCache.clear()
+        fontCache.clear()
         GlyphAtlas.clear()
         loaded.values.forEach { it?.close() }
         loaded.clear()
